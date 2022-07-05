@@ -92,11 +92,11 @@ But if you set it to 3, it will go like this: [0][0][0][1][0][0][0][1]
 Install the Mod and you're good to go!
 ### BUTTONS 
 * __inertia dampeners key__:	Inertia Dampeners On/Off.
-* __boost key__: Increase acceleration by a value.
-* __decrease boost key__: Decrease acceleration by a value.
+* __boost key__: Increase acceleration by a value while holding.
+* __decrease boost key__: Decrease acceleration by a value while holding.
 
 ## INFO PANEL SETUP
-#### while this is optional, i highly recommend it
+#### While this is Optional, I highly recommend it.
 1. Place a text panel
 2. put *__NameTag__LCD in the name
 3. For Controller screens add *__NameTag__:n , where n can be from 0 to the (length of all screens available - 1).
