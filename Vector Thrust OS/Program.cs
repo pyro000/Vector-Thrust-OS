@@ -1222,7 +1222,8 @@ namespace IngameScript
 				foreach (IMyFunctionalBlock tr in normalThrusters) if ((!park && !tr.Enabled) || (park && tr.Enabled)) tr.Enabled = !park;
 
 			int gbc = gridbats.Count;
-			if ((tankblocks.Count > 0 || gbc > 1) && cnparks > 0)
+			int bbc = batteriesblocks.Count;
+			if ((tankblocks.Count > 0 || gbc > 0 || bbc > 0) && cnparks > 0)
 			{
 				List<IMyTerminalBlock> bats = gridbats;
 				bats.AddRange(batteriesblocks);
