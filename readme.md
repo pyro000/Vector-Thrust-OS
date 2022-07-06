@@ -6,6 +6,7 @@
 ### I cannot rule out my thanks also to 1wsx10, the original author of Vector Thrust 2 and for providing the mayority of the code where this script is working.
 
 Workshop link: https://steamcommunity.com/sharedfiles/filedetails/?id=2831096030
+
 Mod.io link: https://spaceengineers.mod.io/vector-thrust-os
 
 ## What's new:
