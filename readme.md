@@ -5,6 +5,9 @@
 ### Big thanks to Digi, Whiplash, d1ag0n, feoranis, Malware, and so on to help me with part of the code and solving some problems.
 ### I cannot rule out my thanks also to 1wsx10, the original author of Vector Thrust 2 and for providing the mayority of the code where this script is working.
 
+Workshop link: https://steamcommunity.com/sharedfiles/filedetails/?id=2831096030
+Mod.io link: https://spaceengineers.mod.io/vector-thrust-os
+
 ## What's new:
 - The movement now is really smooth and clean in the mayority of times.
 - Improved performance considerably.
