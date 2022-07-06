@@ -76,6 +76,8 @@ Mod.io link: https://spaceengineers.mod.io/vector-thrust-os
 5. If the grid is going to work in space, you have to take in count if the vector thrusters do a shake or vibration when it tries to reposition them to reach 0 m/s, so you can fix that enabling (In Vector Thruster Stabilization Category) "Slow Reposition Of Rotors On Turn Off=" and setting your maximum custom RPM at "Slow Rotor Reposition Value (RPM)=" to any value you want (Maximum 60, I prefer leaving it at default).
 
 6. Finally Recompile the script one more time and increase the "Time For Each Refresh=" to 999 to evade these problems, also the "Time Checking Intervals=" to a higher number than 1 (It handles the new screens added and block check).
+### IMPORTANT, IF YOU FEEL THAT THE THRUSTERS FEEL STRANGE, INCREASE ROTOR TORQUE AND BRAKING TORQUE
+
 
 ## SCRIPT IS HEAVY FOR YOUR SERVER?
 
