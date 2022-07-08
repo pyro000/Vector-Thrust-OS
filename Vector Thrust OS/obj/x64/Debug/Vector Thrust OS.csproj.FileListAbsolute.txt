@@ -238,3 +238,123 @@ C:\Users\Administrator\Desktop\spaceengineersproject\Vector Thrust OS\bin\Vector
 C:\Users\Administrator\Desktop\spaceengineersproject\Vector Thrust OS\obj\x64\Debug\Vector Thrust OS.exe.config
 C:\Users\Administrator\Desktop\spaceengineersproject\Vector Thrust OS\obj\x64\Debug\Vector Thrust OS.exe
 C:\Users\Administrator\Desktop\spaceengineersproject\Vector Thrust OS\obj\x64\Debug\Vector Thrust OS.pdb
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\MDK\MDK.options.props
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\MDK\MDK.paths.props
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\Vector Thrust OS.exe.config
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\Vector Thrust OS.exe
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\Vector Thrust OS.pdb
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\Microsoft.Win32.Primitives.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\netstandard.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.AppContext.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Collections.Concurrent.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Collections.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Collections.NonGeneric.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Collections.Specialized.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.ComponentModel.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.ComponentModel.EventBasedAsync.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.ComponentModel.Primitives.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.ComponentModel.TypeConverter.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Console.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Data.Common.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Diagnostics.Contracts.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Diagnostics.Debug.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Diagnostics.FileVersionInfo.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Diagnostics.Process.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Diagnostics.StackTrace.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Diagnostics.TextWriterTraceListener.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Diagnostics.Tools.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Diagnostics.TraceSource.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Diagnostics.Tracing.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Drawing.Primitives.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Dynamic.Runtime.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Globalization.Calendars.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Globalization.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Globalization.Extensions.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.IO.Compression.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.IO.Compression.ZipFile.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.IO.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.IO.FileSystem.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.IO.FileSystem.DriveInfo.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.IO.FileSystem.Primitives.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.IO.FileSystem.Watcher.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.IO.IsolatedStorage.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.IO.MemoryMappedFiles.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.IO.Pipes.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.IO.UnmanagedMemoryStream.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Linq.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Linq.Expressions.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Linq.Parallel.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Linq.Queryable.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Net.Http.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Net.NameResolution.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Net.NetworkInformation.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Net.Ping.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Net.Primitives.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Net.Requests.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Net.Security.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Net.Sockets.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Net.WebHeaderCollection.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Net.WebSockets.Client.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Net.WebSockets.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.ObjectModel.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Reflection.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Reflection.Extensions.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Reflection.Primitives.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Resources.Reader.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Resources.ResourceManager.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Resources.Writer.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.CompilerServices.VisualC.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.Extensions.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.Handles.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.InteropServices.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.InteropServices.RuntimeInformation.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.Numerics.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.Serialization.Formatters.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.Serialization.Json.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.Serialization.Primitives.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.Serialization.Xml.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Security.Claims.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Security.Cryptography.Algorithms.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Security.Cryptography.Csp.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Security.Cryptography.Encoding.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Security.Cryptography.Primitives.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Security.Cryptography.X509Certificates.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Security.Principal.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Security.SecureString.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Text.Encoding.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Text.Encoding.Extensions.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Text.RegularExpressions.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Threading.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Threading.Overlapped.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Threading.Tasks.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Threading.Tasks.Parallel.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Threading.Thread.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Threading.ThreadPool.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Threading.Timer.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.ValueTuple.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Xml.ReaderWriter.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Xml.XDocument.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Xml.XmlDocument.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Xml.XmlSerializer.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Xml.XPath.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Xml.XPath.XDocument.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\MDKUtilities.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\VRage.Network.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\HavokWrapper.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\ProtoBuf.Net.Core.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Memory.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\VRage.NativeWrapper.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Buffers.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Runtime.CompilerServices.Unsafe.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\SixLabors.ImageSharp.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\SixLabors.Core.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\System.Numerics.Vectors.dll
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\SixLabors.ImageSharp.xml
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\bin\SixLabors.Core.xml
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\obj\x64\Debug\Vector Thrust OS.csproj.AssemblyReference.cache
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\obj\x64\Debug\Vector Thrust OS.exe.config
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\obj\x64\Debug\Vector Thrust OS.csproj.CoreCompileInputs.cache
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\obj\x64\Debug\Vector Thrust OS.csproj.CopyComplete
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\obj\x64\Debug\Vector Thrust OS.exe
+C:\Users\Administrator\Documents\GitHub\Vector-Thrust-OS\Vector Thrust OS\obj\x64\Debug\Vector Thrust OS.pdb
