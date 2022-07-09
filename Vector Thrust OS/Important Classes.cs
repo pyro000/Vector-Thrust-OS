@@ -111,7 +111,7 @@ namespace IngameScript
 				if (docheck) getControllers();
 				if (!justCompiled) yield return TimeBetweenAction;
 				log = new StringBuilder($" >{akshan} Screens\n");
-				if (docheck)  getScreens();
+				if (docheck) getScreens();
 				yield return TimeBetweenAction;
 			}
 		}

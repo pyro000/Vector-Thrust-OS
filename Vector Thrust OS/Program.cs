@@ -29,6 +29,7 @@ namespace IngameScript
 		const string raiseAccelArg = "raiseaccel";
 		const string lowerAccelArg = "loweraccel";
 		const string resetAccelArg = "resetaccel";
+		const string gearArg = "gear";
 		const string resetArg = "reset"; //this one re-runs the initial setup (init() method) ... you probably want to use %resetAccel
 		const string applyTagsArg = "applytags";
 		const string applyTagsAllArg = "applytagsall";
@@ -137,7 +138,7 @@ namespace IngameScript
 		{
 			// ========== STARTUP ==========
 			globalAppend = false;
-			sumlastrun += Runtime.TimeSinceLastRun.TotalSeconds;
+			//sumlastrun += Runtime.TimeSinceLastRun.TotalSeconds;
 			RT.AddRuntime();
 			pc++;
 
@@ -154,9 +155,9 @@ namespace IngameScript
 			argument.Contains(cruiseArg) ||
 			argument.Contains(removeTagsArg);
 
-			if (justCompiled || sumlastrun >= TimeForRefresh)
+			if (justCompiled || RT.configtrigger)
 			{
-				sumlastrun = 0;
+				RT.configtrigger = false;
 				Config();
 				ManageTag();
 			}
@@ -182,6 +183,7 @@ namespace IngameScript
 
 			Vector3D desiredVec = getMovementInput(argument);
 			mvin = desiredVec.Length();
+
             double realacc = Math.Abs((sv - oldsv) / Runtime.TimeSinceLastRun.TotalSeconds).Round(2);
             if (realacc > maxaccel) maxaccel = realacc;
 			oldsv = sv;
@@ -204,7 +206,7 @@ namespace IngameScript
 			}
 			echosb.getSpinner(ref pc).Append(" VTos ").getSpinner(ref pc);
 			echosb.AppendLine($"\n\n--- Main ---");
-			echosb.AppendLine(" >Remaining: " + (TimeForRefresh - sumlastrun).Round(1));
+			echosb.AppendLine(" >Remaining: " + RT.tremaining);
 			echosb.AppendLine(" >Greedy: " + greedy);
 			echosb.AppendLine($" >Angle Objective: {totalVTThrprecision.Round(1)}%");
 			echosb.AppendLine($" >Main/Reference Controller: {mainController.theBlock.CustomName}");
@@ -237,7 +239,7 @@ namespace IngameScript
 					return;
 				}
 			}
-			else if (tagArg && !MainTag(argument)) { //TODO, SEE IF IS NEEDED TO PASS THE ENTIRE RUN FRAME IF THERE'S AN ARGUMENT
+			else if (tagArg && !MainTag(argument)) { //SEE IF IS NEEDED TO PASS THE ENTIRE RUN FRAME IF THERE'S AN ARGUMENT (IT IS)
 				Runtime.UpdateFrequency = UpdateFrequency.None;
 				return;
 				//HANDLES TAG ARGUMENTS, IF IT FAILS, IT STOPS
@@ -785,6 +787,9 @@ namespace IngameScript
 			readonly int _instructionLimit;
 			readonly Program _program;
 			const double MS_PER_TICK = 16.6666;
+			double sumlastrun;
+			public double tremaining = 0;
+			public bool configtrigger = false;
 
 			public RuntimeTracker(Program program, int capacity = 100, double sensitivity = 0.005)
 			{
@@ -796,7 +801,25 @@ namespace IngameScript
 
 			public void AddRuntime()
 			{
+				double tfr = _program.TimeForRefresh;
+				bool config = sumlastrun < tfr;
+
+				if (!configtrigger && !config) {
+					sumlastrun = 0;
+				}
+
+				if (config)
+				{
+					double tslrs = _program.Runtime.TimeSinceLastRun.TotalSeconds;
+					sumlastrun += tslrs;
+					tremaining = (tfr - sumlastrun).Round(1);
+				}
+				else {
+					configtrigger = true;
+				}
+
 				double runtime = _program.Runtime.LastRunTimeMs;
+
 				LastRuntime = runtime;
 				AverageRuntime += (Sensitivity * runtime);
 				int roundedTicksSinceLastRuntime = (int)Math.Round(_program.Runtime.TimeSinceLastRun.TotalMilliseconds / MS_PER_TICK);
@@ -889,6 +912,9 @@ namespace IngameScript
 		HashSet<IMyTextSurface> surfaces = new HashSet<IMyTextSurface>();
 		List<IMyProgrammableBlock> programBlocks = new List<IMyProgrammableBlock>();
 
+		List<IMyTerminalBlock> rechargedblocks = new List<IMyTerminalBlock>();
+		List<IMyTerminalBlock> turnedoffthusters = new List<IMyTerminalBlock>();
+
 		float oldMass = 0;
 		int rotorCount = 0;
 		int rotorTopCount = 0;
@@ -896,7 +922,7 @@ namespace IngameScript
 		int screenCount = 0;
 		//int programBlockCount = 0;
 		int frame = 0;
-		double sumlastrun = 0;
+		//double sumlastrun = 0;
 
 		string separator(string title = "", int len=58) {
 			int tl = title.Length;
@@ -918,7 +944,7 @@ namespace IngameScript
 		float lastGrav = 0;
 		bool thrustOn = true;
 		Dictionary<string, object> CMinputs = null;
-		bool stoppedVTS = false;
+		//bool stoppedVTS = false;
 
 
 		void ManageTag(bool force = false)
@@ -970,12 +996,12 @@ namespace IngameScript
 					thrustOn = true;
 					Runtime.UpdateFrequency = update_frequency;
 					tankthrusterbatteryManager(parked);
-					stoppedVTS = false;
+					//stoppedVTS = false;
 				}
 				else if (alreadyparked && totalVTThrprecision.Round(1) == 100)
 				{
 					tankthrusterbatteryManager(parked, cnparks);
-					stoppedVTS = true;
+					//stoppedVTS = true;
 					screensb.AppendLine("PARKED");
 					return alreadyparked;
 				}
@@ -990,42 +1016,56 @@ namespace IngameScript
 
 		void tankthrusterbatteryManager(bool park = true, int cnparks = 1)
 		{
-			if ((park && !stoppedVTS) || (!park && stoppedVTS)) { 
+			bool cond_thr = (park && turnedoffthusters.Count == 0) || (!park && turnedoffthusters.Count != 0);
+			bool cond_rec = (park && rechargedblocks.Count > 0) || (!park && rechargedblocks.Count == 0);
+
+			if (cond_thr) {
 				if (TurnOffThrustersOnPark && normalThrusters.Count > 0)
-					foreach (IMyFunctionalBlock tr in normalThrusters) if ((!park && !tr.Enabled) || (park && tr.Enabled)) tr.Enabled = !park;
-
-				int gbc = gridbats.Count;
-				int bbc = batteriesblocks.Count;
-				if ((tankblocks.Count > 0 || gbc > 0 || bbc > 0) && cnparks > 0)
-				{
-					List<IMyTerminalBlock> bats = gridbats;
-					bats.AddRange(batteriesblocks);
-					foreach (IMyFunctionalBlock t in tankblocks)
-					{
-						if (t is IMyGasTank) (t as IMyGasTank).Stockpile = park;
-
-					}
-					int bl = bats.Count;
-					if (bl > 0)
-					{
-						if (park)
+					foreach (IMyFunctionalBlock tr in normalThrusters) {
+						bool p = (park && tr.Enabled);
+						if ((!park && !tr.Enabled) || (park && tr.Enabled))
 						{
-							foreach (IMyBatteryBlock b in bats)
-							{
-								b.ChargeMode = ChargeMode.Recharge;
-							}
-							if (gbc == 0) (bats[0] as IMyBatteryBlock).ChargeMode = ChargeMode.Auto;
-							else (gridbats[0] as IMyBatteryBlock).ChargeMode = ChargeMode.Auto;
+							tr.Enabled = !park;
+							if (p) turnedoffthusters.Add(tr);
 						}
-						else
-						{ //I prefer to loop all instead
-							foreach (IMyBatteryBlock b in bats)
-							{
-								b.ChargeMode = ChargeMode.Auto;
-							}
-						}
-
 					}
+				if (!park) turnedoffthusters.Clear();				
+			}
+				
+			if (cond_rec) return;
+			int gbc = gridbats.Count;
+			int bbc = batteriesblocks.Count;
+			if ((tankblocks.Count > 0 || gbc > 0 || bbc > 0) && cnparks > 0)
+			{
+				List<IMyTerminalBlock> bats = gridbats;
+				bats.AddRange(batteriesblocks);
+				foreach (IMyFunctionalBlock t in tankblocks)
+				{
+					if (t is IMyGasTank) (t as IMyGasTank).Stockpile = park;
+					rechargedblocks.Add(t);
+				}
+				int bl = bats.Count;
+				if (bl > 0)
+				{
+					if (park)
+					{
+						foreach (IMyBatteryBlock b in bats)
+						{
+							b.ChargeMode = ChargeMode.Recharge;
+							rechargedblocks.Add(b);
+						}
+						if (gbc == 0) (bats[0] as IMyBatteryBlock).ChargeMode = ChargeMode.Auto;
+						else (gridbats[0] as IMyBatteryBlock).ChargeMode = ChargeMode.Auto;
+					}
+					else
+					{ //I prefer to loop all instead
+						foreach (IMyBatteryBlock b in bats)
+						{
+							b.ChargeMode = ChargeMode.Auto;
+						}
+						rechargedblocks.Clear();
+					}
+
 				}
 			}
 		}
@@ -1297,32 +1337,33 @@ namespace IngameScript
 			}
 
 			bool changeDampeners = false;
+
+
 			if (arg.Contains(dampenersArg))
 			{
 				dampeners = !dampeners;
 				changeDampeners = true;
 			}
-			if (arg.Contains(cruiseArg))
+			else if (arg.Contains(cruiseArg))
 			{
 				cruise = !cruise;
 			}
-			if (arg.Contains(raiseAccelArg))
+			else if(arg.Contains(raiseAccelArg))
 			{
 				accelExponent++;
 			}
-			if (arg.Contains(lowerAccelArg))
+			else if(arg.Contains(lowerAccelArg))
 			{
 				accelExponent--;
 			}
-			if (arg.Contains(resetAccelArg))
+			else if(arg.Contains(resetAccelArg))
 			{
 				accelExponent = 0;
 			}
-			if (arg.Contains("gear"))
+			else if(arg.Contains(gearArg))
 			{
 				if (gear == Accelerations.Length - 1) gear = 0;
 				else gear++;
-
 			}
 
 			// dampeners (if there are any normal thrusters, the dampeners control works)
@@ -1702,17 +1743,22 @@ namespace IngameScript
 					if (b is IMyMotorStator)
 					{
 						IMyMotorStator rt = (IMyMotorStator)b;
-						rt.TargetVelocityRPM = 0;
-						rt.RotorLock = false;
-						rt.Enabled = true;
+						if (justCompiled) {
+							rt.TargetVelocityRPM = 0;
+							rt.RotorLock = false;
+							rt.Enabled = true;
+						}
 						rots.Add(rt);
 
 					}
 					if (b is IMyThrust)
 					{
 						IMyThrust tr = (IMyThrust)b;
-						tr.ThrustOverridePercentage = 0;
-						tr.Enabled = true;
+						if (justCompiled)
+						{
+							tr.ThrustOverridePercentage = 0;
+							tr.Enabled = true;
+						}
 						thrs.Add(tr);
 
 						if (filterThis(b))
@@ -1744,7 +1790,7 @@ namespace IngameScript
 					if (b is IMyBatteryBlock)
 					{
 						if (TagAll) addTag(b);
-						(b as IMyBatteryBlock).ChargeMode = ChargeMode.Auto;
+						if (justCompiled) (b as IMyBatteryBlock).ChargeMode = ChargeMode.Auto;
 						if (hasTag(b)) batteriesblocks.Add(b);
 						else if (filterThis(b)) gridbats.Add(b);
 					}
@@ -1771,18 +1817,24 @@ namespace IngameScript
 				}
 			}
 
-			if (screenCount != txts.Count || greedy)
+			if (screenCount != txts.Count || greedy) {
 				log.AppendLine($"  --Screen count ({screenCount}) is out of whack (current: {txts.Count})\n");
-			else
-			{
+				getScreens(txts);
+			}
+			/**else
+			{	//I don't seem to understand the purpose if this.
+				//probably may-aswell just getScreens either way. seems like there wouldn't be much performance hit
 				foreach (IMyTextPanel screen in txts)
 				{
 					if (!screen.IsWorking) continue;
 					if (!screen.CustomName.ToLower().Contains(LCDName.ToLower())) continue;
+					getScreens(txts);
 				}
-			}
-			//probably may-aswell just getScreens either way. seems like there wouldn't be much performance hit, I put it down instead
-			getScreens(txts);
+			}*/
+			
+			
+
+
 
 			if (rotorCount != rots.Count)
 			{
@@ -1823,6 +1875,10 @@ namespace IngameScript
 				log.AppendLine("  --Everything in order\n");
 			}
 
+			//Adding this because for some reason the screens gets shutdown if the script reaches this part
+			//TODO: Make this run one per frame
+			getControllers();
+			getScreens();
 			return true;
 		}
 
@@ -1837,6 +1893,10 @@ namespace IngameScript
 				return false;
 			}
 			getVectorThrusters();
+			if (!checkVectorThrusters(true)) {
+				log.AppendLine("Init failed.");
+				return false;
+			}
 			log.AppendLine("Init success.");
 			return true;
 		}
