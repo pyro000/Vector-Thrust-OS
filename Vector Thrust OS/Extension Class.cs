@@ -38,30 +38,38 @@ namespace IngameScript
 			return STR.Split(new string[] { STR1, STR2 }, StringSplitOptions.RemoveEmptyEntries).Where(it => STR.Contains(STR1 + it + STR2)).ToList();
 		}
 		
-		public static Vector3D project(this Vector3D a, Vector3D b)
+		public static Vector3D Project(this Vector3D a, Vector3D b)
 		{// projects a onto b
 			double aDotB = Vector3D.Dot(a, b);
 			double bDotB = Vector3D.Dot(b, b);
 			return b * aDotB / bDotB;
 		}
 
-		public static Vector3D reject(this Vector3D a, Vector3D b)
+		public static StringBuilder AppendNR(this StringBuilder str, string value, bool newline = true) {
+			if (!str.ToString().Contains(value)) { 
+				if (newline) str.AppendLine(value);
+				else str.Append(value);
+			}
+			return str;
+		}
+
+		public static Vector3D Reject(this Vector3D a, Vector3D b)
 		{
 			return Vector3D.Reject(a, b);
 		}
 
-		public static Vector3D normalized(this Vector3D vec)
+		public static Vector3D Normalized(this Vector3D vec)
 		{
 			return Vector3D.Normalize(vec);
 		}
 
-		public static double dot(this Vector3D a, Vector3D b)
+		public static double Dot(this Vector3D a, Vector3D b)
 		{
 			return Vector3D.Dot(a, b);
 		}
 
 		// get movement and turn it into worldspace
-		public static Vector3D getWorldMoveIndicator(this IMyShipController cont)
+		public static Vector3D GetWorldMoveIndicator(this IMyShipController cont)
 		{
 			return Vector3D.TransformNormal(cont.MoveIndicator, cont.WorldMatrix);
 		}
@@ -74,9 +82,12 @@ namespace IngameScript
 			return (desired * isval) / ifval;
 		}
 
-		public static StringBuilder getSpinner(this StringBuilder spinner, ref long pc)
+		public static StringBuilder GetSpinner(this StringBuilder spinner, ref long pc, string before = "", string after = "")
 		{
 			long splitter = pc / 10 % 4;
+
+			spinner.Append(before);
+
 			switch (splitter)
 			{
 				case 0:
@@ -92,26 +103,21 @@ namespace IngameScript
 					spinner.Append("/");
 					break;
 			}
-			if (pc >= 200) pc = 0;
+			if (pc >= 1000) pc = 0;
+
+			spinner.Append(after);
+
 			return spinner;
 		}
 
-		/*public static string progressBar(this double val)
-		{char[] bar = { ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ' };
-			for (int i = 0; i < 10; i++)
-			{if (i <= val * 10){
-					bar[i] = '|';}}
-			var str_build = new StringBuilder("[");
-			for (int i = 0; i < 10; i++){
-				str_build.Append(bar[i]);}
-			str_build.Append("]");
-			return str_build.ToString();}
 
-		public static string progressBar(this float val)
-		{return ((double)val).progressBar();}
-
-		public static string progressBar(this Vector3D val)
-		{return val.Length().progressBar();}*/
+		public static StringBuilder ProgressBar(this StringBuilder sb, double percent, int amount)
+		{
+			int a = (int)(percent * amount);
+			int rz = amount - a;
+			sb.Append("--=[").Append('|', a).Append('\'', rz).Append("]=--");
+			return sb;
+		}
 
 		public static Vector3D Round(this Vector3D vec, int num)
 		{
@@ -128,20 +134,20 @@ namespace IngameScript
 			return (float)Math.Round(val, num);
 		}
 
-		public static String toString(this Vector3D val)
+		public static String ToString(this Vector3D val)
 		{
 			return $"X:{val.X} Y:{val.Y} Z:{val.Z}";
 		}
 
-		public static String toString(this Vector3D val, bool pretty)
+		public static String ToString(this Vector3D val, bool pretty)
 		{
 			if (!pretty)
-				return val.toString();
+				return ToString(val);
 			else
 				return $"X:{val.X}\nY:{val.Y}\nZ:{val.Z}\n";
 		}
 
-		public static String toString(this bool val)
+		public static String ToString(this bool val)
 		{
 			if (val)
 			{
