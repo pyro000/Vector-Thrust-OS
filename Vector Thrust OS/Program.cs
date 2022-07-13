@@ -20,8 +20,33 @@ using VRageMath;
 
 namespace IngameScript
 {
+	
+
 	partial class Program : MyGridProgram
 	{
+		double timeperframe = 0;
+
+		void SetTimePerFrame() {
+			switch (update_frequency)
+			{ //saving it just in case
+				case UpdateFrequency.Update1:
+					timeperframe = 1.0 / 60.0;
+					break;
+				/*case UpdateFrequency.None:
+					timeperframe = 1.0 / 60.0;
+					break;
+				case UpdateFrequency.Once:
+					timeperframe = 1.0 / 60.0;
+					break;
+				case UpdateFrequency.Update10:
+					timeperframe = 1.0 / 6.0;
+					break;
+				case UpdateFrequency.Update100:
+					timeperframe = 1.0 / 0.6;
+					break;*/
+			}
+		}
+
 		public Program()
 		{
 			string[] stg = Storage.Split(new string[] { ":" }, StringSplitOptions.RemoveEmptyEntries);
@@ -30,6 +55,8 @@ namespace IngameScript
 				oldTag = stg[0]; //loading tag
 				greedy = bool.Parse(stg[1]); //loading greedy
 			}
+
+			SetTimePerFrame();
 			Runtime.UpdateFrequency = update_frequency;
 			RT = new RuntimeTracker(this, 60, 0.005);
 			//ST = new SimpleTimerSM(this, MainTagSeq(), true);
@@ -572,7 +599,7 @@ namespace IngameScript
 		bool ShowMetrics = false;
 		//public bool SmartThrusters = true;
 		int SkipFrames = 0;
-		double TimeBetweenAction = 1;
+		
 
 		double RotorStMultiplier = 1000;
 		bool SlowThrustOff = false;
@@ -601,7 +628,7 @@ namespace IngameScript
 		string[] tagSurround = new string[] { "|", "|" };
 		bool UsePID = false;
 		bool cruisePlane = false; // make cruise mode act more like an airplane
-		
+		int FramesBetweenActions = 1;
 
 		// ------- End default configs ---------
 
@@ -618,10 +645,11 @@ namespace IngameScript
 		const string miscstr = "MISC";
 
 		const string myNameStr = "Name Tag";
+		const string TagSurroundStr = "Tag Surround Char(s)";
 		const string ShowMetricsStr = "Show Metrics";
 		const string TimeForRefreshStr = "Time For Each Refresh";
 		const string SkipFramesStr = "Skip Frames";
-		const string TimeBetweenActionStr = "Time Checking Intervals";
+		
 		
 
 		const string RotorStMultiplierStr = "Rotor Stabilization Multiplier";
@@ -642,9 +670,9 @@ namespace IngameScript
 		const string thrustModifierGravStr = "Thruster Modifier Turn On/Off Gravity";
 
 		const string RotationAverageSamplesStr = "Rotor Velocity Average Samples";
-		const string TagSurroundStr = "Tag Surround Char(s)";
 		const string UsePIDStr = "Use PID Controller";
 		const string cruisePlaneStr = "Cruise Mode Act Like Plane";
+		const string FramesBetweenActionsStr = "Frames Per Operation: Block Assigner";
 
 		// END STRINGS AND VARS
 
@@ -665,14 +693,33 @@ namespace IngameScript
 				myName = config.Get(inistr, myNameStr).ToString(myName);
 				if (string.IsNullOrEmpty(myName)) {
 					myName = "VT";
+					force = true;
 				}
 				textSurfaceKeyword = $"{myName}:";
 				LCDName = $"{myName}LCD";
 
+				string sstr = config.Get(inistr, TagSurroundStr).ToString();
+				int sstrl = sstr.Length;
+
+				if (sstrl == 1)
+				{
+					tagSurround = new string[] { sstr, sstr };
+				}
+				else if (sstrl > 1 && sstrl % 2 == 0)
+				{
+					string first = sstr.Substring(0, (int)(sstr.Length / 2));
+					string last = sstr.Substring((int)(sstr.Length / 2), (int)(sstr.Length / 2));
+					tagSurround = new string[] { first, last };
+				}
+				else
+				{
+					force = true;
+					tagSurround = new string[] { "|", "|" };
+				}
+
 				TimeForRefresh = config.Get(inistr, TimeForRefreshStr).ToDouble(TimeForRefresh);
 				ShowMetrics = config.Get(inistr, ShowMetricsStr).ToBoolean(ShowMetrics);
 				SkipFrames = config.Get(inistr, SkipFramesStr).ToInt32(SkipFrames);
-				TimeBetweenAction = config.Get(inistr, TimeBetweenActionStr).ToDouble(TimeBetweenAction);
 
 				RotorStMultiplier = config.Get(detectstr, RotorStMultiplierStr).ToDouble(RotorStMultiplier);
 				SlowThrustOff = config.Get(detectstr, SlowThrustOffStr).ToBoolean(SlowThrustOff);
@@ -757,34 +804,21 @@ namespace IngameScript
 				}
 				RotationAverageSamples = config.Get(miscstr, RotationAverageSamplesStr).ToInt32(RotationAverageSamples);
 
-				string sstr = "";
-				sstr = config.Get(miscstr, TagSurroundStr).ToString(myName);
-				int sstrl = sstr.Length;
-
-				if (sstrl == 1)
-				{
-					tagSurround = new string[] { sstr, sstr };
-				}
-				else if (sstrl > 1 && sstrl % 2 == 0)
-				{
-					string first = sstr.Substring(0, (int)(sstr.Length / 2));
-					string last = sstr.Substring((int)(sstr.Length / 2), (int)(sstr.Length / 2));
-					tagSurround = new string[] { first, last };
-				}
-				else
-				{
-					force = true;
-					tagSurround = new string[] { "|", "|" };
-				}
-
 				UsePID = config.Get(miscstr, UsePIDStr).ToBoolean(UsePID);
 				cruisePlane = config.Get(miscstr, cruisePlaneStr).ToBoolean(cruisePlane);
+				FramesBetweenActions = config.Get(miscstr, FramesBetweenActionsStr).ToInt32(FramesBetweenActions);
+				if (FramesBetweenActions <= 0) {
+					FramesBetweenActions = 1;
+					force = true;
+				}
+				timepause = FramesBetweenActions * timeperframe;
 			}
 
 			SetConfig(force);
 			RConfig(config.ToString(), force);
 		}
 
+		double timepause = 0;
 		void SetConfig(bool force)
 		{
 
@@ -795,10 +829,11 @@ namespace IngameScript
 			double[] defaulttmg = new double[] { 0.1, 0.1 };
 
 			config.Set(inistr, myNameStr, myName);
+			string sstr = tagSurround[0].Equals(tagSurround[1]) ? tagSurround[0] : tagSurround[0] + tagSurround[1];
+			config.Set(inistr, TagSurroundStr, sstr);
 			config.Set(inistr, TimeForRefreshStr, TimeForRefresh);
 			config.Set(inistr, ShowMetricsStr, ShowMetrics);
 			config.Set(inistr, SkipFramesStr, SkipFrames);
-			config.Set(inistr, TimeBetweenActionStr, TimeBetweenAction);
 
 			config.Set(detectstr, RotorStMultiplierStr, RotorStMultiplier);
 			config.Set(detectstr, SlowThrustOffStr, SlowThrustOff);
@@ -825,10 +860,9 @@ namespace IngameScript
 			config.SetComment(miscstr, thrustModifierSpaceStr, "\n-Thruster Modifier-\nHow far needs the thruster to turn on and off from desired angle.\n Space:");
 			config.SetComment(miscstr, thrustModifierGravStr, "\n Gravity:");
 			config.Set(miscstr, RotationAverageSamplesStr, RotationAverageSamples);
-			string sstr = tagSurround[0].Equals(tagSurround[1]) ? tagSurround[0] : tagSurround[0] + tagSurround[1];
-			config.Set(miscstr, TagSurroundStr, sstr);
 			config.Set(miscstr, UsePIDStr, UsePID);
 			config.Set(miscstr, cruisePlaneStr, cruisePlane);
+			config.Set(miscstr, FramesBetweenActionsStr, FramesBetweenActions);
 		}
 
 		void RConfig(string output, bool force = false)
@@ -1311,7 +1345,7 @@ namespace IngameScript
 		{
 			VTThrGroups.Clear();
 
-			Echo("TESTING");
+			//Echo("TESTING");
 			foreach (VectorThrust na in vectorthrusters)
 			{
 				bool foundGroup = false;
@@ -2254,7 +2288,7 @@ namespace IngameScript
 
 			InitControllers();
 			MainChecker.Run();
-			log.AppendLine("Init " + (shutdown ? "Failed" : "Sucessfully Completed"));
+			log.AppendLine("Init " + (shutdown ? "Failed" : "Completed Sucessfully"));
 			return !shutdown;
 		}
 

@@ -98,6 +98,7 @@ namespace IngameScript
 		public IEnumerable<double> GetScreensSeq()
 		{
 			while (true) {
+				log.AppendNR($"  Getting Screens => new:{usablescreens.Count}");
 				//bool greedy = this.greedy || this.applyTags || this.removeTags;
 				if (usablescreens.Any()) this.screens.AddRange(usablescreens);
 				usablescreens.Clear();
@@ -112,13 +113,13 @@ namespace IngameScript
 					if (!cond1 && cond2 && cond3) surfaces.Add(screen);
 					else if (cond1 && (!cond2 || !cond3 || cond4)) surfaces.Remove(screen);
 
-					if (pauseseq) yield return 0.016;
+					if (pauseseq) yield return timepause;
 				}
 
 				//screenCount = screens.Count;
-				log.AppendNR($"  --Updated Scr:{screens.Count}=>Surf:{surfaces.Count}\n");
+				log.AppendNR($"  ->Done. Total Screens {screens.Count} => Total Surfaces:{surfaces.Count}\n");
 				GetScreen.Doneloop = true;
-				yield return 0.016;
+				yield return timepause;
 			}
 		}
 
@@ -149,17 +150,17 @@ namespace IngameScript
 						inputs += b.CurrentInput;
 						outputs += b.CurrentOutput;
 						percents += b.CurrentStoredPower / b.MaxStoredPower;
-						yield return 0.016;
+						yield return timepause;
 					}
 					inputs /= backupbats.Count;
 					outputs /= backupbats.Count;
 					percents *= 100 / backupbats.Count;
 
 					outputbatsseq = new List<double> { inputs, outputs, percents.Round(0) };
-					yield return 0.016;
+					yield return timepause;
 				}
 				BS.Doneloop = true;
-				yield return 0.016;
+				yield return timepause;
 			}
 		}
 
@@ -170,13 +171,12 @@ namespace IngameScript
 			while (true) {
 				bool greedy = this.greedy || this.applyTags || this.removeTags;
 				//mainController = null;
-
-				log.AppendNR("gr:"+ greedy);
+				//log.AppendNR("gr:"+ greedy);
 
 				if (this.controllers_input.Count > 0) this.controllers.AddRange(controllers_input);
 				controllers_input.Clear();
 
-				//yield return 0.016;
+				//yield return timepause;
 				//usableControllers.Clear();
 				//controlledControllers.Clear();
 
@@ -235,7 +235,7 @@ namespace IngameScript
 						{
 							AddTag(s.TheBlock);
 						}
-						if (pauseseq) yield return 0.016;
+						if (pauseseq) yield return timepause;
 					}
 					else
 					{
@@ -261,7 +261,7 @@ namespace IngameScript
 					ManageTag(true);
 					shutdown = true;
 					//Echo(log.ToString());
-					if (pauseseq) yield return 0.016;
+					if (pauseseq) yield return timepause;
 				}
 				/*else if (controlledControllers.Count == 1)
 				{
@@ -277,7 +277,7 @@ namespace IngameScript
 							mainController = s;
 							break;
 						}
-						if (pauseseq) yield return 0.016;
+						if (pauseseq) yield return timepause;
 					}
 					if (mainController == null)
 					{
@@ -289,7 +289,7 @@ namespace IngameScript
 
 				//controllers_input.Clear(); //done in other way
 				GetControllers.Doneloop = true;
-				yield return 0.016;
+				yield return timepause;
 			}
 		}
 
@@ -341,7 +341,7 @@ namespace IngameScript
 						continue;
 					}*/
 					/*if () {
-						yield return 0.016;
+						yield return timepause;
 						continue; 
 					}*/
 					/*if (current.Top == null || !(greedy || hasTag(current)) || current.TopGrid == Me.CubeGrid)
@@ -363,7 +363,7 @@ namespace IngameScript
 						this.vectorthrusters.Add(new VectorThrust(rotor, this));
 						vtrotors.Add(current);
 					}
-					if (pauseseq) yield return 0.016;
+					if (pauseseq) yield return timepause;
 				}
 
 				log.AppendNR("  >Getting Thrusters\n");
@@ -390,9 +390,8 @@ namespace IngameScript
 							AddTag(thrusters_input[j]);
 						}
 
-
 						/*if () {
-							yield return 0.016;
+							yield return timepause;
 							continue; 
 						}*/
 						//if (this.vectorthrusters[i].thrusters.Any(x => vtthrusters.Contains(x.theBlock))) continue;
@@ -404,7 +403,7 @@ namespace IngameScript
 						}
 
 
-						if (pauseseq) yield return 0.016;
+						if (pauseseq) yield return timepause;
 					}
 					// remove this.nacelles (rotors) without thrusters
 					if (this.vectorthrusters[i].thrusters.Count == 0)
@@ -417,7 +416,7 @@ namespace IngameScript
 						this.vectorthrusters[i].ValidateThrusters(/*jetpack*/);
 						this.vectorthrusters[i].DetectThrustDirection();
 					}
-					if (pauseseq) yield return 0.016;
+					if (pauseseq) yield return timepause;
 				}
 
 				log.AppendNR("  >Grouping VTThrs\n");
@@ -428,14 +427,14 @@ namespace IngameScript
 					log.AppendNR("  > [ERROR] => Any Vector Thrusters Found!\n");
 					shutdown = true;
 					ManageTag(true);
-					if (pauseseq) yield return 0.016;
+					if (pauseseq) yield return timepause;
 				}
 				
 
 				thrusters_input.Clear();
 				rotors_input.Clear();
 				GetVectorThrusters.Doneloop = true;
-				yield return 0.016;
+				yield return timepause;
 			}
 		}
 
@@ -452,7 +451,7 @@ namespace IngameScript
 			while (true) {
 				//bool greedy = this.applyTags; //|| this.removeTags; deprecated
 				pauseseq = (((!justCompiled || (justCompiled && shutdown)) && !applyTags));
-				if (pauseseq) yield return 0.016;
+				if (pauseseq) yield return timepause;
 
 				ShipController cont = FindACockpit();
 				if (cont == null)
@@ -482,14 +481,14 @@ namespace IngameScript
 						while (!GetControllers.Doneloop)
 						{
 							GetControllers.Run();
-							yield return 0.016;
+							yield return timepause;
 						}
 						GetControllers.Doneloop = false;
 
 						while (!GetScreen.Doneloop)
 						{
 							GetScreen.Run();
-							yield return 0.016;
+							yield return timepause;
 						}
 						GetScreen.Doneloop = false;
 
@@ -501,13 +500,11 @@ namespace IngameScript
 					// surface may be exploded if mass changes, in this case, ghost surfaces may be left behind
 					//this.surfaces.Clear();
 				}
-				
+
 
 				//Echo("Hello");
 				//this is not a good idea, updating it
 				//docheck = false;
-				int oldNThrC = normalThrusters.Count;
-
 				/*parkblocks.Clear();
 				tankblocks.Clear();
 				batteriesblocks.Clear();
@@ -525,8 +522,15 @@ namespace IngameScript
 				screens = new List<IMyTextPanel>();*/
 				//log.AppendNR("1--:" + rotors_input.Count + "/" + thrusters_input.Count + "/" + controlledControllers.Count + "/" + ccontrollerblocks.Count + "/" + controllers.Count + "/" + controllerblocks.Count);
 				//log.AppendNR("2--:" + cruiseThr.Count + "/" + normalThrusters.Count + "/" + vtrotors.Count + "/" + vtthrusters.Count + "/" + vectorthrusters.Count + "/" + VTThrGroups.Count + "/" + surfaces.Count);
+				/*controllerblocks.RemoveAll(x => !GridTerminalSystem.CanAccess(x));
+				if (pauseseq) yield return timepause;
+				ccontrollerblocks.RemoveAll(x => !GridTerminalSystem.CanAccess(x));
+				if (pauseseq) yield return timepause;
 
-
+				vtrotors.RemoveAll(x => !GridTerminalSystem.CanAccess(x));
+				if (pauseseq) yield return timepause;
+				vtthrusters.RemoveAll(x => !GridTerminalSystem.CanAccess(x));
+				if (pauseseq) yield return timepause;*/
 
 				List<IMyTerminalBlock> allblocks = new List<IMyTerminalBlock>(parkblocks);
 				allblocks = allblocks
@@ -542,20 +546,9 @@ namespace IngameScript
 					.Concat(screens)
 					.ToList();
 
+				if (pauseseq) yield return timepause;
 
-			/*	controllerblocks.RemoveAll(x => !GridTerminalSystem.CanAccess(x));
-				if (pauseseq) yield return 0.016;
-				ccontrollerblocks.RemoveAll(x => !GridTerminalSystem.CanAccess(x));
-				if (pauseseq) yield return 0.016;
-
-				vtrotors.RemoveAll(x => !GridTerminalSystem.CanAccess(x));
-				if (pauseseq) yield return 0.016;
-				vtthrusters.RemoveAll(x => !GridTerminalSystem.CanAccess(x));
-				if (pauseseq) yield return 0.016;*/
-
-				if (pauseseq) yield return 0.016;
-
-				
+				int oldNThrC = normalThrusters.Count;
 
 				foreach (IMyTerminalBlock b in allblocks) {
 
@@ -604,7 +597,7 @@ namespace IngameScript
 					else if (applyTags && (tagallcond || tagcond)) {
 						AddTag(b);						
 					}
-					if (pauseseq) yield return 0.016;
+					if (pauseseq) yield return timepause;
 				}
 
 				int NThrC = normalThrusters.Count;
@@ -615,13 +608,13 @@ namespace IngameScript
 
 				//vectorthrusters.RemoveAll(x => !GridTerminalSystem.CanAccess(x.rotor.TheBlock));
 				controllers.RemoveAll(x => !GridTerminalSystem.CanAccess(x.TheBlock));
-				if (pauseseq) yield return 0.016;
+				if (pauseseq) yield return timepause;
 				vectorthrusters.RemoveAll(x => !vtrotors.Contains(x.rotor.TheBlock));
-				if (pauseseq) yield return 0.016;
+				if (pauseseq) yield return timepause;
 
 				for (int i = 0; i < VTThrGroups.Count; i++) { 
 					VTThrGroups[i] = VTThrGroups[i].Intersect(vectorthrusters).ToList();
-					if (pauseseq) yield return 0.016;
+					if (pauseseq) yield return timepause;
 				}
 				for (int i = controlledControllers.Count - 1; i >= 0; i--)
 				{
@@ -630,7 +623,7 @@ namespace IngameScript
 						RemoveSurfaceProvider(controlledControllers[i].TheBlock);
 						controlledControllers.RemoveAt(i);
 					}
-					if (pauseseq) yield return 0.016;
+					if (pauseseq) yield return timepause;
 				}
 
 				List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
@@ -649,7 +642,7 @@ namespace IngameScript
 					.Except(screens)
 					.ToList();
 
-				if (pauseseq) yield return 0.016;
+				if (pauseseq) yield return timepause;
 
 				//artificial scope (Removed)
 				foreach (IMyTerminalBlock b in blocks)
@@ -717,13 +710,8 @@ namespace IngameScript
 						if (HasTag(b)) batteriesblocks.Add(b);
 						else if (FilterThis(b)) gridbats.Add(b);
 					}
-					if (pauseseq) yield return 0.016;
-
-					
+					if (pauseseq) yield return timepause;
 				}
-				
-
-				
 
 				if (Me.SurfaceCount > 0)
 				{
@@ -732,7 +720,7 @@ namespace IngameScript
 					Me.GetSurface(0).FontSize = 2.2f;
 					// this isn't really the right place to put this, but doing it right would be a lot more code
 				}
-				log.AppendNR("sc:" + this.surfaces.Count);
+				//log.AppendNR("Total Surfaces:" + this.surfaces.Count);
 
 				// TODO: Compare if blocks are equal, or make other quick way to gather correct blocks
 				// if you use the following if statement, it won't lock the non-main cockpit if someone sets the main cockpit, until a recompile or world load :/
@@ -743,17 +731,15 @@ namespace IngameScript
 				{
 					GetControllers.Run();
 
-					if (pauseseq) yield return 0.016;
+					if (pauseseq) yield return timepause;
 				}
 				GetControllers.Doneloop = false;
-
-
 
 				while (!GetScreen.Doneloop)
 				{
 					GetScreen.Run();
 
-					if (pauseseq) yield return 0.016;
+					if (pauseseq) yield return timepause;
 				}
 				GetScreen.Doneloop = false;
 				
@@ -764,14 +750,13 @@ namespace IngameScript
 				while (!GetVectorThrusters.Doneloop)
 				{
 					GetVectorThrusters.Run();
-					if (pauseseq) yield return 0.016;
+					if (pauseseq) yield return timepause;
 				}
 				GetVectorThrusters.Doneloop = false;
 
 				//log.AppendNR("  >Done\n");
-
 				//TODO: Make this run once per frame (I think it's done)
-				yield return 0.016;
+				yield return timepause;
 			}
 		}
 
@@ -792,12 +777,12 @@ namespace IngameScript
 								tr.Enabled = !parked;
 								if (p) turnedoffthusters.Add(tr);
 							}
-							yield return 0.016;
+							yield return timepause;
 						}
 					if (!parked) turnedoffthusters.Clear();
 				}
 
-				yield return 0.016;
+				yield return timepause;
 
 				List<double> stats;
 				bool bba = backupbats.Count > 0;
@@ -806,11 +791,11 @@ namespace IngameScript
 				while (batsseq.Count > 0 && !BS.Doneloop)
 				{
 					BS.Run();
-					yield return 0.016;
+					yield return timepause;
 				}
 				BS.Doneloop = false;
 				stats = outputbatsseq;
-				yield return 0.016;
+				yield return timepause;
 
 				bool reassign = false;
 				if (parked && !rechargecancelled && stats.Count > 0)
@@ -832,7 +817,7 @@ namespace IngameScript
 						foreach (IMyBatteryBlock b in bats)
 						{
 							b.ChargeMode = ChargeMode.Auto;
-							yield return 0.016;
+							yield return timepause;
 						}
 
 						rechargecancelled = true;
@@ -852,7 +837,7 @@ namespace IngameScript
 					dischargingtimer = 0;
 				}
 
-				yield return 0.016;
+				yield return timepause;
 
 				int gbc = gridbats.Count;
 				int bbc = batteriesblocks.Count;
@@ -865,7 +850,7 @@ namespace IngameScript
 						{
 							if (t is IMyGasTank) (t as IMyGasTank).Stockpile = parked;
 							rechargedblocks.Add(t);
-							yield return 0.016;
+							yield return timepause;
 						}
 					}
 
@@ -881,7 +866,7 @@ namespace IngameScript
 
 								(bats[i] as IMyBatteryBlock).ChargeMode = ChargeMode.Recharge;
 								rechargedblocks.Add(bats[i]);
-								yield return 0.016;
+								yield return timepause;
 							}
 
 							backupbats.Add(bats[0]);
@@ -890,7 +875,7 @@ namespace IngameScript
 							while (!BS.Doneloop)
 							{
 								BS.Run();
-								yield return 0.016;
+								yield return timepause;
 							}
 							stats = outputbatsseq;
 							BS.Doneloop = false;
@@ -900,7 +885,7 @@ namespace IngameScript
 								foreach (IMyBatteryBlock b in bats)
 								{
 									b.ChargeMode = ChargeMode.Auto;
-									yield return 0.016;
+									yield return timepause;
 								}
 								rechargecancelled = true;
 								rechargedblocks.Clear();
@@ -912,7 +897,7 @@ namespace IngameScript
 							foreach (IMyBatteryBlock b in bats)
 							{
 								b.ChargeMode = ChargeMode.Auto;
-								yield return 0.016;
+								yield return timepause;
 							}
 							rechargedblocks.Clear();
 							backupbats.Clear();
@@ -922,7 +907,7 @@ namespace IngameScript
 				}
 				if (!parked) BM.Doneloop = false;
 				else BM.Doneloop = true;
-				yield return 0.016;
+				yield return timepause;
 			}
 		}
 
