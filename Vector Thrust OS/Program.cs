@@ -399,7 +399,7 @@ namespace IngameScript
 					g[i].thrustModifierAbove = thrustModifierAbove;
 					g[i].thrustModifierBelow = thrustModifierBelow;
 
-					g[i].Go(/*jetpack, */dampeners, shipMass);
+					g[i].Go(/*jetpack, */dampeners/*, shipMass*/);
 
 					totaleffectivethrust += g[i].totalEffectiveThrust;
 
@@ -549,15 +549,15 @@ namespace IngameScript
 
 		ShipController mainController = null;
 		List<ShipController> controllers = new List<ShipController>();
-		List<IMyShipController> controllerblocks = new List<IMyShipController>();
-		List<IMyShipController> ccontrollerblocks = new List<IMyShipController>();
-		List<ShipController> controlledControllers = new List<ShipController>();
-		List<VectorThrust> vectorthrusters = new List<VectorThrust>();
-		List<IMyThrust> normalThrusters = new List<IMyThrust>();
-		List<IMyTextPanel> screens = new List<IMyTextPanel>();
-		List<IMyTerminalBlock> rechargedblocks = new List<IMyTerminalBlock>();
-		List<IMyTerminalBlock> turnedoffthusters = new List<IMyTerminalBlock>();
-		List<IMyTerminalBlock> backupbats = new List<IMyTerminalBlock>();
+		readonly List<IMyShipController> controllerblocks = new List<IMyShipController>();
+		readonly List<IMyShipController> ccontrollerblocks = new List<IMyShipController>();
+		readonly List<ShipController> controlledControllers = new List<ShipController>();
+		readonly List<VectorThrust> vectorthrusters = new List<VectorThrust>();
+		readonly List<IMyThrust> normalThrusters = new List<IMyThrust>();
+		readonly List<IMyTextPanel> screens = new List<IMyTextPanel>();
+		readonly List<IMyTerminalBlock> rechargedblocks = new List<IMyTerminalBlock>();
+		readonly List<IMyTerminalBlock> turnedoffthusters = new List<IMyTerminalBlock>();
+		readonly List<IMyTerminalBlock> backupbats = new List<IMyTerminalBlock>();
 		public List<IMyTextSurface> surfaces = new List<IMyTextSurface>();
 		//List<IMyProgrammableBlock> programBlocks = new List<IMyProgrammableBlock>();
 		//List<ShipController> usableControllers = new List<ShipController>();
@@ -1308,7 +1308,6 @@ namespace IngameScript
 
 		bool MainTag(string argument)
 		{
-
 			//tags and getting blocks
 			TagAll = argument.Contains(applyTagsAllArg);
 			this.applyTags = argument.Contains(applyTagsArg) || TagAll;
@@ -1326,19 +1325,14 @@ namespace IngameScript
 				RemoveTag(Me);
 			}
 
-			
-
 			//bool cnc = CheckVectorThrusters();
-			//justCompiled = true;
 			MainChecker = new SimpleTimerSM(this, CheckVectorThrustersSeq(), true);
 			MainChecker.Run();
-			//justCompiled = false;
-
 
 			TagAll = false;
-			this.applyTags = false;
-			this.removeTags = false;
-			return true;//cnc;
+			this.applyTags = this.removeTags = false;
+			//this.removeTags = false;
+			return !shutdown;//cnc;
 		}
 
 		void GroupVectorThrusters()
@@ -1999,7 +1993,7 @@ namespace IngameScript
 
 		
 		// checks to see if the nacelles have changed
-		bool CheckVectorThrusters(bool vanilla = false)
+		/*bool CheckVectorThrusters(bool vanilla = false)
 		{
 			bool greedy = this.applyTags || this.removeTags;
 			bool greedy1 = this.applyTags || this.removeTags || this.greedy;
@@ -2042,17 +2036,17 @@ namespace IngameScript
 				this.oldMass = myshipmass.BaseMass;
 				// surface may be exploded if mass changes, in this case, ghost surfaces may be left behind
 				//this.surfaces.Clear();
-			}*/
+			}
 			//docheck = false;
 
 			//int oldNThrC = normalThrusters.Count;
 
-			/*parkblocks.Clear();
+			parkblocks.Clear();
 			tankblocks.Clear();
 			batteriesblocks.Clear();
 			gridbats.Clear();
 			cruiseThr.Clear();
-			normalThrusters.Clear();*/
+			normalThrusters.Clear();
 
 			List<IMyShipController> conts = new List<IMyShipController>();
 			List<IMyMotorStator> rots = new List<IMyMotorStator>();
@@ -2149,7 +2143,7 @@ namespace IngameScript
 
 			InitControllers(conts);
 
-			/*if (controllers.Count != conts.Count || cont == null || greedy)
+			if (controllers.Count != conts.Count || cont == null || greedy)
 			{
 				log.AppendNR($"  --Controller count ({controllers.Count}) is out of whack (current: {conts.Count})\n");
 				if (!getControllers(conts))
@@ -2161,11 +2155,11 @@ namespace IngameScript
 				foreach (ShipController b in controllers) {
 					AddSurfaceProvider(b.TheBlock);
 				}
-			}*/
+			}
 			getScreens(txts);
 
 			//I don't seem to understand the purpose of this.
-			/*if (screenCount != txts.Count || greedy) {
+			if (screenCount != txts.Count || greedy) {
 				log.AppendLine($"  --Screen count ({screenCount}) is out of whack (current: {txts.Count})\n");
 				getScreens(txts);
 			}
@@ -2178,18 +2172,18 @@ namespace IngameScript
 					if (!screen.CustomName.ToLower().Contains(LCDName.ToLower())) continue;
 					getScreens(txts);
 				}
-			}*/
+			}
 
-			/*if (rotorCount != rots.Count)
+			if (rotorCount != rots.Count)
 			{
 
 				log.AppendNR($"  --Rotor count ({rotorCount}) is out of whack (current: {rots.Count})\n");
 				updateVTThrs = true;
-			}*/
+			}
 
 			getVectorThrusters(rots, thrs);
 
-			/*var rotorHeads = new List<IMyAttachableTopBlock>();
+			var rotorHeads = new List<IMyAttachableTopBlock>();
 			foreach (IMyMotorStator rotor in rots)
 			{
 				if (rotor.Top != null)
@@ -2224,26 +2218,15 @@ namespace IngameScript
 			else
 			{
 				log.AppendNR("  --Everything in order\n");
-			}*/
+			}
 
 			//TODO: Make this run once per frame
 			return true;
-		}
+		}*/
 
-		void getScreens(List<IMyTextPanel> screens)
+		/*void getScreens(List<IMyTextPanel> screens)
 		{
 			bool greedy = this.greedy || this.applyTags || this.removeTags;
-
-			/*List<IMyTextPanel> surfs = new List<IMyTextPanel>();
-			foreach (IMyTextSurface s in this.surfaces) {
-				IMyTextPanel a = s as IMyTextPanel;
-				surfs.Add(a);
-			}
-			foreach (IMyTextPanel p in surfs) {
-				bool cond = p.Closed;
-			}foreach (IMyTextPanel b in surfs) {
-				if (b.Closed) surfs.Remove(b);
-			}*/
 
 			foreach (IMyTextPanel screen in screens)
 			{
@@ -2258,8 +2241,8 @@ namespace IngameScript
 			//screenCount = screens.Count;
 			this.screens = screens;
 			log.AppendNR($"  --Updated Scr:{screens.Count}=>Surf:{surfaces.Count}\n");
-		}
-
+		}*/
+	
 		bool Init()
 		{
 			log.AppendLine("Initialising..");
@@ -2287,6 +2270,7 @@ namespace IngameScript
 			//shutdown = !getControllers(conts);
 
 			InitControllers();
+			myshipmass = mainController.TheBlock.CalculateShipMass();
 			MainChecker.Run();
 			log.AppendLine("Init " + (shutdown ? "Failed" : "Completed Sucessfully"));
 			return !shutdown;
@@ -2329,7 +2313,7 @@ namespace IngameScript
 			getVectorThrusters(rotors, thrs);
 		}*/
 		
-		void getVectorThrusters(List<IMyMotorStator> rotors, List<IMyThrust> thrusters)
+		/*void getVectorThrusters(List<IMyMotorStator> rotors, List<IMyThrust> thrusters)
 		{
 			bool greedy = this.applyTags || this.removeTags || this.greedy;
 			
@@ -2423,7 +2407,7 @@ namespace IngameScript
 				log.AppendNR("  > [ERROR] => Any Vector Thrusters Found!\n");
 				shutdown = true;
 			}
-		}
+		}*/
 
 		class VectorThrust
 		{
@@ -2465,7 +2449,7 @@ namespace IngameScript
 			}
 
 			// final calculations and setting physical components
-			public void Go(/*bool jetpack, */bool dampeners, float shipMass)
+			public void Go(/*bool jetpack, */bool dampeners/*, float shipMass*/)
 			{
 
 				if (avgsamples != program.RotationAverageSamples) {

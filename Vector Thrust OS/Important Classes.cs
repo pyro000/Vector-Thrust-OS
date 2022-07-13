@@ -261,7 +261,7 @@ namespace IngameScript
 					ManageTag(true);
 					shutdown = true;
 					//Echo(log.ToString());
-					if (pauseseq) yield return timepause;
+					yield return timepause;
 				}
 				/*else if (controlledControllers.Count == 1)
 				{
@@ -373,36 +373,38 @@ namespace IngameScript
 					//if (!vtrotors.Contains(this.vectorthrusters[i].rotor.theBlock)) this will cause problems
 					for (int j = thrusters_input.Count - 1; j >= 0; j--)
 					{
-						if (!(greedy || HasTag(thrusters_input[j]))) { continue; }
-						if (this.removeTags)
-						{
-							RemoveTag(thrusters_input[j]);
+						//if (!)) { continue; }
+						if (greedy || HasTag(thrusters_input[j])){ 
+
+							if (this.removeTags)
+							{
+								RemoveTag(thrusters_input[j]);
+							}
+
+							bool cond = thrusters_input[j].CubeGrid == this.vectorthrusters[i].rotor.TheBlock.TopGrid;
+							bool cond2 = this.vectorthrusters[i].thrusters.Any(x => vtthrusters.Any(y => y == x));
+
+							// thruster is not for the current nacelle
+							// if(!thrusters[j].IsFunctional) continue;// broken, don't add it
+
+							if (cond && this.applyTags)
+							{
+								AddTag(thrusters_input[j]);
+							}
+
+							/*if () {
+								yield return timepause;
+								continue; 
+							}*/
+							//if (this.vectorthrusters[i].thrusters.Any(x => vtthrusters.Contains(x.theBlock))) continue;
+							//doesn't add it if it already exists
+							if (cond && !cond2) {
+								this.vectorthrusters[i].thrusters.Add(new Thruster(thrusters_input[j]));
+								vtthrusters.Add(thrusters_input[j]);
+								thrusters_input.RemoveAt(j);// shorten the list we have to check (It discards thrusters for next nacelle)
+							}
+
 						}
-
-						bool cond = thrusters_input[j].CubeGrid == this.vectorthrusters[i].rotor.TheBlock.TopGrid;
-						bool cond2 = this.vectorthrusters[i].thrusters.Any(x => vtthrusters.Any(y => y == x));
-
-						// thruster is not for the current nacelle
-						// if(!thrusters[j].IsFunctional) continue;// broken, don't add it
-
-						if (cond && this.applyTags)
-						{
-							AddTag(thrusters_input[j]);
-						}
-
-						/*if () {
-							yield return timepause;
-							continue; 
-						}*/
-						//if (this.vectorthrusters[i].thrusters.Any(x => vtthrusters.Contains(x.theBlock))) continue;
-						//doesn't add it if it already exists
-						if (cond && !cond2) {
-							this.vectorthrusters[i].thrusters.Add(new Thruster(thrusters_input[j]));
-							vtthrusters.Add(thrusters_input[j]);
-							thrusters_input.RemoveAt(j);// shorten the list we have to check (It discards thrusters for next nacelle)
-						}
-
-
 						if (pauseseq) yield return timepause;
 					}
 					// remove this.nacelles (rotors) without thrusters
@@ -726,6 +728,7 @@ namespace IngameScript
 				// if you use the following if statement, it won't lock the non-main cockpit if someone sets the main cockpit, until a recompile or world load :/
 				// solving it
 				// I think it's done
+
 
 				while (!GetControllers.Doneloop)
 				{
