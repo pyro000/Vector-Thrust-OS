@@ -556,7 +556,7 @@ namespace IngameScript
 						
 					}
 					else if (applyTags && (tagallcond || tagcond)) {
-						log.AppendNR("Adding tag:" + b.Name);
+						log.AppendNR("Adding tag:" + b.CustomName);
 						AddTag(b);						
 					}
 

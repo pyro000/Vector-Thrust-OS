@@ -2297,7 +2297,7 @@ namespace IngameScript
 			IMyTerminalBlock TheBlock { get; set; }
 			List<Base6Directions.Axis> Directions { get; }
 
-			string Name { get; }
+			string CName { get; }
 		}
 
 		abstract class BlockWrapper<T> : IBlockWrapper where T : class, IMyTerminalBlock
@@ -2306,13 +2306,13 @@ namespace IngameScript
 
 			public List<Base6Directions.Axis> Directions { get; }
 			
-			public string Name { get; }
+			public string CName { get; }
 
 			public BlockWrapper(T block)
 			{
 				TheBlock = block;
 				Directions = GetDirections(block);
-				Name = block.CustomName;
+				CName = block.CustomName;
 			}
 
 			// not allowed for some reason
@@ -2330,7 +2330,7 @@ namespace IngameScript
 				return new List<Base6Directions.Axis> { Base6Directions.GetAxis(o.Forward), Base6Directions.GetAxis(o.Up), Base6Directions.GetAxis(o.Left) };
 			}
 
-			string IBlockWrapper.Name
+			string IBlockWrapper.CName
 			{
 				get { return TheBlock.CustomName; }
 			}
