@@ -53,6 +53,8 @@ namespace IngameScript
 			return str;
 		}
 
+		public static void Brake(this IMyMotorStator rotor) => rotor.TargetVelocityRPM = 0;
+
 		public static Vector3D Reject(this Vector3D a, Vector3D b)
 		{
 			return Vector3D.Reject(a, b);

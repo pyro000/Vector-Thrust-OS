@@ -24,15 +24,15 @@ namespace IngameScript
 
 	partial class Program : MyGridProgram
 	{
-		double timeperframe = 0;
+        readonly double timeperframe = 0;
 
-		void SetTimePerFrame() {
+		/*void SetTimePerFrame() {
 			switch (update_frequency)
 			{ //saving it just in case
 				case UpdateFrequency.Update1:
 					timeperframe = 1.0 / 60.0;
 					break;
-				/*case UpdateFrequency.None:
+				case UpdateFrequency.None:
 					timeperframe = 1.0 / 60.0;
 					break;
 				case UpdateFrequency.Once:
@@ -43,9 +43,9 @@ namespace IngameScript
 					break;
 				case UpdateFrequency.Update100:
 					timeperframe = 1.0 / 0.6;
-					break;*/
+					break; 
 			}
-		}
+		}*/
 
 		public Program()
 		{
@@ -56,10 +56,9 @@ namespace IngameScript
 				greedy = bool.Parse(stg[1]); //loading greedy
 			}
 
-			SetTimePerFrame();
+			timeperframe = 1.0 / 60.0; //SetTimePerFrame();
 			Runtime.UpdateFrequency = update_frequency;
 			RT = new RuntimeTracker(this, 60, 0.005);
-			//ST = new SimpleTimerSM(this, MainTagSeq(), true);
 			BM = new SimpleTimerSM(this, BlockManager(), true);
 			BS = new SimpleTimerSM(this, GetBatStatsSeq(), true);
 			MainChecker = new SimpleTimerSM(this, CheckVectorThrustersSeq(), true);
@@ -75,22 +74,20 @@ namespace IngameScript
 			Storage = save; //saving the old tag and greedy to prevent recompile or script update confusion
 		}
 
-
 		public void Main(string argument, UpdateType runType)
 		{
 
 			// ========== STARTUP ==========
+
 			globalAppend = false;
-			//sumlastrun += Runtime.TimeSinceLastRun.TotalSeconds;
 			RT.AddRuntime();
-			pc++;
+			pc++; if (pc % 999 == 0) log.Clear();
 
 			// writes and clear outputs
 			Echo(echosb.ToString());
 			Write(screensb.ToString());
 			echosb.Clear();
 			screensb.Clear();
-			if (pc % 1000 == 0) log.Clear();
 			// ------------------------
 
 			argument = argument.ToLower();
@@ -113,8 +110,6 @@ namespace IngameScript
 
 			// END STARTUP
 
-
-
 			// GETTING ONLY NECESARY INFORMATION TO THE SCRIPT
 
 			MyShipVelocities shipVelocities = controlledControllers[0].TheBlock.GetShipVelocities();
@@ -128,20 +123,12 @@ namespace IngameScript
 			Vector3D desiredVec = GetMovementInput(argument);
 			mvin = desiredVec.Length();
 
-			/*double realacc = Math.Abs((sv - oldsv) / Runtime.TimeSinceLastRun.TotalSeconds).Round(2);
-			if (realacc > maxaccel) maxaccel = realacc;
-			oldsv = sv;
-			double re = (realacc / maxaccel).NNaN();*/
-
 			// END NECESARY INFORMATION
 			
 
 			//START OUTPUT PRINTING
 			if (ShowMetrics) screensb.GetSpinner(ref pc).Append($" {Runtime.LastRunTimeMs.Round(2)}ms ").GetSpinner(ref pc);
-			//screensb.AppendLine($"\nAccel: {realacc.Round(1)} / {maxaccel.Round(2)} (m/s^2)");
-			//screensb.AppendLine($"Gear [{gear}]=> Around: [ {difference.Round(0)} (m/s^2) ]");
-			screensb/*.Append("\n=------Accel------=\n")*/.Append(progressbar);
-			//screensb.ProgressBar(percent, 20);
+			screensb.Append(progressbar);
 
 			screensb.Append("\n").GetSpinner(ref pc).Append(trueaccel).GetSpinner(ref pc);
 			screensb.AppendLine($"\nCruise: {cruise}");
@@ -166,14 +153,9 @@ namespace IngameScript
 
 
 			// SKIPFRAME AND PERFORMANCE HANDLER
-			//ST.Run(); //RUNS VARIOUS PROCESSES SEPARATED BY A TIMER 
-			/*if (Runtime.UpdateFrequency != UpdateFrequency.Update1) {
-				ST.Run();
-			} else */
-			//Echo(log.ToString());
-			MainChecker.Run();
-			//Echo(log.ToString());
-			//echosb.Append(log);
+			
+			CheckWeight();
+			MainChecker.Run();//RUNS VARIOUS PROCESSES SEPARATED BY A TIMER
 
 			if (argument.Equals("") && !cruise && !dampchanged)
 			{ //handler to skip frames, it passes out if the player doesn't parse any command or do something relevant.
@@ -199,7 +181,6 @@ namespace IngameScript
 			}
 			else if (tagArg && !MainTag(argument)) { //SEE IF IS NEEDED TO PASS THE ENTIRE RUN FRAME IF THERE'S AN ARGUMENT (IT IS)
 				Runtime.UpdateFrequency = UpdateFrequency.None;
-				//Echo(log.ToString());
 				return;
 				//HANDLES TAG ARGUMENTS, IF IT FAILS, IT STOPS
 			}
@@ -207,10 +188,11 @@ namespace IngameScript
 
 
 
+
 			// ========== PHYSICS ==========
 			//TODO: SEE IF I CAN SPLIT AT LEAST SOME OF THE STEPS BY SEQUENCES
 
-			//MyShipMass myShipMass = controlledControllers[0].theBlock.CalculateShipMass();
+
 			float shipMass = myshipmass.PhysicalMass;
 
 			Vector3D worldGrav = controlledControllers[0].TheBlock.GetNaturalGravity();
@@ -292,7 +274,6 @@ namespace IngameScript
 
 			// f=ma
 			accel = GetAcceleration(gravLength);
-			
 
 			//if (ShowMetrics) (accel / gravLength);
 
@@ -329,7 +310,7 @@ namespace IngameScript
 				if ((wgv == 0 && ((!cruise && sv < lowThrustCutOff) || ((cruise || !dampeners) && len < cutoffcruise))) || (parked && alreadyparked))
 					thrustOn = false;
 			}
-		
+
 			if (!thrustOn)
 			{// Zero G
 				Vector3D zero_G_accel;
@@ -352,7 +333,6 @@ namespace IngameScript
 				setTOV = true;
 			}
 
-			
 			// Correct for misaligned VTS
 			Vector3D asdf = Vector3D.Zero;
 			// 1
@@ -395,23 +375,28 @@ namespace IngameScript
 				Vector3D req = g[0].requiredVec / g.Count;
 				for (int i = 0; i < g.Count; i++)
 				{
-					g[i].requiredVec = req;
-					g[i].thrustModifierAbove = thrustModifierAbove;
-					g[i].thrustModifierBelow = thrustModifierBelow;
+					IMyMotorStator rt = g[i].rotor.TheBlock;
+					//Echo(rt.CustomName + ": " + GridTerminalSystem.CanAccess(rt) + "/" + rt.Closed + "/" + rt.IsWorking+ "/" + rt.IsAlive());
 
-					g[i].Go(/*jetpack, */dampeners/*, shipMass*/);
+					if (GridTerminalSystem.CanAccess(rt) && !rt.Closed && rt.IsWorking && rt.IsAlive() && rt.Top != null)
+					{
+						g[i].requiredVec = req;
+						g[i].thrustModifierAbove = thrustModifierAbove;
+						g[i].thrustModifierBelow = thrustModifierBelow;
+						g[i].Go();
 
-					totaleffectivethrust += g[i].totalEffectiveThrust;
+						totaleffectivethrust += g[i].totalEffectiveThrust;
 
-					total += req.Length();
+						total += req.Length();
 
-					totalVTThrprecision += g[i].old_angleCos;
-					precision += g[i].old_angleCos;
-					j++;
+						totalVTThrprecision += g[i].old_angleCos;
+						precision += g[i].old_angleCos;
+						j++;
 
-					if (i == 0 && ShowMetrics) info.Append($"\n| {g[i].Role} |=>")
-							.Append($" | {(req.Length() / RotorStMultiplier).Round(1)}")
-							.Append($" |  {g[i].rotor.maxRPM.Round(0)} ");
+						if (i == 0 && ShowMetrics) info.Append($"\n| {g[i].Role} |=>")
+								.Append($" | {(req.Length() / RotorStMultiplier).Round(1)}")
+								.Append($" |  {g[i].rotor.maxRPM.Round(0)} ");
+					}
 				}
 				if(ShowMetrics) info.Append($" |  {(precision / g.Count).Round(1)}%  |\n");
 			}
@@ -420,8 +405,8 @@ namespace IngameScript
 
 			totaleffectivethrust /= myshipmass.PhysicalMass;
 
-			GenerateProgressBar(argument);
-
+			if (justCompiled || argument.Contains(gearArg)) GenerateProgressBar();
+				
 			echosb.AppendLine($"Total Force: {total.Round(0)}N\n");
 			echosb = RT.Append(echosb);
 			echosb.AppendLine("--- Log ---");
@@ -443,7 +428,6 @@ namespace IngameScript
 		//arguments, you can change these to change what text you run the programmable block with
 		const string dampenersArg = "dampeners";
 		const string cruiseArg = "cruise";
-		//public const string jetpackArg = "jetpack";
 		const string raiseAccelArg = "raiseaccel";
 		const string lowerAccelArg = "loweraccel";
 		const string resetAccelArg = "resetaccel";
@@ -465,27 +449,20 @@ namespace IngameScript
 		readonly List<double> MagicNumbers = new List<double> { -0.091, 0.748, -46.934, -0.073, 0.825, -4.502, -1.239, 1.124, 2.47 };
 
 		readonly RuntimeTracker RT;
-		//readonly SimpleTimerSM ST;
-		SimpleTimerSM BM;
-		SimpleTimerSM BS;
-
-		//readonly SimpleTimerSM A;
+		readonly SimpleTimerSM BM;
+		readonly SimpleTimerSM BS;
 
 		bool parked = false;
 		bool alreadyparked = false;
 		bool cruisedNT = false;
 		bool setTOV = false;
-		//bool docheck = false;
 		bool TagAll = false;
 		bool shutdown = false;
 		bool oldDampeners = false;
 		bool isstation = false;
 		double wgv = 0;
-		//double oldsv = 0;
-		//double maxaccel = 0;
 		double mvin = 0;
 		double accel = 0;
-		//double accelval = 0;
 		float gravLength = 0;
 		string oldTag = "";
 		StringBuilder echosb = new StringBuilder();
@@ -495,7 +472,7 @@ namespace IngameScript
 		MyShipMass myshipmass;
 
 
-		SimpleTimerSM MainChecker;
+		readonly SimpleTimerSM MainChecker;
 		readonly SimpleTimerSM GetScreen;
 		readonly SimpleTimerSM GetControllers;
 		readonly SimpleTimerSM GetVectorThrusters;
@@ -503,7 +480,6 @@ namespace IngameScript
 		double maxaccel = 0;
 		readonly StringBuilder progressbar = new StringBuilder();
 		string trueaccel = "";
-		//bool temp = false;
 		readonly bool ignoreHiddenBlocks = false; //OBSOLETE
 												  // DEPRECATED: use the tags instead
 												  // only use blocks that have 'show in terminal' set to true
@@ -559,21 +535,9 @@ namespace IngameScript
 		readonly List<IMyTerminalBlock> turnedoffthusters = new List<IMyTerminalBlock>();
 		readonly List<IMyTerminalBlock> backupbats = new List<IMyTerminalBlock>();
 		public List<IMyTextSurface> surfaces = new List<IMyTextSurface>();
-		//List<IMyProgrammableBlock> programBlocks = new List<IMyProgrammableBlock>();
-		//List<ShipController> usableControllers = new List<ShipController>();
-		//List<IMyTextPanel> usableScreens = new List<IMyTextPanel>();
-
-
 
 		float oldMass = 0;
-		//readonly int rotorCount = 0;
-		//int rotorTopCount = 0;
-		//readonly int thrusterCount = 0;
-		//int screenCount = 0;
 		int frame = 0;
-		//int programBlockCount = 0;
-		//double sumlastrun = 0;
-		//MyShipMass myShipMass;
 
 		public struct BA
 		{
@@ -597,7 +561,6 @@ namespace IngameScript
 		string myName = "VT";
 		double TimeForRefresh = 10;
 		bool ShowMetrics = false;
-		//public bool SmartThrusters = true;
 		int SkipFrames = 0;
 		
 
@@ -1033,19 +996,16 @@ namespace IngameScript
 		string tag = "|VT|";
 
 		bool applyTags = false;
-		bool removeTags = false;
+		//bool removeTags = false;
 		bool greedy = true;
 		float lastGrav = 0;
 		bool thrustOn = true;
 		Dictionary<string, object> CMinputs = null;
 		bool rechargecancelled = false;
-		//double previouspower = 0;
-		//int losingpowercount = 0;
 		double dischargingtimer = 0;
-		//string a = "";
 
 
-		void ManageTag(bool force = false)
+		void ManageTag(bool force = false, bool logthis = true)
 		{
 			tag = tagSurround[0] + myName + tagSurround[1];
 			bool cond1 = oldTag.Length > 0;
@@ -1054,22 +1014,31 @@ namespace IngameScript
 
 			if (cond1 && (cond2 || cond3 || force))
 			{
-				log.AppendNR(" -Cleaning Tags To Prevent Future Errors, just in case\n");
+				if (logthis) log.AppendNR(" -Cleaning Tags To Prevent Future Errors, just in case\n");
+				else log.AppendNR(" -Removing Tags\n");
 				List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
 				GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(blocks);
 				foreach (IMyTerminalBlock block in blocks)
+					//RemoveTag(block);
 					block.CustomName = block.CustomName.Replace(oldTag, "").Trim();
 			}
 			this.greedy = !HasTag(Me);
 			oldTag = tag;
 		}
 
-		//bool blockmanagerdone = false;
 		int cnparks = 0;
 
 		void ResetParkingSeq() {
-			BS = new SimpleTimerSM(this, GetBatStatsSeq(), true);
-			BM = new SimpleTimerSM(this, BlockManager(), true);
+			BS.Start();
+			BM.Start();
+		}
+
+		void ResetVTHandlers()
+		{
+			GetScreen.Start();
+			GetControllers.Start();
+			GetVectorThrusters.Start();
+			MainChecker.Start();
 		}
 
 		bool ParkHandler()
@@ -1131,142 +1100,6 @@ namespace IngameScript
 			return false;
 		}
 
-		/*List<double> GetBatStats(List<IMyTerminalBlock> bats) {
-			double inputs = 0;
-			double outputs = 0;
-			double percents = 0;
-			foreach (IMyBatteryBlock b in bats)
-			{
-				inputs += b.CurrentInput;
-				outputs += b.CurrentOutput;
-				percents += b.CurrentStoredPower / b.MaxStoredPower;
-			}
-			inputs /= backupbats.Count;
-			outputs /= backupbats.Count;
-			percents *= 100 / backupbats.Count;
-
-			return new List<double> { inputs, outputs, percents };
-		}*/
-
-		/*void tankthrusterbatteryManager()
-		{
-			bool cond_thr = (parked && turnedoffthusters.Count == 0) || (!parked && turnedoffthusters.Count != 0);
-			bool cond_rec = (parked && rechargedblocks.Count > 0) || (!parked && rechargedblocks.Count == 0);
-
-			if (cond_thr) {
-				if (TurnOffThrustersOnPark && normalThrusters.Count > 0)
-					foreach (IMyFunctionalBlock tr in normalThrusters) {
-						bool p = (parked && tr.Enabled);
-						if ((!parked && !tr.Enabled) || (parked && tr.Enabled))
-						{
-							tr.Enabled = !parked;
-							if (p) turnedoffthusters.Add(tr);
-						}
-					}
-				if (!parked) turnedoffthusters.Clear();				
-			}
-
-			bool reassign = false;
-			if (parked && backupbats.Count > 0 && !rechargecancelled)
-			{
-				List<double> stats = getBatStats(backupbats);
-
-				if (stats[0] < stats[1])
-				{
-					dischargingtimer += Runtime.TimeSinceLastRun.TotalSeconds;
-				}
-				else
-				{
-					dischargingtimer = 0;
-				}
-
-				//a  += ("i: " + (stats [0]- stats[1]).Round(4) + " t: " + (stats[0] < stats[1]) + "\n");
-
-				if (dischargingtimer >= 5 || stats[2] < 0.1)
-				{
-					List<IMyTerminalBlock> bats = gridbats;
-					bats.AddRange(batteriesblocks);
-					foreach (IMyBatteryBlock b in bats)
-					{
-						b.ChargeMode = ChargeMode.Auto;
-					}
-					rechargecancelled = true;
-				}
-			}
-			else if (rechargecancelled && parked) {
-				List<double> stats = getBatStats(backupbats);
-				Echo("%:" + stats[2] + "a" + stats[0]+"b"+stats[1]);
-				
-				if (stats[0] >= stats[1] && stats[2] >= 90) {
-					reassign = true;
-					rechargecancelled = false;
-				}
-			}
-			else if (!parked)
-			{
-				rechargecancelled = false;
-				dischargingtimer = 0;
-			}
-
-			//Echo("r:" + rechargecancelled);
-			//Echo(a);
-
-			if ((cond_rec || rechargecancelled) && !reassign) return;
-
-			int gbc = gridbats.Count;
-			int bbc = batteriesblocks.Count;
-			if ((tankblocks.Count > 0 || gbc > 0 || bbc > 0) && ((parked && cnparks > 0)||!parked))
-			{
-				List<IMyTerminalBlock> bats = gridbats;
-				bats.AddRange(batteriesblocks);
-				foreach (IMyFunctionalBlock t in tankblocks)
-				{
-					if (t is IMyGasTank) (t as IMyGasTank).Stockpile = parked;
-					rechargedblocks.Add(t);
-				}
-				int bl = bats.Count;
-				if (bl > 0)
-				{
-					if (parked || reassign)
-					{
-						foreach (IMyBatteryBlock b in bats)
-						{
-							b.ChargeMode = ChargeMode.Recharge;
-							rechargedblocks.Add(b);
-						}
-						
-						if (gbc == 0) {
-							backupbats.Add(bats[0]);
-							(bats[0] as IMyBatteryBlock).ChargeMode = ChargeMode.Auto;
-						}
-						else {
-							backupbats.Add(gridbats[0]);
-							(gridbats[0] as IMyBatteryBlock).ChargeMode = ChargeMode.Auto;
-						}
-
-						List<double> stats = getBatStats(backupbats);
-						if (stats[2] < 0.1) {
-							foreach (IMyBatteryBlock b in bats)
-							{
-								b.ChargeMode = ChargeMode.Auto;
-							}
-							rechargecancelled = true;
-						}
-					}
-					else
-					{ //I prefer to loop all instead
-						foreach (IMyBatteryBlock b in bats)
-						{
-							b.ChargeMode = ChargeMode.Auto;
-						}
-						rechargedblocks.Clear();
-						backupbats.Clear();
-					}
-
-				}
-			}
-		}*/
-
 		bool PerformanceHandler()
 		{
 
@@ -1311,35 +1144,31 @@ namespace IngameScript
 			//tags and getting blocks
 			TagAll = argument.Contains(applyTagsAllArg);
 			this.applyTags = argument.Contains(applyTagsArg) || TagAll;
-			this.removeTags = !this.applyTags && argument.Contains(Program.removeTagsArg);
+			//this.removeTags = !this.applyTags && argument.Contains(Program.removeTagsArg);
 			// switch on: removeTags
 			// switch off: applyTags
-			this.greedy = (!this.applyTags && this.greedy) || this.removeTags;
-			// this automatically calls getVectorThrusters() as needed, and passes in previous GTS data
+			this.greedy = (!this.applyTags && this.greedy);//|| this.removeTags;
+														   // this automatically calls getVectorThrusters() as needed, and passes in previous GTS data
 			if (this.applyTags)
 			{
 				AddTag(Me);
 			}
-			else if (this.removeTags)
+			else if (argument.Contains(removeTagsArg)) ManageTag(true, false); // New remove tags.
+			/*else if (this.removeTags)
 			{
 				RemoveTag(Me);
-			}
-
-			//bool cnc = CheckVectorThrusters();
-			MainChecker = new SimpleTimerSM(this, CheckVectorThrustersSeq(), true);
-			MainChecker.Run();
+			}*/
+			OneRunMainChecker();
 
 			TagAll = false;
-			this.applyTags = this.removeTags = false;
-			//this.removeTags = false;
-			return !shutdown;//cnc;
+			this.applyTags = false; //this.removeTags = false;
+			return !shutdown;
 		}
 
 		void GroupVectorThrusters()
 		{
 			VTThrGroups.Clear();
 
-			//Echo("TESTING");
 			foreach (VectorThrust na in vectorthrusters)
 			{
 				bool foundGroup = false;
@@ -1384,13 +1213,6 @@ namespace IngameScript
 		{
 			return mainController != null && (mainController.TheBlock.IsUnderControl || onlyMainCockpit);
 		}
-
-		/*void getScreens()
-		{
-			getScreens(this.screens);
-		}*/
-
-		
 
 		void Write(params object[] obj)
 		{
@@ -1748,16 +1570,9 @@ namespace IngameScript
 			return retval;
 		}
 
-		/*bool getControllers()
-		{
-			return getControllers(this.controllers);
-		}*/
-
-		//List<IMyShipController> vtcontrollers = new List<IMyShipController>();
-
 		void InitControllers(List<IMyShipController> blocks = null) //New GetControllers(), only for using in init() purpose 
 		{
-			bool greedy = this.greedy || this.applyTags || this.removeTags;
+			bool greedy = this.greedy || this.applyTags;// || this.removeTags;
 
 			if (blocks == null) {
 				blocks = new List<IMyShipController>();
@@ -1804,22 +1619,17 @@ namespace IngameScript
 					currreason.AppendLine("  Doesn't match my tag\n");
 					canAdd = false;
 				}
-				if (this.removeTags)
+				/*if (this.removeTags)
 				{
 					RemoveTag(s.TheBlock);
-				}
+				}*/
 
 				if (canAdd)
 				{
-					AddSurfaceProvider(s.TheBlock); // TODO, THIS ONLY DETECTS COCKPITS
+					AddSurfaceProvider(s.TheBlock);
 					s.Dampener = s.TheBlock.DampenersOverride;
 					controlledControllers.Add(s);
 					ccontrollerblocks.Add(s.TheBlock);
-					//mainController = s;
-					/*if (s.theBlock.IsUnderControl)
-					{
-						controlledControllers.Add(s);
-					}*/
 
 					if (this.applyTags)
 					{
@@ -1828,7 +1638,6 @@ namespace IngameScript
 				}
 				else
 				{
-					//removeSurfaceProvider(s.theBlock);
 					reason.Append(currreason);
 				}
 			}
@@ -1840,21 +1649,14 @@ namespace IngameScript
 			if (controlledControllers.Count == 0 /*&& usableControllers.Count == 0*/)
 			{
 				log.AppendNR("ERROR: no usable ship controller found. Reason: \n");
-				//log.AppendLine("ERROR: no usable ship controller found. Reason: \n");
 				log.AppendNR(reason.ToString(), false);
-				//log.Append(reason);
 				ManageTag(true);
 				shutdown = true;
 				return;
 			}
-			/*else if (controlledControllers.Count == 1)
-			{
-				mainController = controlledControllers[0];
-			}*/
+
 			else if (controlledControllers.Count > 0)
 			{
-				//foreach (ShipController c in usableControllers) controlledControllers.Add(c);
-
 				foreach (ShipController s in controlledControllers)
 				{
 					if (s.TheBlock.IsUnderControl)
@@ -1867,116 +1669,9 @@ namespace IngameScript
 				{
 					mainController = controlledControllers[0];
 				}
-
-				//mainController = usableControllers.Count == 1 ? usableControllers[0] : mainController == null ? usableControllers[0] : mainController;
 			}
-
 			return;
 		}
-
-		/*bool getControllers(List<ShipController> blocks)
-		{
-			bool greedy = this.greedy || this.applyTags || this.removeTags;
-			mainController = null;
-			this.controllers = blocks;
-
-			//usableControllers.Clear();
-			//controlledControllers.Clear();
-
-			StringBuilder reason = new StringBuilder();
-			foreach (ShipController s in blocks)
-			{
-				bool canAdd = true;
-				StringBuilder currreason = new StringBuilder(s.theBlock.CustomName + "\n");
-				if (!s.theBlock.ShowInTerminal && ignoreHiddenBlocks)
-				{
-					currreason.AppendLine("  ShowInTerminal not set\n");
-					canAdd = false;
-				}
-				if (!s.theBlock.CanControlShip)
-				{
-					currreason.AppendLine("  CanControlShip not set\n");
-					canAdd = false;
-				}
-				if (!s.theBlock.ControlThrusters)
-				{
-					currreason.AppendLine("  Can't ControlThrusters\n");
-					canAdd = false;
-				}
-				if (s.theBlock.IsMainCockpit)
-				{ // I thiink this could make problems in the future
-					mainController = s;
-				}
-				if (!(greedy || hasTag(s.theBlock)))
-				{
-					currreason.AppendLine("  Doesn't match my tag\n");
-					canAdd = false;
-				}
-				if (this.removeTags)
-				{
-					removeTag(s.theBlock);
-				}
-
-				if (canAdd)
-				{
-					addSurfaceProvider(s.theBlock); // TODO, THIS ONLY DETECTS COCKPITS
-					s.Dampener = s.theBlock.DampenersOverride;
-					controlledControllers.Add(s);
-					ccontrollerblocks.Add(s.theBlock);
-					//mainController = s;
-					if (s.theBlock.IsUnderControl)
-					{
-						controlledControllers.Add(s);
-					}
-
-					if (this.applyTags)
-					{
-						addTag(s.theBlock);
-					}
-				}
-				else
-				{
-					removeSurfaceProvider(s.theBlock);
-					reason.Append(currreason);
-				}
-			}
-			if (blocks.Count == 0)
-			{
-				reason.AppendLine("No Controller Found.\nEither for missing tag, not working or removed.");
-			}
-
-			if (controlledControllers.Count == 0 && usableControllers.Count == 0)
-			{
-				log.AppendNR("ERROR: no usable ship controller found. Reason: \n");
-				//log.AppendLine("ERROR: no usable ship controller found. Reason: \n");
-				log.AppendNR(reason.ToString(), false);
-				//log.Append(reason);
-				ManageTag(true);
-				return false;
-			}
-			else if (controlledControllers.Count == 1)
-			{
-				mainController = controlledControllers[0];
-			}
-			else if (controlledControllers.Count > 0)
-			{
-				//foreach (ShipController c in usableControllers) controlledControllers.Add(c);
-
-				foreach (ShipController s in controlledControllers) {
-					if (s.theBlock.IsUnderControl) { 
-						mainController = s;
-						break;
-					}
-				}
-				if (mainController == null) {
-					mainController = controlledControllers[0];
-				}
-
-				//mainController = usableControllers.Count == 1 ? usableControllers[0] : mainController == null ? usableControllers[0] : mainController;
-			}
-			
-			return true;
-		}*/
 
 		ShipController FindACockpit()
 		{
@@ -1991,423 +1686,23 @@ namespace IngameScript
 			return null;
 		}
 
-		
-		// checks to see if the nacelles have changed
-		/*bool CheckVectorThrusters(bool vanilla = false)
-		{
-			bool greedy = this.applyTags || this.removeTags;
-			bool greedy1 = this.applyTags || this.removeTags || this.greedy;
+		void OneRunMainChecker(bool run=true) {
+			ResetVTHandlers();
+			check = true;
+			if (run) MainChecker.Run();
+		}
 
-			/*ShipController cont = FindACockpit();
-			if (cont == null)
-			{
-				log.AppendNR("  -No cockpit registered, checking everything\n");
-			}
-			else if (!greedy)
-			{
-				myshipmass = cont.TheBlock.CalculateShipMass();
-				if (myshipmass.BaseMass < 0.001f)
-				{
-					string msg = "  -Can't fly a Station";
-					log.AppendNR(msg);
-					isstation = true;
-					Runtime.UpdateFrequency = UpdateFrequency.Update100;
-					return true;
-				} else if (isstation) {
-					isstation = false;
-					Runtime.UpdateFrequency = update_frequency;
-				}
-				if (this.oldMass == myshipmass.BaseMass)
-				{
-					log.AppendNR("  -Mass is the same, everything is good\n");
-
-					// they may have changed the screen name to be a VT one
-					// DO THIS IN A SEPARATED INSTANCE
-
-					//if (vanilla)
-					//{
-					//	getControllers();
-					//	getScreens();
-					//}
-					//docheck = true;
-					return true;
-				}
-				log.AppendNR("  -Mass is different, checking everything\n");
-				this.oldMass = myshipmass.BaseMass;
-				// surface may be exploded if mass changes, in this case, ghost surfaces may be left behind
-				//this.surfaces.Clear();
-			}
-			//docheck = false;
-
-			//int oldNThrC = normalThrusters.Count;
-
-			parkblocks.Clear();
-			tankblocks.Clear();
-			batteriesblocks.Clear();
-			gridbats.Clear();
-			cruiseThr.Clear();
-			normalThrusters.Clear();
-
-			List<IMyShipController> conts = new List<IMyShipController>();
-			List<IMyMotorStator> rots = new List<IMyMotorStator>();
-			List<IMyThrust> thrs = new List<IMyThrust>();
-			List<IMyTextPanel> txts = new List<IMyTextPanel>();
-			//List<IMyProgrammableBlock> programBlocks = new List<IMyProgrammableBlock>();
-
-			
-
-			List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
-			GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(blocks);
-			foreach (IMyTerminalBlock b in blocks)
-			{
-				if (b is IMyShipController)
-				{
-					conts.Add((IMyShipController)b);
-				}
-				if (b is IMyMotorStator)
-				{
-					IMyMotorStator rt = (IMyMotorStator)b;
-					if (justCompiled) {
-						rt.TargetVelocityRPM = 0;
-						rt.RotorLock = false;
-						rt.Enabled = true;
-					}
-					rots.Add(rt);
-
-				}
-				if (b is IMyThrust)
-				{
-					IMyThrust tr = (IMyThrust)b;
-					if (justCompiled)
-					{
-						tr.ThrustOverridePercentage = 0;
-						tr.Enabled = true;
-					}
-					thrs.Add(tr);
-
-					//if (FilterThis(b))
-					//{
-						//normalThrusters.Add((IMyThrust)b);
-
-						//if (b.Orientation.Forward == controlledControllers[0].TheBlock.Orientation.Forward)
-							//cruiseThr.Add((IMyThrust)b);
-					//}
-				}
-				if (b is IMyTextPanel)
-				{
-					txts.Add((IMyTextPanel)b);
-				}
-				//if (b is IMyProgrammableBlock) // This will use it in the future to autopilot
-				//{
-				//	programBlocks.Add((IMyProgrammableBlock)b);
-				//}
-				bool island = b is IMyLandingGear;
-				if ((b is IMyShipConnector || island) && ((ConnectorNeedsSuffixToPark && HasTag(b)) || (((!ConnectorNeedsSuffixToPark && !HasTag(b)) || (island && FilterThis(b))) && FilterThis(b)) || TagAll))
-				{
-					if (TagAll) AddTag(b);
-					//parkblocks.Add(b);
-				}
-				if (b is IMyGasTank && (HasTag(b) || TagAll || FilterThis(b)))
-				{
-					if (TagAll) AddTag(b);
-					//tankblocks.Add(b);
-				}
-				if (b is IMyBatteryBlock)
-				{
-					if (TagAll) AddTag(b);
-					if (justCompiled) (b as IMyBatteryBlock).ChargeMode = ChargeMode.Auto;
-					//if (HasTag(b)) batteriesblocks.Add(b);
-					//else if (FilterThis(b)) gridbats.Add(b);
-				}
-			}
-			
-
-		//	foreach (IMyTerminalBlock t in txts) {
-			//	temp += t.CustomName + "\n";
-			//}
-			//log.AppendNR("sc:" + this.surfaces.Count);
-
-			if (Me.SurfaceCount > 0)
-			{
-				surfaceProviderErrorStr = "";
-				AddSurfaceProvider(Me);
-				Me.GetSurface(0).FontSize = 2.2f;
-				// this isn't really the right place to put this, but doing it right would be a lot more code
-			}
-
-			
-
-			//bool updateVTThrs = false;
-			// TODO: Compare if blocks are equal, or make other quick way to gather correct blocks
-			// if you use the following if statement, it won't lock the non-main cockpit if someone sets the main cockpit, until a recompile or world load :/
-
-			InitControllers(conts);
-
-			if (controllers.Count != conts.Count || cont == null || greedy)
-			{
-				log.AppendNR($"  --Controller count ({controllers.Count}) is out of whack (current: {conts.Count})\n");
-				if (!getControllers(conts))
-				{
-					return false;
-				}
-			}
-			else {
-				foreach (ShipController b in controllers) {
-					AddSurfaceProvider(b.TheBlock);
-				}
-			}
-			getScreens(txts);
-
-			//I don't seem to understand the purpose of this.
-			if (screenCount != txts.Count || greedy) {
-				log.AppendLine($"  --Screen count ({screenCount}) is out of whack (current: {txts.Count})\n");
-				getScreens(txts);
-			}
-			else
-			{	
-				//probably may-aswell just getScreens either way. seems like there wouldn't be much performance hit (yes it does)
-				foreach (IMyTextPanel screen in txts)
-				{
-					if (!screen.IsWorking) continue;
-					if (!screen.CustomName.ToLower().Contains(LCDName.ToLower())) continue;
-					getScreens(txts);
-				}
-			}
-
-			if (rotorCount != rots.Count)
-			{
-
-				log.AppendNR($"  --Rotor count ({rotorCount}) is out of whack (current: {rots.Count})\n");
-				updateVTThrs = true;
-			}
-
-			getVectorThrusters(rots, thrs);
-
-			var rotorHeads = new List<IMyAttachableTopBlock>();
-			foreach (IMyMotorStator rotor in rots)
-			{
-				if (rotor.Top != null)
-				{
-					rotorHeads.Add(rotor.Top);
-				}
-			}
-			if (rotorTopCount != rotorHeads.Count)
-			{
-				log.AppendNR($"  --Rotor Head count ({rotorTopCount}) is out of whack (current: {rotorHeads.Count})\n");
-				log.AppendNR($"   .-Rotors: {rots.Count}\n");
-				updateVTThrs = true;
-			}
-
-			int NThrC = normalThrusters.Count;
-			if (NThrC == 0 && NThrC != oldNThrC) { 
-				dampeners = true; //Put dampeners back on if there's no normalthrusters anymore
-			}
-
-			if (thrusterCount != thrs.Count)
-			{
-				log.AppendNR($"  --Thruster count ({thrusterCount}) is out of whack (current: {thrs.Count})\n");
-				updateVTThrs = true;
-			}
-
-
-			if (updateVTThrs || greedy)
-			{
-				log.AppendNR("  --Updating Vector Thrusters\n");
-				getVectorThrusters(rots, thrs);
-			}
-			else
-			{
-				log.AppendNR("  --Everything in order\n");
-			}
-
-			//TODO: Make this run once per frame
-			return true;
-		}*/
-
-		/*void getScreens(List<IMyTextPanel> screens)
-		{
-			bool greedy = this.greedy || this.applyTags || this.removeTags;
-
-			foreach (IMyTextPanel screen in screens)
-			{
-				bool cond1 = surfaces.Contains(screen);
-				bool cond2 = screen.IsWorking;
-				bool cond3 = screen.CustomName.ToLower().Contains(LCDName.ToLower());
-				bool cond4 = screen.Closed;
-
-				if (!cond1 && cond2 && cond3) surfaces.Add(screen);
-				else if (cond1 && (!cond2 || !cond3 || cond4)) surfaces.Remove(screen);
-			}
-			//screenCount = screens.Count;
-			this.screens = screens;
-			log.AppendNR($"  --Updated Scr:{screens.Count}=>Surf:{surfaces.Count}\n");
-		}*/
-	
 		bool Init()
 		{
 			log.AppendLine("Initialising..");
-			/*
-			getVectorThrusters();
-			if (!checkVectorThrusters()) {
-				log.AppendLine("Init failed.");
-				return false;
-			}
-			log.AppendLine("Init success.");*/
-
-			/*List<IMyShipController> conts = new List<IMyShipController>();
-			GridTerminalSystem.GetBlocksOfType<IMyShipController>(conts);
-			if (!getControllers(conts))
-			{
-				log.AppendLine("Init failed.");
-				return false;
-			}*/
-			/*getVectorThrusters();
-			if (!checkVectorThrusters())
-			{
-				log.AppendLine("Init failed.");
-				return false;
-			}*/
-			//shutdown = !getControllers(conts);
-
 			InitControllers();
+			check = true;
 			myshipmass = mainController.TheBlock.CalculateShipMass();
-			MainChecker.Run();
+			OneRunMainChecker();
 			log.AppendLine("Init " + (shutdown ? "Failed" : "Completed Sucessfully"));
 			return !shutdown;
 		}
 
-		// gets all the rotors and thrusters
-		/*void getVectorThrusters()
-		{
-			var blocks = new List<IMyTerminalBlock>();
-
-			// 1 call to GTS
-			GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(blocks, block => (block is IMyThrust) || (block is IMyMotorStator));
-
-			log.AppendNR("getVectorThrusters Init");
-			// get the blocks we care about
-			var rotors = new List<IMyMotorStator>();
-			var thrs = new List<IMyThrust>();
-
-			for (int i = blocks.Count - 1; i >= 0; i--)
-			{
-				if (blocks[i] is IMyThrust)
-				{
-					thrs.Add((IMyThrust)blocks[i]);
-					if (FilterThis(blocks[i]))
-					{
-						normalThrusters.Add((IMyThrust)blocks[i]);
-						if (blocks[i].Orientation.Forward == controlledControllers[0].TheBlock.Orientation.Forward)
-							cruiseThr.Add((IMyThrust)blocks[i]);
-					}
-				}
-				else //if(blocks[i] is IMyMotorStator)
-				{
-					rotors.Add((IMyMotorStator)blocks[i]);
-				}
-				blocks.RemoveAt(i);
-			}
-			rotorCount = rotors.Count;
-			thrusterCount = thrs.Count;
-
-			getVectorThrusters(rotors, thrs);
-		}*/
-		
-		/*void getVectorThrusters(List<IMyMotorStator> rotors, List<IMyThrust> thrusters)
-		{
-			bool greedy = this.applyTags || this.removeTags || this.greedy;
-			
-			//this.vectorthrusters.Clear();
-
-			log.AppendNR("  >Getting Rotors\n");
-			// make this.nacelles out of all valid rotors
-			//rotorTopCount = 0;
-			foreach (IMyMotorStator current in rotors)
-			{
-				if (this.removeTags)
-				{
-					RemoveTag(current);
-				}
-				else if (this.applyTags)
-				{
-					AddTag(current);
-				}
-
-
-				if (!(greedy || HasTag(current))) { continue; }
-
-				if (current.Top == null)
-				{
-					continue;
-				}
-				else
-				{
-					//rotorTopCount++;
-				}
-
-				//if topgrid is not programmable blocks grid
-				if (current.TopGrid == Me.CubeGrid)
-				{
-					continue;
-				}
-
-				// it's not set to not be a nacelle rotor
-				// it's topgrid is not the programmable blocks grid
-				Rotor rotor = new Rotor(current, this);
-				this.vectorthrusters.Add(new VectorThrust(rotor, this));
-				vtrotors.Add(current);
-			}
-
-			log.AppendNR("  >Getting Thrusters\n");
-			// add all thrusters to their corrisponding nacelle and remove this.nacelles that have none
-			for (int i = this.vectorthrusters.Count - 1; i >= 0; i--)
-			{
-				//if (!vtrotors.Contains(this.vectorthrusters[i].rotor.theBlock)) this will cause problems
-				for (int j = thrusters.Count - 1; j >= 0; j--)
-				{
-					if (!(greedy || HasTag(thrusters[j]))) { continue; }
-					if (this.removeTags)
-					{
-						RemoveTag(thrusters[j]);
-					}
-
-					if (thrusters[j].CubeGrid != this.vectorthrusters[i].rotor.TheBlock.TopGrid) continue;// thruster is not for the current nacelle
-																								   // if(!thrusters[j].IsFunctional) continue;// broken, don't add it
-
-					if (this.applyTags)
-					{
-						AddTag(thrusters[j]);
-					}
-
-					bool alreadyhasit = this.vectorthrusters[i].thrusters.Any(x => vtthrusters.Any(y => y == x));
-
-					if (alreadyhasit) continue;
-					//if (this.vectorthrusters[i].thrusters.Any(x => vtthrusters.Contains(x.theBlock))) continue;
-					//doesn't add it if it already exists
-
-					this.vectorthrusters[i].thrusters.Add(new Thruster(thrusters[j]));
-					vtthrusters.Add(thrusters[j]);
-					thrusters.RemoveAt(j);// shorten the list we have to check (It discards thrusters for next nacelle)
-				}
-				// remove this.nacelles (rotors) without thrusters
-				if (this.vectorthrusters[i].thrusters.Count == 0)
-				{
-					RemoveTag(this.vectorthrusters[i].rotor.TheBlock);
-					this.vectorthrusters.RemoveAt(i);// there is no more reference to the rotor, should be garbage collected
-					continue;
-				}
-				// if its still there, setup the nacelle
-				this.vectorthrusters[i].ValidateThrusters();
-				this.vectorthrusters[i].DetectThrustDirection();
-			}
-			log.AppendNR("  >Grouping VTThrs\n");
-			GroupVectorThrusters();
-
-			if (VTThrGroups.Count == 0) {
-				log.AppendNR("  > [ERROR] => Any Vector Thrusters Found!\n");
-				shutdown = true;
-			}
-		}*/
 
 		class VectorThrust
 		{
@@ -2417,9 +1712,9 @@ namespace IngameScript
 
 			// physical parts
 			public Rotor rotor;
-			public HashSet<Thruster> thrusters;// all the thrusters
-			public HashSet<Thruster> availableThrusters;// <= thrusters: the ones the user chooses to be used (ShowInTerminal)
-			public HashSet<Thruster> activeThrusters;// <= activeThrusters: the ones that are facing the direction that produces the most thrust (only recalculated if available thrusters changes)
+			public List<Thruster> thrusters;// all the thrusters
+			public List<Thruster> availableThrusters;// <= thrusters: the ones the user chooses to be used (ShowInTerminal)
+			public List<Thruster> activeThrusters;// <= activeThrusters: the ones that are facing the direction that produces the most thrust (only recalculated if available thrusters changes)
 
 			public double thrustModifierAbove = 0.1;// how close the rotor has to be to target position before the thruster gets to full power
 			public double thrustModifierBelow = 0.1;// how close the rotor has to be to opposite of target position before the thruster gets to 0 power
@@ -2440,16 +1735,16 @@ namespace IngameScript
 			{
 				this.program = program;
 				this.rotor = rotor;
-				this.thrusters = new HashSet<Thruster>();
-				this.availableThrusters = new HashSet<Thruster>();
-				this.activeThrusters = new HashSet<Thruster>();
+				this.thrusters = new List<Thruster>();
+				this.availableThrusters = new List<Thruster>();
+				this.activeThrusters = new List<Thruster>();
 				Role = GetVTThrRole(program);
 				this.avgsamples = program.RotationAverageSamples;
 				this.avg = new Lag(this.avgsamples);
 			}
 
 			// final calculations and setting physical components
-			public void Go(/*bool jetpack, */bool dampeners/*, float shipMass*/)
+			public void Go()
 			{
 
 				if (avgsamples != program.RotationAverageSamples) {
@@ -2464,6 +1759,7 @@ namespace IngameScript
 				double angleCos = rotor.SetFromVec(requiredVec, !usepid);
 				double angleCosPercent = angleCos * 100;
 
+				bool dampeners = program.dampeners;
 				bool TO = program.thrustOn;
 				bool cruise = program.cruise;
 				bool nthr = program.normalThrusters != null;
@@ -2511,11 +1807,9 @@ namespace IngameScript
 					double truerpm = PreciseRpm + iarpm;
 					avg.Update(truerpm);
 					float finalrpm = (float)avg.Value;
-					//program.Echo("/"+finalrpm);
 					rotor.maxRPM = (TO) ? finalrpm : ((!TO && (slowThrustOff || cruise)) ? STval : finalrpm);
 				}
 				else {
-					//program.Echo("/" + result);
 					rotor.TheBlock.TargetVelocityRad = Math.Abs(error) < 0.01 ? 0 : (float)result;
 				}
 
@@ -2826,7 +2120,7 @@ namespace IngameScript
 					foreach (VectorThrust na in n)
 					{
 						IMyMotorStator rt = na.rotor.TheBlock;
-						HashSet<Thruster> tr = na.thrusters;
+						List<Thruster> tr = na.thrusters;
 						foreach (Thruster t in tr) { t.TheBlock.Enabled = !rotorlock; t.TheBlock.ThrustOverride = 0; }
 						rt.TargetVelocityRPM = 0.0f;
 						rt.Enabled = !rotorlock;
@@ -3002,6 +2296,8 @@ namespace IngameScript
 		{
 			IMyTerminalBlock TheBlock { get; set; }
 			List<Base6Directions.Axis> Directions { get; }
+
+			string Name { get; }
 		}
 
 		abstract class BlockWrapper<T> : IBlockWrapper where T : class, IMyTerminalBlock
@@ -3009,11 +2305,14 @@ namespace IngameScript
 			public T TheBlock { get; set; }
 
 			public List<Base6Directions.Axis> Directions { get; }
+			
+			public string Name { get; }
 
 			public BlockWrapper(T block)
 			{
 				TheBlock = block;
 				Directions = GetDirections(block);
+				Name = block.CustomName;
 			}
 
 			// not allowed for some reason
@@ -3029,6 +2328,11 @@ namespace IngameScript
 			{
 				MyBlockOrientation o = block.Orientation;
 				return new List<Base6Directions.Axis> { Base6Directions.GetAxis(o.Forward), Base6Directions.GetAxis(o.Up), Base6Directions.GetAxis(o.Left) };
+			}
+
+			string IBlockWrapper.Name
+			{
+				get { return TheBlock.CustomName; }
 			}
 		}
 	}
