@@ -154,7 +154,7 @@ namespace IngameScript
 
 			// SKIPFRAME AND PERFORMANCE HANDLER
 			
-			CheckWeight();
+			if (!justCompiled) CheckWeight();
 			MainChecker.Run();//RUNS VARIOUS PROCESSES SEPARATED BY A TIMER
 
 			if (argument.Equals("") && !cruise && !dampchanged)
