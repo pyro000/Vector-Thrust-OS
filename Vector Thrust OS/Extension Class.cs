@@ -45,15 +45,16 @@ namespace IngameScript
 			return b * aDotB / bDotB;
 		}
 
-		public static StringBuilder AppendNR(this StringBuilder str, string value, bool newline = true) {
-			if (!str.ToString().Contains(value)) { 
-				if (newline) str.AppendLine(value);
-				else str.Append(value);
+		public static StringBuilder AppendNR(this StringBuilder str, string value) {
+			if (str.Length > 0 && value != null && value.Length > 0) {
+				str.Replace(value, "");
 			}
+			str.Append(value);
 			return str;
 		}
 
 		public static void Brake(this IMyMotorStator rotor) => rotor.TargetVelocityRPM = 0;
+		public static void Brake(this IMyThrust thruster) => thruster.ThrustOverridePercentage = 0;
 
 		public static Vector3D Reject(this Vector3D a, Vector3D b)
 		{
@@ -112,6 +113,17 @@ namespace IngameScript
 			return spinner;
 		}
 
+		public static bool Empty<T>(this List<T> list) {
+			return list.Count == 0;
+		}
+
+		public static double Abs(this double d) {
+			return Math.Abs(d);
+		}
+
+		public static string Sep<T>(this T i, string sep = "/") {
+			return i + sep;
+		}
 
 		public static StringBuilder ProgressBar(this StringBuilder sb, double percent, int amount)
 		{
