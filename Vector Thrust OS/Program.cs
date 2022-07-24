@@ -90,11 +90,6 @@ namespace IngameScript
 					handlers = VTThrHandler() || handlers;
 				}
 				else if (tagcheck) MainTag(argument);
-				//{ //SEE IF IS NEEDED TO PASS THE ENTIRE RUN FRAME IF THERE'S AN ARGUMENT (IT IS)
-					//ShutDown();
-					//return handlers;
-					//HANDLES TAG ARGUMENTS, IF IT FAILS, IT STOPS
-				//}
 			}
 			if (error)
 			{
@@ -139,23 +134,12 @@ namespace IngameScript
 			argument.Contains(cruiseArg) ||
 			argument.Contains(removeTagsArg);
 
-			if (/*justCompiled ||*/RT.configtrigger)
+			if (RT.configtrigger)
 			{
 				RT.configtrigger = false;
 				Config();
 				ManageTag();
 			}
-
-			/*if (justCompiled && !)
-			{
-				ShutDown();
-				return;
-			}*/
-			/*if ((justCompiled && (controllers.Count == 0 || argument.Contains(resetArg)) && !Init()) || error) { //Deprecated on next update
-				ShutDown(); 
-				return;
-			}*/
-			// END STARTUP
 
 			// GETTING ONLY NECESARY INFORMATION TO THE SCRIPT
 			if (!parkedcompletely) {
@@ -201,14 +185,8 @@ namespace IngameScript
 			
 			// SKIPFRAME AND PERFORMANCE HANDLER
 			if (!justCompiled) CheckWeight();
-			
 			//handler to skip frames, it passes out if the player doesn't parse any command or do something relevant.
-			
-			//bool notrunsf = 
-			if (SkipFrameHandler(/*notrunsf, */tagArg, argument)) return;
-			//if (error) ShutDown(); //handled already in function
-			//};
-
+			if (SkipFrameHandler(tagArg, argument)) return;
 			// END SKIPFRAME
 
 
@@ -352,11 +330,6 @@ namespace IngameScript
 				if ((wgv == 0 && ((!cruise && sv < lowThrustCutOff) || ((cruise || !dampeners) && len < cutoffcruise))) || !(!parked || !alreadyparked) || thrustontimer > 0.1)
 					thrustOn = false;
 			}
-			/*if (thrustontimer != 0 && wgv != 0 &&  !parked && sv != 0) {
-				thrustOn = true;
-				thrustontimer = 0; // if (thrustontimer == 0 && wgv != 0 && !parked && sv != 0)
-			}*/
-			//screensb.AppendLine($"C2: {wgv != 0 && !parked && sv != 0}/{thrustOn}/{thrustontimer}");
 
 			if (!thrustOn)
 			{// Zero G
@@ -380,33 +353,46 @@ namespace IngameScript
 				setTOV = true;
 			}
 
+			//Echo("1");
+
 			// Correct for misaligned VTS
 			Vector3D asdf = Vector3D.Zero;
 			// 1
 			foreach (List<VectorThrust> g in VTThrGroups)
 			{
-				g[0].requiredVec = requiredVec.Reject(g[0].rotor.TheBlock.WorldMatrix.Up);
-				asdf += g[0].requiredVec;
+				if (!g.Empty()) { 
+					g[0].requiredVec = requiredVec.Reject(g[0].rotor.TheBlock.WorldMatrix.Up);
+					asdf += g[0].requiredVec;
+				}
 			}
 			// 2
 			asdf -= requiredVec;
 			// 3
+
 			foreach (List<VectorThrust> g in VTThrGroups)
 			{
-				g[0].requiredVec -= asdf;
+				if (!g.Empty())
+				{
+					g[0].requiredVec -= asdf;
+				}
 			}
 			// 4
 			asdf /= VTThrGroups.Count;
 			// 5
 			foreach (List<VectorThrust> g in VTThrGroups)
 			{
-				g[0].requiredVec += asdf;
+				if (!g.Empty())
+				{
+					g[0].requiredVec += asdf;
+				}
 			}
 			// apply first VT settings to rest in each group
 			double total = 0;
 			int j = 0;
 			totalVTThrprecision = 0;
 			string edge = Separator();
+
+			//Echo("2");
 
 			StringBuilder info = new StringBuilder($"{Separator("[Metrics]")}\n");
 			if (ShowMetrics) {
@@ -418,6 +404,7 @@ namespace IngameScript
 
 			foreach (List<VectorThrust> g in VTThrGroups)
 			{
+				if (g.Empty()) continue;
 				double precision = 0;
 				Vector3D req = g[0].requiredVec / g.Count;
 				for (int i = 0; i < g.Count; i++)
@@ -447,6 +434,9 @@ namespace IngameScript
 				}
 				if(ShowMetrics) info.Append($" |  {(precision / g.Count).Round(1)}%  |\n");
 			}
+
+			//Echo("3");
+
 			if (ShowMetrics) info.Append(edge);
 			totalVTThrprecision /= j;
 
@@ -472,14 +462,12 @@ namespace IngameScript
 			RT.AddInstructions();
 		}
 
-		//arguments, you can change these to change what text you run the programmable block with
 		const string dampenersArg = "dampeners";
 		const string cruiseArg = "cruise";
 		const string raiseAccelArg = "raiseaccel";
 		const string lowerAccelArg = "loweraccel";
 		const string resetAccelArg = "resetaccel";
 		const string gearArg = "gear";
-		//const string resetArg = "reset"; //this one re-runs the initial setup (init() method) ... you probably want to use %resetAccel
 		const string applyTagsArg = "applytags";
 		const string applyTagsAllArg = "applytagsall";
 		const string removeTagsArg = "removetags";
@@ -574,14 +562,9 @@ namespace IngameScript
 		List<VectorThrust> vectorthrusters = new List<VectorThrust>();
 		List<IMyThrust> normalThrusters = new List<IMyThrust>();
 		List<IMyTextPanel> screens = new List<IMyTextPanel>();
-		//readonly List<IMyTerminalBlock> rechargedblocks = new List<IMyTerminalBlock>();
-		//readonly List<IMyTerminalBlock> turnedoffthusters = new List<IMyTerminalBlock>();
-		//List<IMyBatteryBlock> backupbatteries = new List<IMyBatteryBlock>();
 		readonly List<IMyShipConnector> connectors = new List<IMyShipConnector>();
 		readonly List<IMyLandingGear> landinggears = new List<IMyLandingGear>();
 		readonly List<IMyGasTank> tankblocks = new List<IMyGasTank>();
-		//List<IMyTerminalBlock> batteriesblocks = new List<IMyTerminalBlock>();
-		//readonly List<IMyTerminalBlock> gridbats = new List<IMyTerminalBlock>();
 		readonly List<IMyTerminalBlock> cruiseThr = new List<IMyTerminalBlock>();
 		readonly List<List<VectorThrust>> VTThrGroups = new List<List<VectorThrust>>();
 		public List<IMyTextSurface> surfaces = new List<IMyTextSurface>();
@@ -591,7 +574,6 @@ namespace IngameScript
 
 		readonly List<IMyBatteryBlock> taggedbats = new List<IMyBatteryBlock>();
 		readonly List<IMyBatteryBlock> normalbats = new List<IMyBatteryBlock>();
-		//readonly List<IMyBatteryBlock> remainingbats = new List<IMyBatteryBlock>();
 
 		List<IMyThrust> thrusters_input = new List<IMyThrust>();
 		List<IMyMotorStator> rotors_input = new List<IMyMotorStator>();
@@ -614,13 +596,11 @@ namespace IngameScript
 		string tag = "|VT|";
 
 		bool applyTags = false;
-		//bool removeTags = false;
 		bool greedy = true;
 		float lastGrav = 0;
 		bool thrustOn = true;
 		Dictionary<string, object> CMinputs = null;
 		bool rechargecancelled = false;
-		// double dischargingtimer = 0;
 
 		float oldMass = 0;
 		int frame = 0;
@@ -1111,18 +1091,12 @@ namespace IngameScript
 		bool parkedwithcn = false;
 
 		void ResetParkingSeq() {
-			//bool parking = parked && !alreadyparked;
-			//bool unparking = !parked && alreadyparked;
-			//bool un_parking = parking || unparking;
 			BatteryStats.Start();
 			BlockManager.Start();
-
-			//if (!unparkedcompletely || un_parking) { 
-				//BlockManager.Doneloop = false;
-				//if (!unparking) alreadyparked = parked;
-				//BlockManager.Run();
-			//}
-
+			BlockManager.Doneloop = false;
+			if (parked && !alreadyparked) alreadyparked = true;
+			else if (!parked && alreadyparked) Runtime.UpdateFrequency = update_frequency;
+			thrustOn = !parked;
 		}
 
 		void ResetVTHandlers()
@@ -1143,7 +1117,7 @@ namespace IngameScript
 			if (connectors.Count == 0 && landinggears.Count == 0) return false;
 
 			parkedwithcn = connectors.Any(x => x.Status == MyShipConnectorStatus.Connected);
-			parked = landinggears.Any(x => x.IsLocked) || parkedwithcn; // testing
+			parked = landinggears.Any(x => x.IsLocked) || parkedwithcn;
 			unparkedcompletely = !parked && !alreadyparked;
 			if (unparkedcompletely) return false;
 
@@ -1151,20 +1125,11 @@ namespace IngameScript
 			bool gotvector = totalVTThrprecision.Round(1) == 100;
 			parkedcompletely = setvector && gotvector;
 
-			//log.AppendNR($"H: {setvector}/{gotvector}/{parkedcompletely}");
-
 			bool pendingrotation = setvector && !gotvector;
 			bool parking = parked && !alreadyparked;
 			bool unparking = !parked && alreadyparked;
 			
-			if (parking || (unparking && BlockManager.Doneloop))
-			{
-				ResetParkingSeq();
-				BlockManager.Doneloop = false;
-				if (parking) alreadyparked = true;
-				else if (unparking) Runtime.UpdateFrequency = update_frequency;
-				thrustOn = !parked;
-			}
+			if (parking || (unparking && BlockManager.Doneloop)) ResetParkingSeq();
 			if (parkedcompletely || (unparking && !BlockManager.Doneloop)) {
 				if (parkedcompletely && BlockManager.Doneloop) screensb.AppendLine("- PARKED -");
 				else if (parkedcompletely && !BlockManager.Doneloop) screensb.GetSpinner(ref pc).Append(" ASSIGNING ").GetSpinner(ref pc, after: "\n");
@@ -1199,18 +1164,15 @@ namespace IngameScript
 			bool preventer = thrustontimer > 0.1 && !nograv && !parked && sv != 0;
 			bool unparking = !parked && alreadyparked;
 			bool partiallyparked = parked && alreadyparked;
-			bool standby = (nograv || partiallyparked) && totalVTThrprecision.Round(1) == 100 && setTOV && !thrustOn && mvin == 0 /*&& !unparking  && !preventer*/;
+			bool standby = (nograv || partiallyparked) && totalVTThrprecision.Round(1) == 100 && setTOV && !thrustOn && mvin == 0;
 
 			//screensb.AppendLine($"S: {standby}/{parkedcompletely}=>{rotorsstopped}/{unparking}");
-			//screensb.AppendLine($"C: {standby}/{parkedcompletely}");
-			//screensb.AppendLine($"C2: {standby}/{parkedcompletely}");
 			//screensb.AppendLine($"CONDS: {totalVTThrprecision.Round(1) == 100}/{setTOV}/{!thrustOn}/{mvin == 0}");
 			if (standby || parkedcompletely)
 			{
 				echosb.AppendLine("\nEverything stopped, performance mode.\n");
 				if (!rotorsstopped)
 				{
-					//log.AppendNR("Stopped rotors");
 					rotorsstopped = true;
 					StabilizeVectorThrusters();
 				}
@@ -1231,25 +1193,17 @@ namespace IngameScript
 			//tags and getting blocks
 			TagAll = argument.Contains(applyTagsAllArg);
 			this.applyTags = argument.Contains(applyTagsArg) || TagAll;
-			//this.removeTags = !this.applyTags && argument.Contains(Program.removeTagsArg);
-			// switch on: removeTags
-			// switch off: applyTags
-			this.greedy = (!this.applyTags && this.greedy);//|| this.removeTags;
-														   // this automatically calls getVectorThrusters() as needed, and passes in previous GTS data
+			this.greedy = (!this.applyTags && this.greedy);
 			if (this.applyTags)
 			{
 				AddTag(Me);
 			}
 			else if (argument.Contains(removeTagsArg)) ManageTag(true, false); // New remove tags.
-			/*else if (this.removeTags)
-			{
-				RemoveTag(Me);
-			}*/
+
 			OneRunMainChecker();
 
 			TagAll = false;
-			this.applyTags = false; //this.removeTags = false;
-			//return !error;
+			this.applyTags = false;
 		}
 
 		
