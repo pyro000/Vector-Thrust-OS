@@ -981,7 +981,7 @@ namespace IngameScript
 					setthr = true;
 				}
 
-				if ((normalbats.Empty() && taggedbats.Empty()) || !RechargeOnPark) {
+				if ((normalbats.Count + taggedbats.Count < 2) || !RechargeOnPark) {
 					if (!parked) alreadyparked = false;
 					EndBM(true);
 					yield return timepause;

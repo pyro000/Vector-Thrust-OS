@@ -113,6 +113,10 @@ namespace IngameScript
 			return spinner;
 		}
 
+		public static int Count<T>(this List<T> el, List<T>[] args) {
+			return el.Count + args.Sum(x => x.Count);
+		}
+
 		public static bool Empty<T>(this List<T> list) {
 			return list.Count == 0;
 		}
