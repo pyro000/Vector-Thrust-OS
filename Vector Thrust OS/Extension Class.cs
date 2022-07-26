@@ -81,6 +81,11 @@ namespace IngameScript
 			return double.IsNaN(inp) ? 1 * Math.Pow(10, -10) : inp;
 		}
 
+		public static float NNaN(this float inp)
+		{
+			return float.IsNaN(inp) ? (float)(1 * Math.Pow(10, -10)) : (float)inp;
+		}
+
 		public static double R3(this double desired, double ifval, double isval) {
 			return (desired * isval) / ifval;
 		}

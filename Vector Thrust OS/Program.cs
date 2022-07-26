@@ -20,12 +20,175 @@ using VRageMath;
 
 namespace IngameScript
 {
-	
-
 	partial class Program : MyGridProgram
 	{
+		const string dampenersArg = "dampeners";
+		const string cruiseArg = "cruise";
+		const string raiseAccelArg = "raiseaccel";
+		const string lowerAccelArg = "loweraccel";
+		const string resetAccelArg = "resetaccel";
+		const string gearArg = "gear";
+		const string applyTagsArg = "applytags";
+		const string applyTagsAllArg = "applytagsall";
+		const string removeTagsArg = "removetags";
+
+		// wether or not cruise mode is on when you start the script
+		readonly float maxRotorRPM = 60f; // set to -1 for the fastest speed in the game (changes with mods)
+		readonly List<double> MagicNumbers = new List<double> { -0.091, 0.748, -46.934, -0.073, 0.825, -4.502, -1.239, 1.124, 2.47 };
+
+		readonly RuntimeTracker _RuntimeTracker;
+		readonly SimpleTimerSM BlockManager;
+		readonly SimpleTimerSM BatteryStats;
+
+		double thrustontimer = 0;
 		bool scriptslower = false; //I am pretty sure that this script will never work on Update100
-        readonly double timeperframe = 1.0 / 60.0;
+		readonly double timeperframe = 1.0 / 60.0;
+		Vector3D desiredVec = new Vector3D();
+		bool dampchanged = false;
+
+		bool parked = false;
+		bool alreadyparked = false;
+		bool cruisedNT = false;
+		bool setTOV = false;
+		bool TagAll = false;
+		bool error = false;
+		bool oldDampeners = false;
+		bool isstation = false;
+		double wgv = 0;
+		double mvin = 0;
+		double accel = 0;
+		float gravLength = 0;
+		string oldTag = "";
+		StringBuilder echosb = new StringBuilder();
+		readonly StringBuilder screensb = new StringBuilder();
+		readonly StringBuilder log = new StringBuilder();
+		long pc = 0;
+		MyShipMass myshipmass;
+
+
+		readonly SimpleTimerSM MainChecker;
+		readonly SimpleTimerSM GetScreen;
+		readonly SimpleTimerSM GetControllers;
+		readonly SimpleTimerSM GetVectorThrusters;
+		readonly SimpleTimerSM CheckParkBlocks;
+
+		double maxaccel = 0;
+		readonly StringBuilder progressbar = new StringBuilder();
+		string trueaccel = "";
+		readonly bool ignoreHiddenBlocks = false; //OBSOLETE
+												  // DEPRECATED: use the tags instead
+												  // only use blocks that have 'show in terminal' set to true
+
+		bool cruise = false;
+		bool dampeners = true;
+		string textSurfaceKeyword = "VT:";
+		string LCDName = "VTLCD";
+		const float defaultAccel = 1f;
+		const float accelBase = 1.5f;//accel = defaultAccel * g * base^exponent
+									 // your +, - and 0 keys increment, decrement and reset the exponent respectively
+									 // this means increasing the base will increase the amount your + and - change target acceleration
+		const float dampenersModifier = 0.1f; // multiplier for dampeners, higher is stronger dampeners		 
+		const float zeroGAcceleration = 9.81f; // default acceleration in situations with 0 (or low) gravity				 
+		const float gravCutoff = 0.1f * zeroGAcceleration;  // if gravity becomes less than this, zeroGAcceleration will kick in (I think it's deprecated)
+		const bool onlyMainCockpit = true; // Almost deprecated, it assigns main cockpit to the first that it's being controlled
+		readonly UpdateFrequency update_frequency = UpdateFrequency.Update1;
+		// choose weather you want the script to											 
+		// update once every frame, once every 10 frames, or once every 100 frames (Recommended not modifying it)
+
+		// Control Module params... this can always be true, but it's deprecated
+		bool controlModule = true;
+		const string dampenersButton = "c.damping";
+		const string cruiseButton = "c.cubesizemode";
+		const string lowerAccel = "c.switchleft";
+		const string raiseAccel = "c.switchright";
+		const string resetAccel = "pipe";
+
+
+		double totaleffectivethrust = 0;
+		readonly StringBuilder surfaceProviderErrorStr = new StringBuilder();
+		int accelExponent = 0;
+		double accelExponent_A = 0;
+
+		double totalVTThrprecision = 0;
+		bool rotorsstopped = false;
+
+		bool dampenersIsPressed = false;
+		bool cruiseIsPressed = false;
+		bool plusIsPressed = false;
+		bool minusIsPressed = false;
+		bool globalAppend = false;
+
+		ShipController mainController = null;
+		List<ShipController> controllers = new List<ShipController>();
+		List<IMyShipController> controllerblocks = new List<IMyShipController>();
+		readonly List<IMyShipController> ccontrollerblocks = new List<IMyShipController>();
+		readonly List<ShipController> controlledControllers = new List<ShipController>();
+		List<VectorThrust> vectorthrusters = new List<VectorThrust>();
+		List<IMyThrust> normalThrusters = new List<IMyThrust>();
+		List<IMyTextPanel> screens = new List<IMyTextPanel>();
+		readonly List<IMyShipConnector> connectors = new List<IMyShipConnector>();
+		readonly List<IMyLandingGear> landinggears = new List<IMyLandingGear>();
+		readonly List<IMyGasTank> tankblocks = new List<IMyGasTank>();
+		readonly List<IMyTerminalBlock> cruiseThr = new List<IMyTerminalBlock>();
+		readonly List<List<VectorThrust>> VTThrGroups = new List<List<VectorThrust>>();
+		public List<IMyTextSurface> surfaces = new List<IMyTextSurface>();
+
+		List<IMyThrust> vtthrusters = new List<IMyThrust>();
+		List<IMyMotorStator> vtrotors = new List<IMyMotorStator>();
+
+		readonly List<IMyBatteryBlock> taggedbats = new List<IMyBatteryBlock>();
+		readonly List<IMyBatteryBlock> normalbats = new List<IMyBatteryBlock>();
+
+		List<IMyThrust> thrusters_input = new List<IMyThrust>();
+		List<IMyMotorStator> rotors_input = new List<IMyMotorStator>();
+		readonly List<ShipController> controllers_input = new List<ShipController>();
+		readonly List<IMyTextPanel> input_screens = new List<IMyTextPanel>();
+		readonly List<IMyMotorStator> abandonedrotors = new List<IMyMotorStator>();
+		readonly List<IMyThrust> abandonedthrusters = new List<IMyThrust>();
+
+		List<IMyTerminalBlock> batsseq = new List<IMyTerminalBlock>();
+		List<double> outputbatsseq = new List<double>();
+
+		bool pauseseq = false;
+		bool check = true;
+
+		Vector3D shipVelocity = Vector3D.Zero;
+		double sv = 0;
+		double thrustModifierAbove = 0.1;// how close the rotor has to be to target position before the thruster gets to full power
+		double thrustModifierBelow = 0.1;// how close the rotor has to be to opposite of target position before the thruster gets to 0 power
+		bool justCompiled = true;
+		string tag = "|VT|";
+
+		bool applyTags = false;
+		bool greedy = true;
+		float lastGrav = 0;
+		bool thrustOn = true;
+		Dictionary<string, object> CMinputs = null;
+		bool rechargecancelled = false;
+		bool parkedwithcn = false;
+
+		float oldMass = 0;
+		int frame = 0;
+
+		bool unparkedcompletely = true;
+		bool parkedcompletely = false;
+		public struct BA
+		{
+			public string button;
+			public float accel;
+
+			public BA(string button, float accel)
+			{
+				this.button = button;
+				this.accel = accel;
+			}
+		}
+
+		const bool useBoosts = true;
+		public BA[] boosts = {
+			new BA("c.sprint", 3f),
+			new BA("ctrl", 0.3f)
+		};
 
 		public Program()
 		{
@@ -40,7 +203,7 @@ namespace IngameScript
 
 			timeperframe = scriptslower ?  1.0 / 6.0 : 1.0 / 60.0; //SetTimePerFrame();
 			
-			RT = new RuntimeTracker(this, 60, 0.005);
+			_RuntimeTracker = new RuntimeTracker(this, 60, 0.005);
 			BlockManager = new SimpleTimerSM(this, BlockManagerSeq(), true);
 			BatteryStats = new SimpleTimerSM(this, GetBatStatsSeq(), true);
 			MainChecker = new SimpleTimerSM(this, CheckVectorThrustersSeq(), true);
@@ -63,70 +226,13 @@ namespace IngameScript
 			Storage = save; //saving the old tag and greedy to prevent recompile or script update confusion
 		}
 
-		void ShutDown() {
-			
-			if (wgv == 0) {
-				vtthrusters.ForEach(tr => tr.Brake());
-				log.AppendLine("0G Detected -> Braking Thrusters");
-				//foreach (IMyThrust tr in vtthrusters) tr.Brake(); //Only use this when in space, in atmospheric to at least don't make the ship go down
-			}
-			//foreach (IMyMotorStator rt in vtrotors) rt.Brake();
-			vtrotors.ForEach(rt => rt.Brake());
-			log.AppendLine("Braking Rotors");
-			Echo(log.ToString());
-			Runtime.UpdateFrequency = UpdateFrequency.None;
-		}
-
-		bool SkipFrameHandler(/*bool notrunsf, */bool tagcheck, string argument) {
-			bool notrun = argument.Equals("") && !cruise && !dampchanged;
-			bool handlers = false;
-			if (/*!error && */!isstation)
-			{
-				MainChecker.Run();//RUNS VARIOUS PROCESSES SEPARATED BY A TIMER
-				if (notrun)
-				{
-					handlers = PerformanceHandler();
-					handlers = ParkHandler() || handlers;
-					handlers = VTThrHandler() || handlers;
-				}
-				else if (tagcheck) MainTag(argument);
-			}
-			if (error)
-			{
-				ShutDown();
-				return true;
-			}
-			else if (isstation) return true;
-			else if (handlers)
-			{
-				echosb.AppendLine("Required Force: ---N");
-				echosb.AppendLine("Total Force: ---N\n");
-				echosb = RT.Append(echosb);
-				echosb.AppendLine("--- Log ---");
-				echosb.Append(log);
-				RT.AddInstructions();
-			}
-			return handlers;
-		}
-
-		Vector3D desiredVec = new Vector3D();
-		bool dampchanged = false;
-
-		public void Main(string argument, UpdateType runType)
+		public void Main(string argument/*, UpdateType runType*/)
 		{
 			// ========== STARTUP ==========
-			globalAppend = false;
-			RT.AddRuntime();
-			if (Runtime.UpdateFrequency == update_frequency) pc++;
-			else if (Runtime.UpdateFrequency == UpdateFrequency.Update10) pc += 10;
-			else pc += 100; 
+			_RuntimeTracker.AddRuntime();
 
-			// writes and clear outputs
-			Echo(echosb.ToString());
-			Write(screensb.ToString());
-			echosb.Clear();
-			screensb.Clear();
-			// ------------------------
+			// writes and clears outputs
+			WriteOutput();
 
 			argument = argument.ToLower();
 			bool tagArg =
@@ -134,9 +240,9 @@ namespace IngameScript
 			argument.Contains(cruiseArg) ||
 			argument.Contains(removeTagsArg);
 
-			if (RT.configtrigger)
+			if (_RuntimeTracker.configtrigger)
 			{
-				RT.configtrigger = false;
+				_RuntimeTracker.configtrigger = false;
 				Config();
 				ManageTag();
 			}
@@ -148,53 +254,28 @@ namespace IngameScript
 				sv = shipVelocity.Length();
 
 				bool damp = controlledControllers[0].TheBlock.DampenersOverride;
-				/*bool */dampchanged = damp != oldDampeners;
+				dampchanged = damp != oldDampeners;
 				oldDampeners = controlledControllers[0].TheBlock.DampenersOverride;
 
-				/*Vector3D */desiredVec = GetMovementInput(argument, parked);
+				desiredVec = GetMovementInput(argument, parked);
 				mvin = desiredVec.Length();
 			}
-			
 			// END NECESARY INFORMATION
 
+
 			//START OUTPUT PRINTING
-			string cstr = mainController != null ? mainController.TheBlock.CustomName : "DEAD";
-			if (ShowMetrics) screensb.GetSpinner(ref pc).Append($" {Runtime.LastRunTimeMs.Round(2)}ms ").GetSpinner(ref pc);
-			screensb.Append(progressbar);
-
-			screensb.Append("\n").GetSpinner(ref pc).Append(trueaccel).GetSpinner(ref pc);
-			screensb.AppendLine($"\nCruise: {cruise}");
-			if (normalThrusters.Count == 0) screensb.AppendLine($"Dampeners: {dampeners}");
-			if (ShowMetrics)
-			{
-				screensb.AppendLine($"\nAM: {(accel / gravLength).Round(2)}g");
-				screensb.AppendLine($"Active VectorThrusters: {vectorthrusters.Count}");
-				screensb.AppendLine($"Main/Ref Cont: {cstr}");
-			}
-			echosb.GetSpinner(ref pc).Append(" VTos ").GetSpinner(ref pc);
-			echosb.AppendLine($"\n\n--- Main ---");
-			echosb.AppendLine(" >Remaining: " + RT.tremaining);
-			echosb.AppendLine(" >Greedy: " + greedy);
-			echosb.AppendLine($" >Angle Objective: {totalVTThrprecision.Round(1)}%");
-			echosb.AppendLine($" >Main/Reference Controller: {cstr}");
-			echosb.AppendLine($" >Parked: {parkedcompletely}/{unparkedcompletely}");
-		
-			if (isstation) echosb.AppendLine("CAN'T FLY A STATION, RUNNING WITH LESS RUNTIME.");
+			Printer();
 			//END PRINTER PART 1
-			
-			
-			// SKIPFRAME AND PERFORMANCE HANDLER
-			if (!justCompiled) CheckWeight();
-			//handler to skip frames, it passes out if the player doesn't parse any command or do something relevant.
-			if (SkipFrameHandler(tagArg, argument)) return;
-			// END SKIPFRAME
 
+
+			// SKIPFRAME AND PERFORMANCE HANDLER: handler to skip frames, it passes out if the player doesn't parse any command or do something relevant.
+			if (!justCompiled) CheckWeight(); //Block Updater must-have
+			if (SkipFrameHandler(tagArg, argument)) return; 
+			// END SKIPFRAME
 
 
 			// ========== PHYSICS ==========
 			//TODO: SEE IF I CAN SPLIT AT LEAST SOME OF THE STEPS BY SEQUENCES
-
-
 			float shipMass = myshipmass.PhysicalMass;
 			Vector3D worldGrav = controlledControllers[0].TheBlock.GetNaturalGravity();
 			gravLength = (float)worldGrav.Length();
@@ -202,7 +283,6 @@ namespace IngameScript
 			bool gravChanged = Math.Abs(lastGrav - gravLength) > 0.05f;
 			foreach (VectorThrust n in vectorthrusters)
 				if (!n.ValidateThrusters() || gravChanged) n.DetectThrustDirection();
-
 			wgv = lastGrav = gravLength;
 
 			// setup gravity
@@ -277,9 +357,6 @@ namespace IngameScript
 			}
 			// f=ma
 			accel = GetAcceleration(gravLength);
-
-			//if (ShowMetrics) (accel / gravLength);
-
 			desiredVec *= shipMass * (float)accel;
 
 			// point thrust in opposite direction, add weight. this is force, not acceleration
@@ -310,7 +387,6 @@ namespace IngameScript
 			if (mvin == 0)
 			{
 				accelExponent_A = 0;
-
 				if (wgv != 0 && sv == 0 && !parked)
 				{
 					if (thrustOn)
@@ -318,15 +394,9 @@ namespace IngameScript
 						thrustontimer += Runtime.TimeSinceLastRun.TotalSeconds;
 						screensb.GetSpinner(ref pc).Append(" STABILIZING ").GetSpinner(ref pc, after: "\n");
 					}
-					else {
-						screensb.AppendLine(" - (NOT) PARKED -");
-					}
-					
+					else screensb.AppendLine(" - (NOT) PARKED -");
 				}
-				else
-				{
-					thrustontimer = 0;
-				}
+				else thrustontimer = 0;
 				if ((wgv == 0 && ((!cruise && sv < lowThrustCutOff) || ((cruise || !dampeners) && len < cutoffcruise))) || !(!parked || !alreadyparked) || thrustontimer > 0.1)
 					thrustOn = false;
 			}
@@ -352,8 +422,6 @@ namespace IngameScript
 				}
 				setTOV = true;
 			}
-
-			//Echo("1");
 
 			// Correct for misaligned VTS
 			Vector3D asdf = Vector3D.Zero;
@@ -392,8 +460,6 @@ namespace IngameScript
 			totalVTThrprecision = 0;
 			string edge = Separator();
 
-			//Echo("2");
-
 			StringBuilder info = new StringBuilder($"{Separator("[Metrics]")}\n");
 			if (ShowMetrics) {
 				info.Append("| Axis |=> | VTLength | MaxRPM | Far% |\n")
@@ -409,33 +475,31 @@ namespace IngameScript
 				Vector3D req = g[0].requiredVec / g.Count;
 				for (int i = 0; i < g.Count; i++)
 				{
-					IMyMotorStator rt = g[i].rotor.TheBlock;
-					//Echo(rt.CustomName + ": " + GridTerminalSystem.CanAccess(rt) + "/" + rt.Closed + "/" + rt.IsWorking+ "/" + rt.IsAlive());
-
+					VectorThrust vt = g[i];
+					IMyMotorStator rt = vt.rotor.TheBlock;
 					if (GridTerminalSystem.CanAccess(rt) && !rt.Closed && rt.IsWorking && rt.IsAlive() && rt.Top != null)
 					{
-						g[i].requiredVec = req;
-						g[i].thrustModifierAbove = thrustModifierAbove;
-						g[i].thrustModifierBelow = thrustModifierBelow;
-						g[i].Go();
+						vt.requiredVec = req;
+						vt.thrustModifierAbove = thrustModifierAbove;
+						vt.thrustModifierBelow = thrustModifierBelow;
+						vt.Go();
 
-						totaleffectivethrust += g[i].totalEffectiveThrust;
+						totaleffectivethrust += vt.totalEffectiveThrust;
 
 						total += req.Length();
 
-						totalVTThrprecision += g[i].old_angleCos;
-						precision += g[i].old_angleCos;
+						totalVTThrprecision += vt.old_angleCos;
+						precision += vt.old_angleCos;
 						j++;
 
-						if (i == 0 && ShowMetrics) info.Append($"\n| {g[i].Role} |=>")
+						if (i == 0 && ShowMetrics) info.Append($"\n| {vt.Role} |=>")
 								.Append($" | {(req.Length() / RotorStMultiplier).Round(1)}")
-								.Append($" |  {g[i].rotor.maxRPM.Round(0)} ");
+								.Append($" |  {vt.rotor.maxRPM.Round(0)} ");
+								//.Append($" |  {vt.pid._lastError} ");
 					}
 				}
 				if(ShowMetrics) info.Append($" |  {(precision / g.Count).Round(1)}%  |\n");
 			}
-
-			//Echo("3");
 
 			if (ShowMetrics) info.Append(edge);
 			totalVTThrprecision /= j;
@@ -445,7 +509,7 @@ namespace IngameScript
 			if (justCompiled || argument.Contains(gearArg)) GenerateProgressBar();
 				
 			echosb.AppendLine($"Total Force: {total.Round(0)}N\n");
-			echosb = RT.Append(echosb);
+			echosb = _RuntimeTracker.Append(echosb);
 			echosb.AppendLine("--- Log ---");
 			echosb.Append(log);
 
@@ -457,1941 +521,9 @@ namespace IngameScript
 			//TODO: make activeNacelles account for the number of nacelles that are actually active (activeThrusters.Count > 0) (I GUESS SOLVED??)
 			// ========== END OF MAIN ==========
 
-			log.AppendNR(surfaceProviderErrorStr);
+			log.Append(surfaceProviderErrorStr);
 			justCompiled = false;
-			RT.AddInstructions();
-		}
-
-		const string dampenersArg = "dampeners";
-		const string cruiseArg = "cruise";
-		const string raiseAccelArg = "raiseaccel";
-		const string lowerAccelArg = "loweraccel";
-		const string resetAccelArg = "resetaccel";
-		const string gearArg = "gear";
-		const string applyTagsArg = "applytags";
-		const string applyTagsAllArg = "applytagsall";
-		const string removeTagsArg = "removetags";
-
-		// wether or not cruise mode is on when you start the script
-		readonly float maxRotorRPM = 60f; // set to -1 for the fastest speed in the game (changes with mods)
-		readonly List<double> MagicNumbers = new List<double> { -0.091, 0.748, -46.934, -0.073, 0.825, -4.502, -1.239, 1.124, 2.47 };
-
-		readonly RuntimeTracker RT;
-		readonly SimpleTimerSM BlockManager;
-		readonly SimpleTimerSM BatteryStats;
-
-		double thrustontimer = 0;
-
-		bool parked = false;
-		bool alreadyparked = false;
-		bool cruisedNT = false;
-		bool setTOV = false;
-		bool TagAll = false;
-		bool error = false;
-		bool oldDampeners = false;
-		bool isstation = false;
-		double wgv = 0;
-		double mvin = 0;
-		double accel = 0;
-		float gravLength = 0;
-		string oldTag = "";
-		StringBuilder echosb = new StringBuilder();
-		readonly StringBuilder screensb = new StringBuilder();
-		readonly StringBuilder log = new StringBuilder();
-		long pc = 0;
-		MyShipMass myshipmass;
-
-
-		readonly SimpleTimerSM MainChecker;
-		readonly SimpleTimerSM GetScreen;
-		readonly SimpleTimerSM GetControllers;
-		readonly SimpleTimerSM GetVectorThrusters;
-		readonly SimpleTimerSM CheckParkBlocks;
-
-		double maxaccel = 0;
-		readonly StringBuilder progressbar = new StringBuilder();
-		string trueaccel = "";
-		readonly bool ignoreHiddenBlocks = false; //OBSOLETE
-												  // DEPRECATED: use the tags instead
-												  // only use blocks that have 'show in terminal' set to true
-
-		bool cruise = false;
-		bool dampeners = true;
-		string textSurfaceKeyword = "VT:";
-		string LCDName = "VTLCD";
-		const float defaultAccel = 1f;
-		const float accelBase = 1.5f;//accel = defaultAccel * g * base^exponent
-									 // your +, - and 0 keys increment, decrement and reset the exponent respectively
-									 // this means increasing the base will increase the amount your + and - change target acceleration
-		const float dampenersModifier = 0.1f; // multiplier for dampeners, higher is stronger dampeners		 
-		const float zeroGAcceleration = 9.81f; // default acceleration in situations with 0 (or low) gravity				 
-		const float gravCutoff = 0.1f * zeroGAcceleration;  // if gravity becomes less than this, zeroGAcceleration will kick in (I think it's deprecated)
-		const bool onlyMainCockpit = true; // Almost deprecated, it assigns main cockpit to the first that it's being controlled
-		readonly UpdateFrequency update_frequency = UpdateFrequency.Update1;
-		// choose weather you want the script to											 
-		// update once every frame, once every 10 frames, or once every 100 frames (Recommended not modifying it)
-
-		// Control Module params... this can always be true, but it's deprecated
-		bool controlModule = true;
-		const string dampenersButton = "c.damping";
-		const string cruiseButton = "c.cubesizemode";
-		const string lowerAccel = "c.switchleft";
-		const string raiseAccel = "c.switchright";
-		const string resetAccel = "pipe";
-
-
-		double totaleffectivethrust = 0;
-		string surfaceProviderErrorStr = "";
-		int accelExponent = 0;
-		double accelExponent_A = 0;
-
-		double totalVTThrprecision = 0;
-		bool rotorsstopped = false;
-
-		public bool dampenersIsPressed = false;
-		public bool cruiseIsPressed = false;
-		public bool plusIsPressed = false;
-		public bool minusIsPressed = false;
-		public bool globalAppend = false;
-
-		ShipController mainController = null;
-		List<ShipController> controllers = new List<ShipController>();
-		List<IMyShipController> controllerblocks = new List<IMyShipController>();
-		readonly List<IMyShipController> ccontrollerblocks = new List<IMyShipController>();
-		readonly List<ShipController> controlledControllers = new List<ShipController>();
-		List<VectorThrust> vectorthrusters = new List<VectorThrust>();
-		List<IMyThrust> normalThrusters = new List<IMyThrust>();
-		List<IMyTextPanel> screens = new List<IMyTextPanel>();
-		readonly List<IMyShipConnector> connectors = new List<IMyShipConnector>();
-		readonly List<IMyLandingGear> landinggears = new List<IMyLandingGear>();
-		readonly List<IMyGasTank> tankblocks = new List<IMyGasTank>();
-		readonly List<IMyTerminalBlock> cruiseThr = new List<IMyTerminalBlock>();
-		readonly List<List<VectorThrust>> VTThrGroups = new List<List<VectorThrust>>();
-		public List<IMyTextSurface> surfaces = new List<IMyTextSurface>();
-
-		List<IMyThrust> vtthrusters = new List<IMyThrust>();
-		List<IMyMotorStator> vtrotors = new List<IMyMotorStator>();
-
-		readonly List<IMyBatteryBlock> taggedbats = new List<IMyBatteryBlock>();
-		readonly List<IMyBatteryBlock> normalbats = new List<IMyBatteryBlock>();
-
-		List<IMyThrust> thrusters_input = new List<IMyThrust>();
-		List<IMyMotorStator> rotors_input = new List<IMyMotorStator>();
-		readonly List<ShipController> controllers_input = new List<ShipController>();
-		readonly List<IMyTextPanel> input_screens = new List<IMyTextPanel>();
-		readonly List<IMyMotorStator> abandonedrotors = new List<IMyMotorStator>();
-		readonly List<IMyThrust> abandonedthrusters = new List<IMyThrust>();
-
-		List<IMyTerminalBlock> batsseq = new List<IMyTerminalBlock>();
-		List<double> outputbatsseq = new List<double>();
-
-		bool pauseseq = false;
-		bool check = true;
-
-		Vector3D shipVelocity = Vector3D.Zero;
-		double sv = 0;
-		double thrustModifierAbove = 0.1;// how close the rotor has to be to target position before the thruster gets to full power
-		double thrustModifierBelow = 0.1;// how close the rotor has to be to opposite of target position before the thruster gets to 0 power
-		bool justCompiled = true;
-		string tag = "|VT|";
-
-		bool applyTags = false;
-		bool greedy = true;
-		float lastGrav = 0;
-		bool thrustOn = true;
-		Dictionary<string, object> CMinputs = null;
-		bool rechargecancelled = false;
-
-		float oldMass = 0;
-		int frame = 0;
-
-		public struct BA
-		{
-			public string button;
-			public float accel;
-
-			public BA(string button, float accel)
-			{
-				this.button = button;
-				this.accel = accel;
-			}
-		}
-
-		const bool useBoosts = true;
-		public BA[] boosts = {
-			new BA("c.sprint", 3f),
-			new BA("ctrl", 0.3f)
-		};
-
-		// ------- Default configs --------
-		string myName = "VT";
-		double TimeForRefresh = 10;
-		bool ShowMetrics = false;
-		int SkipFrames = 0;
-		
-
-		double RotorStMultiplier = 1000;
-		bool SlowThrustOff = false;
-		double SlowThrustOffRPM = 5;
-		double lowThrustCutOn = 0.5;
-		double lowThrustCutOff = 0.01;
-		double lowThrustCutCruiseOn = 1;
-		double lowThrustCutCruiseOff = 0.15;
-
-		double[] Accelerations = new double[] { 0, 3.7, 5.22 };
-		int gear = 0;
-		double gearaccel = 0;
-
-		bool TurnOffThrustersOnPark = true;
-		bool RechargeOnPark = true;
-		string BackupSubstring = ":Backup";
-		bool PerformanceWhilePark = false;
-		bool ConnectorNeedsSuffixToPark = true;
-		bool AutoAddGridLandingGears = true;
-		bool UsePIDPark = true;
-
-		double thrustModifierAboveSpace = 0.1;
-		double thrustModifierBelowSpace = 0.1;
-
-		double thrustModifierAboveGrav = 0.1;
-		double thrustModifierBelowGrav = 0.1;
-
-		int RotationAverageSamples = 1;
-		string[] tagSurround = new string[] { "|", "|" };
-		bool UsePID = false;
-		bool cruisePlane = false; // make cruise mode act more like an airplane
-		int FramesBetweenActions = 1;
-
-		// ------- End default configs ---------
-
-
-		// START CONFIG STRINGS AND VARS
-		readonly MyIni config = new MyIni();
-		readonly MyIni configCD = new MyIni();
-
-		const string inistr = "--------Vector Thrust 2 Settings--------";
-
-		const string detectstr = "Vector Thruster Stabilization";
-		const string accelstr = "Acceleration Settings";
-		const string parkstr = "Parking Settings";
-		const string miscstr = "MISC";
-
-		const string myNameStr = "Name Tag";
-		const string TagSurroundStr = "Tag Surround Char(s)";
-		const string ShowMetricsStr = "Show Metrics";
-		const string TimeForRefreshStr = "Time For Each Refresh";
-		const string SkipFramesStr = "Skip Frames";
-		
-
-		const string RotorStMultiplierStr = "Rotor Stabilization Multiplier";
-		const string lowThrustCutStr = "Calculated Velocity To Turn On/Off VectorThrusters";
-		const string lowThrustCutCruiseStr = "Calculated Velocity To Turn On/Off VectorThrusters In Cruise";
-		const string SlowThrustOffStr = "Slow Reposition Of Rotors On Turn Off";
-		const string SlowThrustOffRPMStr = "Slow Rotor Reposition Value (RPM)";
-
-		const string AccelerationsStr = "Accelerations";
-		const string gearStr = "Starting Acceleration Position";
-
-		const string TurnOffThrustersOnParkStr = "Turn Off Thrusters On Park";
-		const string RechargeOnParkStr = "Set Batteries/Tanks to Recharge/Stockpile On Park";
-		const string BackupSubstringStr = "Assign Backup Batteries With SubTag";
-		const string PerformanceWhileParkStr = "Run Script Each 100 Frames When Parked";
-		const string ConnectorNeedsSuffixToParkStr = "Connector Needs Suffix To Toggle Park Mode";
-		const string AutoAddGridLandingGearsStr = "Add Automatically Same Grid Landing Gears";
-		const string UsePIDParkStr = "Use PID Controller to Handle Parking";
-
-		const string thrustModifierSpaceStr = "Thruster Modifier Turn On/Off Space";
-		const string thrustModifierGravStr = "Thruster Modifier Turn On/Off Gravity";
-
-		const string RotationAverageSamplesStr = "Rotor Velocity Average Samples";
-		const string UsePIDStr = "Use PID Controller";
-		const string cruisePlaneStr = "Cruise Mode Act Like Plane";
-		const string FramesBetweenActionsStr = "Frames Per Operation: Block Assigner";
-
-		// END STRINGS AND VARS
-
-		void Config()
-		{
-			config.Clear();
-			double[] defaultltc = new double[] { 0.5, 0.01 };
-			double[] defaultltcc = new double[] { 1, 0.15 };
-			double[] defaultacc = new double[] { 0, 3.7, 5.22 };
-			double[] defaulttms = new double[] { 0.1, 0.1 };
-			double[] defaulttmg = new double[] { 0.1, 0.1 };
-
-			bool force = false;
-			KeepConfig();
-
-			if (config.TryParse(Me.CustomData))
-			{
-				myName = config.Get(inistr, myNameStr).ToString(myName);
-				if (string.IsNullOrEmpty(myName)) {
-					myName = "VT";
-					force = true;
-				}
-				textSurfaceKeyword = $"{myName}:";
-				LCDName = $"{myName}LCD";
-
-				string sstr = config.Get(inistr, TagSurroundStr).ToString();
-				int sstrl = sstr.Length;
-
-				if (sstrl == 1)
-				{
-					tagSurround = new string[] { sstr, sstr };
-				}
-				else if (sstrl > 1 && sstrl % 2 == 0)
-				{
-					string first = sstr.Substring(0, (int)(sstr.Length / 2));
-					string last = sstr.Substring((int)(sstr.Length / 2), (int)(sstr.Length / 2));
-					tagSurround = new string[] { first, last };
-				}
-				else
-				{
-					force = true;
-					tagSurround = new string[] { "|", "|" };
-				}
-
-				TimeForRefresh = config.Get(inistr, TimeForRefreshStr).ToDouble(TimeForRefresh);
-				ShowMetrics = config.Get(inistr, ShowMetricsStr).ToBoolean(ShowMetrics);
-				SkipFrames = config.Get(inistr, SkipFramesStr).ToInt32(SkipFrames);
-
-				RotorStMultiplier = config.Get(detectstr, RotorStMultiplierStr).ToDouble(RotorStMultiplier);
-				SlowThrustOff = config.Get(detectstr, SlowThrustOffStr).ToBoolean(SlowThrustOff);
-				SlowThrustOffRPM = config.Get(detectstr, SlowThrustOffRPMStr).ToDouble(SlowThrustOffRPM);
-				string temp = config.Get(detectstr, lowThrustCutStr).ToString();
-				try
-				{
-					double[] result = Array.ConvertAll(temp.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
-					if (result.Length != 2) { force = true; result = defaultltc; }
-					lowThrustCutOn = result[0];
-					lowThrustCutOff = result[1];
-				}
-				catch
-				{
-					force = true;
-					lowThrustCutOn = defaultltc[0];
-					lowThrustCutOff = defaultltc[1];
-				}
-
-				temp = config.Get(detectstr, lowThrustCutCruiseStr).ToString();
-				try
-				{
-					double[] result = Array.ConvertAll(temp.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
-					if (result.Length != 2) { force = true; result = defaultltcc; }
-					lowThrustCutCruiseOn = result[0];
-					lowThrustCutCruiseOff = result[1];
-				}
-				catch
-				{
-					force = true;
-					lowThrustCutCruiseOn = defaultltcc[0];
-					lowThrustCutCruiseOff = defaultltcc[1];
-				}
-
-				temp = config.Get(accelstr, AccelerationsStr).ToString();
-				try
-				{
-					Accelerations = Array.ConvertAll(temp.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
-					if (Accelerations.Length < 2) { force = true; Accelerations = defaultacc; }
-				}
-				catch { force = true; Accelerations = defaultacc; }
-
-				if (justCompiled)
-				{
-					int geardef = config.Get(accelstr, gearStr).ToInt32();
-					gear = geardef > Accelerations.Length - 1 ? gear : geardef;
-				}
-
-				TurnOffThrustersOnPark = config.Get(parkstr, TurnOffThrustersOnParkStr).ToBoolean(TurnOffThrustersOnPark);
-				RechargeOnPark = config.Get(parkstr, RechargeOnParkStr).ToBoolean(RechargeOnPark);
-				BackupSubstring = config.Get(parkstr, BackupSubstringStr).ToString(BackupSubstring);
-				PerformanceWhilePark = config.Get(parkstr, PerformanceWhileParkStr).ToBoolean(PerformanceWhilePark);
-				ConnectorNeedsSuffixToPark = config.Get(parkstr, ConnectorNeedsSuffixToParkStr).ToBoolean(ConnectorNeedsSuffixToPark);
-				AutoAddGridLandingGears = config.Get(parkstr, AutoAddGridLandingGearsStr).ToBoolean(AutoAddGridLandingGears);
-				UsePIDPark = config.Get(parkstr, UsePIDParkStr).ToBoolean(UsePIDPark);
-
-				temp = config.Get(miscstr, thrustModifierSpaceStr).ToString();
-				try
-				{
-					double[] result = Array.ConvertAll(temp.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
-					if (result.Length != 2) { force = true; result = defaulttms; }
-					thrustModifierAboveSpace = result[0];
-					thrustModifierBelowSpace = result[1];
-				}
-				catch
-				{
-					force = true;
-					thrustModifierAboveSpace = defaulttms[0];
-					thrustModifierBelowSpace = defaulttms[1];
-				}
-
-				temp = config.Get(miscstr, thrustModifierGravStr).ToString();
-				try
-				{
-					double[] result = Array.ConvertAll(temp.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
-					if (result.Length != 2) { force = true; result = defaulttmg; }
-					thrustModifierAboveGrav = result[0];
-					thrustModifierBelowGrav = result[1];
-				}
-				catch
-				{
-					force = true;
-					thrustModifierAboveGrav = defaulttmg[0];
-					thrustModifierBelowGrav = defaulttmg[1];
-				}
-				RotationAverageSamples = config.Get(miscstr, RotationAverageSamplesStr).ToInt32(RotationAverageSamples);
-
-				UsePID = config.Get(miscstr, UsePIDStr).ToBoolean(UsePID);
-				cruisePlane = config.Get(miscstr, cruisePlaneStr).ToBoolean(cruisePlane);
-				FramesBetweenActions = config.Get(miscstr, FramesBetweenActionsStr).ToInt32(FramesBetweenActions);
-				if (FramesBetweenActions <= 0) {
-					FramesBetweenActions = 1;
-					force = true;
-				}
-				timepause = FramesBetweenActions * timeperframe;
-			}
-
-			SetConfig(force);
-			RConfig(config.ToString(), force);
-		}
-
-		double timepause = 0;
-		void SetConfig(bool force)
-		{
-
-			double[] defaultltc = new double[] { 0.5, 0.01 };
-			double[] defaultltcc = new double[] { 1, 0.15 };
-			double[] defaultacc = new double[] { 0, 3.7, 5.22 };
-			double[] defaulttms = new double[] { 0.1, 0.1 };
-			double[] defaulttmg = new double[] { 0.1, 0.1 };
-
-			config.Set(inistr, myNameStr, myName);
-			string sstr = tagSurround[0].Equals(tagSurround[1]) ? tagSurround[0] : tagSurround[0] + tagSurround[1];
-			config.Set(inistr, TagSurroundStr, sstr);
-			config.Set(inistr, TimeForRefreshStr, TimeForRefresh);
-			config.Set(inistr, ShowMetricsStr, ShowMetrics);
-			config.Set(inistr, SkipFramesStr, SkipFrames);
-
-			config.Set(detectstr, RotorStMultiplierStr, RotorStMultiplier);
-			config.Set(detectstr, SlowThrustOffStr, SlowThrustOff);
-			config.Set(detectstr, SlowThrustOffRPMStr, SlowThrustOffRPM);
-			string ltcstr = String.Join(",", force ? defaultltc : new double[] { lowThrustCutOn, lowThrustCutOff });
-			config.Set(detectstr, lowThrustCutStr, ltcstr);
-			string ltccstr = String.Join(",", force ? defaultltcc : new double[] { lowThrustCutCruiseOn, lowThrustCutCruiseOff });
-			config.Set(detectstr, lowThrustCutCruiseStr, ltccstr);
-
-			string accstr = String.Join(",", force ? defaultacc : Accelerations);
-			config.Set(accelstr, AccelerationsStr, accstr);
-			if (justCompiled) config.Set(accelstr, gearStr, gear);
-
-			config.Set(parkstr, TurnOffThrustersOnParkStr, TurnOffThrustersOnPark);
-			config.Set(parkstr, RechargeOnParkStr, RechargeOnPark);
-			config.Set(parkstr, BackupSubstringStr, BackupSubstring);
-			config.Set(parkstr, PerformanceWhileParkStr, PerformanceWhilePark);
-			config.Set(parkstr, ConnectorNeedsSuffixToParkStr, ConnectorNeedsSuffixToPark);
-			config.Set(parkstr, AutoAddGridLandingGearsStr, AutoAddGridLandingGears);
-			config.Set(parkstr, UsePIDParkStr, UsePIDPark);
-
-			string tmsstr = String.Join(",", force ? defaulttms : new double[] { thrustModifierAboveSpace, thrustModifierBelowSpace });
-			string tmgstr = String.Join(",", force ? defaulttms : new double[] { thrustModifierAboveGrav, thrustModifierBelowGrav });
-
-			config.Set(miscstr, thrustModifierSpaceStr, tmsstr);
-			config.Set(miscstr, thrustModifierGravStr, tmgstr);
-			config.SetComment(miscstr, thrustModifierSpaceStr, "\n-Thruster Modifier-\nHow far needs the thruster to turn on and off from desired angle.\n Space:");
-			config.SetComment(miscstr, thrustModifierGravStr, "\n Gravity:");
-			config.Set(miscstr, RotationAverageSamplesStr, RotationAverageSamples);
-			config.Set(miscstr, UsePIDStr, UsePID);
-			config.Set(miscstr, cruisePlaneStr, cruisePlane);
-			config.Set(miscstr, FramesBetweenActionsStr, FramesBetweenActions);
-		}
-
-		void RConfig(string output, bool force = false)
-		{
-			if (force || output != Me.CustomData) Me.CustomData = output;
-			try { if (!force && !Me.CustomData.Contains($"\n---\n{textSurfaceKeyword}0")) Me.CustomData = Me.CustomData.Replace(Me.CustomData.Between("\n---\n", "0")[0], textSurfaceKeyword); }
-			catch { if (!justCompiled) log.AppendNR("No tag found textSufaceKeyword\n"); }
-			if (!force && !Me.CustomData.Contains($"\n---\n{textSurfaceKeyword}0")) Me.CustomData += $"\n---\n{textSurfaceKeyword}0";
-		}
-
-		void KeepConfig()
-		{
-			if (justCompiled && configCD.TryParse(Me.CustomData))
-			{
-				SetConfig(false);
-				List<MyIniKey> ccd = new List<MyIniKey>();
-				List<MyIniKey> ccfg = new List<MyIniKey>();
-
-				configCD.GetKeys(ccd);
-				config.GetKeys(ccfg);
-
-				foreach (MyIniKey cd in ccd)
-				{
-					foreach (MyIniKey cfg in ccfg)
-					{
-						if (cd.Equals(cfg)) config.Set(cfg, configCD.Get(cd).ToString());
-					}
-				}
-				RConfig(config.ToString(), true);
-			}
-			configCD.Clear();
-		}
-
-		// END ENTIRE CONFIG HANDLER
-
-
-		// RUNTIME TRACKER BY WHIPLASH, THANK YOU!!! :)
-		class RuntimeTracker
-		{
-			public int Capacity { get; set; }
-			public double Sensitivity { get; set; }
-			public double MaxRuntime { get; private set; }
-			public double MaxInstructions { get; private set; }
-			public double AverageRuntime { get; private set; }
-			public double AverageInstructions { get; private set; }
-			public double LastRuntime { get; private set; }
-			public double LastInstructions { get; private set; }
-
-			readonly Queue<double> _runtimes = new Queue<double>();
-			readonly Queue<double> _instructions = new Queue<double>();
-			readonly StringBuilder _sb = new StringBuilder();
-			readonly int _instructionLimit;
-			readonly Program _program;
-			const double MS_PER_TICK = 16.6666;
-			double sumlastrun;
-			public double tremaining = 0;
-			public bool configtrigger = false;
-
-			public RuntimeTracker(Program program, int capacity = 100, double sensitivity = 0.005)
-			{
-				_program = program;
-				Capacity = capacity;
-				Sensitivity = sensitivity;
-				_instructionLimit = _program.Runtime.MaxInstructionCount;
-			}
-
-			public void AddRuntime()
-			{
-				double tfr = _program.TimeForRefresh;
-				bool config = sumlastrun < tfr;
-
-				if (!configtrigger && !config) {
-					sumlastrun = 0;
-				}
-
-				if (config)
-				{
-					double tslrs = _program.Runtime.TimeSinceLastRun.TotalSeconds;
-					sumlastrun += tslrs;
-					tremaining = (tfr - sumlastrun).Round(1);
-				}
-				else {
-					configtrigger = true;
-				}
-
-				double runtime = _program.Runtime.LastRunTimeMs;
-
-				LastRuntime = runtime;
-				AverageRuntime += (Sensitivity * runtime);
-				int roundedTicksSinceLastRuntime = (int)Math.Round(_program.Runtime.TimeSinceLastRun.TotalMilliseconds / MS_PER_TICK);
-				if (roundedTicksSinceLastRuntime == 1)
-				{
-					AverageRuntime *= (1 - Sensitivity);
-				}
-				else if (roundedTicksSinceLastRuntime > 1)
-				{
-					AverageRuntime *= Math.Pow((1 - Sensitivity), roundedTicksSinceLastRuntime);
-				}
-
-				_runtimes.Enqueue(runtime);
-				if (_runtimes.Count == Capacity)
-				{
-					_runtimes.Dequeue();
-				}
-
-				MaxRuntime = _runtimes.Max();
-			}
-
-			public void AddInstructions()
-			{
-				double instructions = _program.Runtime.CurrentInstructionCount;
-				LastInstructions = instructions;
-				AverageInstructions = Sensitivity * (instructions - AverageInstructions) + AverageInstructions;
-
-				_instructions.Enqueue(instructions);
-				if (_instructions.Count == Capacity)
-				{
-					_instructions.Dequeue();
-				}
-
-				MaxInstructions = _instructions.Max();
-			}
-
-			public string Write()
-			{
-				_sb.Clear();
-				_sb.AppendLine($"---Performance---");
-				_sb.AppendLine($" -Instructions-");
-				_sb.AppendLine($"   Avg: {AverageInstructions:n2}");
-				_sb.AppendLine($"   Last: {LastInstructions:n0}");
-				_sb.AppendLine($"   Max: {MaxInstructions:n0}");
-				_sb.AppendLine($"   Avg complexity: {MaxInstructions / _instructionLimit:0.000}%");
-				_sb.AppendLine($" -Runtime-");
-				_sb.AppendLine($"   Avg: {AverageRuntime:n4} ms");
-				_sb.AppendLine($"   Last: {LastRuntime:n4} ms");
-				_sb.AppendLine($"   Max [{Capacity}]: {MaxRuntime:n4} ms");
-				return _sb.ToString();
-			}
-
-			public StringBuilder Append(StringBuilder sba)
-			{
-				sba.AppendLine($"--- Performance ---");
-				sba.AppendLine($" - Instructions -");
-				sba.AppendLine($"   >Avg: {AverageInstructions:n2}");
-				sba.AppendLine($"   >Last: {LastInstructions:n0}");
-				sba.AppendLine($"   >Max: {MaxInstructions:n0}");
-				sba.AppendLine($"   >Avg complexity: {MaxInstructions / _instructionLimit:0.000}%");
-				sba.AppendLine($" - Runtime -");
-				sba.AppendLine($"   >Avg: {AverageRuntime:n4} ms");
-				sba.AppendLine($"   >Last: {LastRuntime:n4} ms");
-				sba.AppendLine($"   >Max [{Capacity}]: {MaxRuntime:n4} ms");
-				return sba;
-			}
-		}
-
-		string Separator(string title = "", int len=58) {
-			int tl = title.Length;
-			len = (len-tl)/2;
-			string res = new string('-', len);
-			return res+title+res; 
-		}
-
-
-		void ManageTag(bool force = false, bool logthis = true)
-		{
-			tag = tagSurround[0] + myName + tagSurround[1];
-			bool cond1 = oldTag.Length > 0;
-			bool cond2 = !tag.Equals(oldTag) && Me.CustomName.Contains(oldTag);
-			bool cond3 = greedy && Me.CustomName.Contains(oldTag);
-
-			if (cond1 && (cond2 || cond3 || force))
-			{
-				if (logthis) log.AppendNR(" -Cleaning Tags To Prevent Future Errors, just in case\n");
-				else log.AppendNR(" -Removing Tags\n");
-				List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
-				GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(blocks);
-				foreach (IMyTerminalBlock block in blocks)
-					//RemoveTag(block);
-					block.CustomName = block.CustomName.Replace(oldTag, "").Trim();
-			}
-			this.greedy = !HasTag(Me);
-			oldTag = tag;
-		}
-
-		//int cnparks = 0;
-		bool parkedwithcn = false;
-
-		void ResetParkingSeq() {
-			BatteryStats.Start();
-			BlockManager.Start();
-			BlockManager.Doneloop = false;
-			if (parked && !alreadyparked) alreadyparked = true;
-			else if (!parked && alreadyparked) Runtime.UpdateFrequency = update_frequency;
-			thrustOn = !parked;
-		}
-
-		void ResetVTHandlers()
-		{
-			GetScreen.Start();
-			GetControllers.Start();
-			GetVectorThrusters.Start();
-			CheckParkBlocks.Start();
-			MainChecker.Start();
-		}
-
-		bool unparkedcompletely = true;
-		bool parkedcompletely = false;
-
-		//bool initloop = false;
-		bool ParkHandler()
-		{
-			if (connectors.Count == 0 && landinggears.Count == 0) return false;
-
-			parkedwithcn = connectors.Any(x => x.Status == MyShipConnectorStatus.Connected);
-			parked = landinggears.Any(x => x.IsLocked) || parkedwithcn;
-			unparkedcompletely = !parked && !alreadyparked;
-			if (unparkedcompletely) return false;
-
-			bool setvector = parked && alreadyparked && setTOV;
-			bool gotvector = totalVTThrprecision.Round(1) == 100;
-			parkedcompletely = setvector && gotvector;
-
-			bool pendingrotation = setvector && !gotvector;
-			bool parking = parked && !alreadyparked;
-			bool unparking = !parked && alreadyparked;
-			
-			if (parking || (unparking && BlockManager.Doneloop)) ResetParkingSeq();
-			if (parkedcompletely || (unparking && !BlockManager.Doneloop)) {
-				if (parkedcompletely && BlockManager.Doneloop) screensb.AppendLine("- PARKED -");
-				else if (parkedcompletely && !BlockManager.Doneloop) screensb.GetSpinner(ref pc).Append(" ASSIGNING ").GetSpinner(ref pc, after: "\n");
-				else screensb.GetSpinner(ref pc).Append(" UNPARKING ").GetSpinner(ref pc, after: "\n");
-				BlockManager.Run();
-			} 
-			if (pendingrotation) screensb.GetSpinner(ref pc).Append(" PARKING ").GetSpinner(ref pc, after: "\n");
-
-			return parkedcompletely;
-		}
-
-		bool PerformanceHandler()
-		{
-			if (SkipFrames > 0)
-			{
-				echosb.AppendLine($"--SkipFrame[{ SkipFrames}]--");
-				echosb.AppendLine($" >Skipped: {frame}");
-				echosb.AppendLine($" >Remaining: {SkipFrames - frame}");
-			}
-			if (!justCompiled && SkipFrames > 0 && SkipFrames > frame)
-			{
-				frame++;
-				return true;
-			}
-			else if (SkipFrames > 0 && frame >= SkipFrames) frame = 0;
-			return false;
-		}
-
-		bool VTThrHandler()
-		{
-			bool nograv = wgv == 0;
-			bool preventer = thrustontimer > 0.1 && !nograv && !parked && sv != 0;
-			bool unparking = !parked && alreadyparked;
-			bool partiallyparked = parked && alreadyparked;
-			bool standby = (nograv || partiallyparked) && totalVTThrprecision.Round(1) == 100 && setTOV && !thrustOn && mvin == 0;
-
-			//screensb.AppendLine($"S: {standby}/{parkedcompletely}=>{rotorsstopped}/{unparking}");
-			//screensb.AppendLine($"CONDS: {totalVTThrprecision.Round(1) == 100}/{setTOV}/{!thrustOn}/{mvin == 0}");
-			if (standby || parkedcompletely)
-			{
-				echosb.AppendLine("\nEverything stopped, performance mode.\n");
-				if (!rotorsstopped)
-				{
-					rotorsstopped = true;
-					StabilizeVectorThrusters();
-				}
-				return true;
-			}
-			else if ((rotorsstopped && setTOV) || unparking || preventer) // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
-			{
-				setTOV = false;
-				rotorsstopped = false;
-				StabilizeVectorThrusters(rotorsstopped);
-				if (preventer) thrustontimer = 0;
-			}
-			return rotorsstopped;
-		}
-
-		void MainTag(string argument)
-		{
-			//tags and getting blocks
-			TagAll = argument.Contains(applyTagsAllArg);
-			this.applyTags = argument.Contains(applyTagsArg) || TagAll;
-			this.greedy = (!this.applyTags && this.greedy);
-			if (this.applyTags)
-			{
-				AddTag(Me);
-			}
-			else if (argument.Contains(removeTagsArg)) ManageTag(true, false); // New remove tags.
-
-			OneRunMainChecker();
-
-			TagAll = false;
-			this.applyTags = false;
-		}
-
-		
-
-		bool HasTag(IMyTerminalBlock block)
-		{
-			return block.CustomName.Contains(tag);
-		}
-
-		void AddTag(IMyTerminalBlock block)
-		{
-			string name = block.CustomName;
-			if (!name.Contains(tag)) block.CustomName = tag + " " + name;
-		}
-
-		void RemoveTag(IMyTerminalBlock block)
-		{
-			block.CustomName = block.CustomName.Replace(tag, "").Trim();
-		}
-
-		// true: only main cockpit can be used even if there is no one in the main cockpit
-		// false: any cockpits can be used, but if there is someone in the main cockpit, it will only obey the main cockpit
-		// no main cockpit: any cockpits can be used
-		bool OnlyMain()
-		{
-			return mainController != null && (mainController.TheBlock.IsUnderControl || onlyMainCockpit);
-		}
-
-		void Write(params object[] obj)
-		{
-			string sep = ", ";
-			string init = obj[0].ToString();
-			if (init.Contains("%sep%")) sep = init.Replace("%sep%", "");
-			string result = string.Join(sep, obj) + "\n";
-			if (this.surfaces.Count > 0)
-			{
-				foreach (IMyTextSurface surface in this.surfaces)
-				{
-					surface.WriteText(result, globalAppend);
-					surface.ContentType = ContentType.TEXT_AND_IMAGE;
-					surface.Alignment = TextAlignment.CENTER;
-				}
-			}
-			else if (!globalAppend)
-			{
-				string err = "\nNo text surfaces available";
-				string errs = " because the ship is a station."; 
-				if (!justCompiled) { 
-					log.AppendNR(err);
-					if (isstation) {
-						Echo(err+ errs);
-						log.AppendNR(errs);
-					}
-				}
-			}
-			globalAppend = true;
-		}
-
-		double GetAcceleration(double gravity, double exp = 0)
-		{
-			// look through boosts, applies acceleration of first one found
-			if (useBoosts && this.controlModule)
-			{
-				for (int i = 0; i < this.boosts.Length; i++)
-				{
-					if (this.CMinputs.ContainsKey(this.boosts[i].button))
-					{
-						return this.boosts[i].accel * gravity * defaultAccel;
-					}
-				}
-			}
-
-			double accelexpaval = exp == 0 ? accelExponent_A : exp;
-			double gravtdefac = gravity * defaultAccel;
-
-			//getting max & gear accel
-			gearaccel = Math.Pow(accelBase, accelExponent + Accelerations[gear]) * gravtdefac;
-			maxaccel = Math.Pow(accelBase, accelExponent + Accelerations[Accelerations.Length - 1]) * gravtdefac;
-			//none found or boosts not enabled, go for normal accel
-			return Math.Pow(accelBase, accelExponent + accelexpaval) * gravtdefac;
-		}
-
-		bool cruisebyarg = false;
-		Vector3D GetMovementInput(string arg, bool perf = false)
-		{
-			Vector3D moveVec = Vector3D.Zero;
-
-			if (controlModule)
-			{
-				// setup control module
-				Dictionary<string, object> inputs = new Dictionary<string, object>();
-				try
-				{
-					this.CMinputs = Me.GetValue<Dictionary<string, object>>("ControlModule.Inputs");
-					Me.SetValue<string>("ControlModule.AddInput", "all");
-					Me.SetValue<bool>("ControlModule.RunOnInput", true);
-					Me.SetValue<int>("ControlModule.InputState", 1);
-					Me.SetValue<float>("ControlModule.RepeatDelay", 0.016f);
-				}
-				catch
-				{
-					controlModule = false;
-				}
-			}
-
-			if (controlModule)
-			{
-				// non-movement controls
-				if (this.CMinputs.ContainsKey(dampenersButton) && !dampenersIsPressed)
-				{//inertia dampener key
-					dampeners = !dampeners;//toggle
-					dampenersIsPressed = true;
-				}
-				if (!this.CMinputs.ContainsKey(dampenersButton))
-				{
-					dampenersIsPressed = false;
-				}
-
-
-				if (this.CMinputs.ContainsKey(cruiseButton) && !cruiseIsPressed)
-				{//cruise key
-					cruise = !cruise;//toggle
-					cruiseIsPressed = true;
-				}
-				if (!this.CMinputs.ContainsKey(cruiseButton))
-				{
-					cruiseIsPressed = false;
-				}
-
-				if (this.CMinputs.ContainsKey(raiseAccel) && !plusIsPressed)
-				{//throttle up
-					accelExponent++;
-					plusIsPressed = true;
-				}
-				if (!this.CMinputs.ContainsKey(raiseAccel))
-				{ //increase target acceleration
-					plusIsPressed = false;
-				}
-
-				if (this.CMinputs.ContainsKey(lowerAccel) && !minusIsPressed)
-				{//throttle down
-					accelExponent--;
-					minusIsPressed = true;
-				}
-				if (!this.CMinputs.ContainsKey(lowerAccel))
-				{ //lower target acceleration
-					minusIsPressed = false;
-				}
-
-				if (this.CMinputs.ContainsKey(resetAccel))
-				{ //default target acceleration
-					accelExponent = 0;
-				}
-
-			}
-
-			bool changeDampeners = false;
-
-			if (arg.Length > 0) { 
-				if (arg.Contains(dampenersArg))
-				{
-					dampeners = !dampeners;
-					changeDampeners = true;
-				}
-				else if (arg.Contains(cruiseArg))
-				{
-					cruise = !cruise;
-					cruisebyarg = cruise;
-				}
-				else if(arg.Contains(raiseAccelArg))
-				{
-					accelExponent++;
-				}
-				else if(arg.Contains(lowerAccelArg))
-				{
-					accelExponent--;
-				}
-				else if(arg.Contains(resetAccelArg))
-				{
-					accelExponent = 0;
-				}
-				else if(arg.Contains(gearArg))
-				{
-					if (gear == Accelerations.Length - 1) gear = 0;
-					else gear++;
-				}
-			}
-
-
-			// dampeners (if there are any normal thrusters, the dampeners control works)
-			if (normalThrusters.Count != 0)
-			{
-
-				if (OnlyMain())
-				{
-
-					if (changeDampeners)
-					{
-						mainController.TheBlock.DampenersOverride = dampeners;
-					}
-					else
-					{
-						dampeners = mainController.TheBlock.DampenersOverride;
-					}
-				}
-				else
-				{
-
-					if (changeDampeners)
-					{
-						// make all conform
-						foreach (ShipController cont in controlledControllers)
-						{
-							cont.SetDampener(dampeners);
-						}
-					}
-					else
-					{
-
-						// check if any are different to us
-						bool any_different = false;
-						foreach (ShipController cont in controlledControllers)
-						{
-							if (cont.TheBlock.DampenersOverride != dampeners)
-							{
-								any_different = true;
-								dampeners = cont.TheBlock.DampenersOverride;
-								break;
-							}
-						}
-
-						if (any_different)
-						{
-							// update all others to new value too
-							foreach (ShipController cont in controlledControllers)
-							{
-								cont.SetDampener(dampeners);
-							}
-						}
-					}
-				}
-			}
-			
-
-			// movement controls
-			if (perf) return moveVec; //Vector3D.Zero
-
-			if (OnlyMain())
-			{
-				moveVec = mainController.TheBlock.GetWorldMoveIndicator();
-			}
-			else
-			{
-				foreach (ShipController cont in controlledControllers)
-				{
-					if (cont.TheBlock.IsUnderControl)
-					{
-						moveVec += cont.TheBlock.GetWorldMoveIndicator();
-					}
-				}
-			}
-
-			return moveVec;
-		}
-
-		void RemoveSurface(IMyTextSurface surface)
-		{
-			if (this.surfaces.Contains(surface))
-			{
-				//need to check this, because otherwise it will reset panels
-				//we aren't controlling
-				this.surfaces.Remove(surface);
-				surface.ContentType = ContentType.NONE;
-				surface.WriteText("", false);
-			}
-		}
-
-		bool RemoveSurfaceProvider(IMyTerminalBlock block)
-		{
-			if (!(block is IMyTextSurfaceProvider)) return false;
-			IMyTextSurfaceProvider provider = (IMyTextSurfaceProvider)block;
-
-			for (int i = 0; i < provider.SurfaceCount; i++)
-			{
-				if (surfaces.Contains(provider.GetSurface(i)))
-				{
-					RemoveSurface(provider.GetSurface(i));
-				}
-			}
-			return true;
-		}
-
-		
-		bool AddSurfaceProvider(IMyTerminalBlock block)
-		{
-			if (!(block is IMyTextSurfaceProvider)) return false;
-			IMyTextSurfaceProvider provider = (IMyTextSurfaceProvider)block;
-			bool retval = true;
-			if (block.CustomData.Length == 0)
-			{
-				return false;
-			}
-
-			bool[] to_add = new bool[provider.SurfaceCount];
-			for (int i = 0; i < to_add.Length; i++)
-			{
-				to_add[i] = false;
-			}
-			int begin_search = 0;
-
-			while (begin_search >= 0)
-			{
-				string data = block.CustomData;
-				int start = data.IndexOf(textSurfaceKeyword, begin_search);
-
-				if (start < 0)
-				{
-					retval = begin_search != 0;
-					break;
-				}
-				int end = data.IndexOf("\n", start);
-				begin_search = end;
-
-				string display;
-				if (end < 0)
-				{
-					display = data.Substring(start + textSurfaceKeyword.Length);
-				}
-				else
-				{
-					display = data.Substring(start + textSurfaceKeyword.Length, end - (start + textSurfaceKeyword.Length));
-				}
-
-				int display_num;
-				if (Int32.TryParse(display, out display_num))
-				{
-					if (display_num >= 0 && display_num < provider.SurfaceCount)
-					{
-						// it worked, add the surface
-						to_add[display_num] = true;
-
-					}
-					else
-					{
-                        // range check failed
-                        string err_str;
-                        if (end < 0)
-						{
-							err_str = data.Substring(start);
-						}
-						else
-						{
-							err_str = data.Substring(start, end - (start));
-						}
-						surfaceProviderErrorStr += $"\nDisplay number out of range: {display_num}\nshould be: 0 <= num < {provider.SurfaceCount}\non line: ({err_str})\nin block: {block.CustomName}\n";
-					}
-
-				}
-				else
-				{
-                    //didn't parse
-                    string err_str;
-                    if (end < 0)
-					{
-						err_str = data.Substring(start);
-					}
-					else
-					{
-						err_str = data.Substring(start, end - (start));
-					}
-					surfaceProviderErrorStr += $"\nDisplay number invalid: {display}\non line: ({err_str})\nin block: {block.CustomName}\n";
-				}
-			}
-
-			for (int i = 0; i < to_add.Length; i++)
-			{
-				if (to_add[i] && !this.surfaces.Contains(provider.GetSurface(i)))
-				{
-					this.surfaces.Add(provider.GetSurface(i));
-				}
-				else if (!to_add[i])
-				{
-					RemoveSurface(provider.GetSurface(i));
-				}
-			}
-			return retval;
-		}
-
-		void InitControllers(List<IMyShipController> blocks = null) //New GetControllers(), only for using in init() purpose 
-		{
-			bool greedy = this.greedy || this.applyTags;// || this.removeTags;
-
-			if (blocks == null) {
-				blocks = new List<IMyShipController>();
-				GridTerminalSystem.GetBlocksOfType<IMyShipController>(blocks);
-			}
-
-			List<ShipController> conts = new List<ShipController>();
-			foreach (IMyShipController imy in blocks)
-			{
-				//vtcontrollers.Add(imy);
-				controllerblocks.Add(imy);
-				conts.Add(new ShipController(imy/*, this*/));
-			}
-			//return getControllers(conts);
-
-			controllers = conts;
-
-			StringBuilder reason = new StringBuilder();
-			foreach (ShipController s in controllers)
-			{
-				bool canAdd = true;
-				StringBuilder currreason = new StringBuilder(s.TheBlock.CustomName + "\n");
-				if (!s.TheBlock.ShowInTerminal && ignoreHiddenBlocks)
-				{
-					currreason.AppendLine("  ShowInTerminal not set\n");
-					canAdd = false;
-				}
-				if (!s.TheBlock.CanControlShip)
-				{
-					currreason.AppendLine("  CanControlShip not set\n");
-					canAdd = false;
-				}
-				if (!s.TheBlock.ControlThrusters)
-				{
-					currreason.AppendLine("  Can't ControlThrusters\n");
-					canAdd = false;
-				}
-				/*if (s.theBlock.IsMainCockpit)
-				{ // I thiink this could make problems in the future
-					mainController = s;
-				}*/
-				if (!(greedy || HasTag(s.TheBlock)))
-				{
-					currreason.AppendLine("  Doesn't match my tag\n");
-					canAdd = false;
-				}
-				/*if (this.removeTags)
-				{
-					RemoveTag(s.TheBlock);
-				}*/
-
-				if (canAdd)
-				{
-					AddSurfaceProvider(s.TheBlock);
-					s.Dampener = s.TheBlock.DampenersOverride;
-					controlledControllers.Add(s);
-					ccontrollerblocks.Add(s.TheBlock);
-
-					if (this.applyTags)
-					{
-						AddTag(s.TheBlock);
-					}
-				}
-				else
-				{
-					reason.Append(currreason);
-				}
-			}
-			if (blocks.Count == 0)
-			{
-				reason.AppendLine("No Controller Found.\nEither for missing tag, not working or removed.");
-			}
-
-			if (controlledControllers.Count == 0 /*&& usableControllers.Count == 0*/)
-			{
-				log.AppendNR("ERROR: no usable ship controller found. Reason: \n");
-				log.AppendNR(reason.ToString());
-				ManageTag(true);
-				error = true;
-				return;
-			}
-
-			else if (controlledControllers.Count > 0)
-			{
-				foreach (ShipController s in controlledControllers)
-				{
-					if (s.TheBlock.IsUnderControl)
-					{
-						mainController = s;
-						break;
-					}
-				}
-				if (mainController == null)
-				{
-					mainController = controlledControllers[0];
-				}
-			}
-			return;
-		}
-
-		ShipController FindACockpit()
-		{
-			foreach (ShipController cont in controlledControllers)
-			{
-				if (!cont.TheBlock.Closed && cont.TheBlock.IsWorking)
-				{
-					return cont;
-				}
-			}
-
-			return null;
-		}
-
-		void OneRunMainChecker(bool run=true) {
-			ResetVTHandlers();
-			check = true;
-			if (run) MainChecker.Run();
-		}
-
-		void Init()
-		{
-			log.AppendLine("Init() Start");
-			Config();
-			ManageTag();
-			InitControllers();
-			
-			check = true;
-			if (mainController != null) { 
-				myshipmass = mainController.TheBlock.CalculateShipMass(); 
-				oldMass = myshipmass.BaseMass; 
-			}
-			OneRunMainChecker();
-			log.AppendLine("Init " + (error ? "Failed" : "Completed Sucessfully"));
-
-			//return !error;
-		}
-
-
-		class VectorThrust
-		{
-			public Program program;
-			readonly PID pid = new PID(1, 0, 0, (1.0 / 60.0));
-			Lag avg;
-
-			// physical parts
-			public Rotor rotor;
-			public List<Thruster> thrusters;// all the thrusters
-			public List<Thruster> availableThrusters;// <= thrusters: the ones the user chooses to be used (ShowInTerminal)
-			public List<Thruster> activeThrusters;// <= activeThrusters: the ones that are facing the direction that produces the most thrust (only recalculated if available thrusters changes)
-
-			public double thrustModifierAbove = 0.1;// how close the rotor has to be to target position before the thruster gets to full power
-			public double thrustModifierBelow = 0.1;// how close the rotor has to be to opposite of target position before the thruster gets to 0 power
-			public Vector3D requiredVec = Vector3D.Zero;
-			public string Role;
-
-			public float totalEffectiveThrust = 0;
-			public int detectThrustCounter = 0;
-			public Vector3D currDir = Vector3D.Zero;
-
-			public double old_angleCos = 0;
-			double PreciseRpm = 0;
-			int AngleCosCount = 0;
-			int avgsamples;
-
-			//public Nacelle() { }// don't use this if it is possible for the instance to be kept (Not necessary)
-			public VectorThrust(Rotor rotor, Program program)
-			{
-				this.program = program;
-				this.rotor = rotor;
-				this.thrusters = new List<Thruster>();
-				this.availableThrusters = new List<Thruster>();
-				this.activeThrusters = new List<Thruster>();
-				Role = GetVTThrRole(program);
-				this.avgsamples = program.RotationAverageSamples;
-				this.avg = new Lag(this.avgsamples);
-			}
-
-			// final calculations and setting physical components
-			public void Go()
-			{
-
-				if (avgsamples != program.RotationAverageSamples) {
-					avgsamples = program.RotationAverageSamples;
-					avg = new Lag(avgsamples);
-				}
-
-				totalEffectiveThrust = (float)CalcTotalEffectiveThrust(activeThrusters);
-
-				bool usepid = (program.parked && program.UsePIDPark) || program.UsePID;
-
-				double angleCos = rotor.SetFromVec(requiredVec, !usepid);
-				double angleCosPercent = angleCos * 100;
-
-				bool dampeners = program.dampeners;
-				bool TO = program.thrustOn;
-				bool cruise = program.cruise;
-				bool nthr = program.normalThrusters != null;
-				bool movement = program.mvin > 0;
-				bool slowThrustOff = program.SlowThrustOff;
-				//bool park = program.parked && program.alreadyparked && program.setTOV;
-				double rVecLength = requiredVec.Length();
-				double multiplier = program.RotorStMultiplier;
-				float MaxRPM = program.maxRotorRPM;
-				float STval = (float)program.SlowThrustOffRPM;
-				float iarpm = (float)(AI(angleCosPercent, rVecLength / multiplier).NNaN());
-
-				//TODO: MAKE IT WORK WITH PARK AND STOP
-				if (!usepid)
-				{
-					if ((nthr && dampeners && !cruise && !movement && TO) && Math.Abs(angleCosPercent - old_angleCos) <= 15 && angleCosPercent < 90) AngleCosCount++;
-					else AngleCosCount = 0;
-					
-				}
-				old_angleCos = angleCosPercent;
-				if (!usepid) { 
-					if (AngleCosCount > 10 && angleCosPercent < 90) PreciseRpm = AngleCosCount;
-					else if (angleCosPercent > 98 || iarpm <= 2.5) PreciseRpm = 0;
-				}
-
-
-				double rtangle = rotor.TheBlock.Angle;
-				double angle = rtangle * 180 / Math.PI;
-				double angleRad = Math.Acos(angleCos) * 2;
-				double desiredRad = rtangle - angleRad;
-				double error = (desiredRad - rtangle).NNaN();
-				float result = (float)pid.Control(error);
-
-				//I can't get PID to work, using it only to handle parking
-				//program.screensb.AppendLine("rs: " + result.Round(2) + " drad: " + desiredRad.Round(2));
-				//program.screensb.AppendLine("er:"+error);
-				/*float dif = result + 3.1416f;
-				if (dif < 0) {
-					result = Math.Abs(dif);
-				}*/
-				//program.Echo("frpm: " + iarpm);
-
-				if (!usepid)
-				{
-					double truerpm = PreciseRpm + iarpm;
-					avg.Update(truerpm);
-					float finalrpm = (float)avg.Value;
-					rotor.maxRPM = (TO) ? finalrpm : ((!TO && (slowThrustOff || cruise)) ? STval : finalrpm);
-				}
-				else {
-					rotor.TheBlock.TargetVelocityRad = Math.Abs(error) < 0.01 ? 0 : (float)result;
-				}
-
-				// the clipping value 'thrustModifier' defines how far the rotor can be away from the desired direction of thrust, and have the power still at max
-				// if 'thrustModifier' is at 1, the thruster will be at full desired power when it is at 90 degrees from the direction of travel
-				// if 'thrustModifier' is at 0, the thruster will only be at full desired power when it is exactly at the direction of travel, (it's never exactly in-line)
-				// double thrustOffset = (angleCos + 1) / (1 + (1 - Program.thrustModifierAbove));//put it in some graphing calculator software where 'angleCos' is cos(x) and adjust the thrustModifier value between 0 and 1, then you can visualise it
-				double abo = thrustModifierAbove;
-				double bel = thrustModifierBelow;
-				if (abo > 1) { abo = 1; }
-				if (abo < 0) { abo = 0; }
-				if (bel > 1) { bel = 1; }
-				if (bel < 0) { bel = 0; }
-				// put it in some graphing calculator software where 'angleCos' is cos(x) and adjust the thrustModifier values between 0 and 1, then you can visualise it
-				double thrustOffset = ((((angleCos + 1) * (1 + bel)) / 2) - bel) * (((angleCos + 1) * (1 + abo)) / 2);// the other one is simpler, but this one performs better
-																													  // double thrustOffset = (angleCos * (1 + abo) * (1 + bel) + abo - bel + 1) / 2;
-				if (thrustOffset > 1)
-				{
-					thrustOffset = 1;
-				}
-				else if (thrustOffset < 0)
-				{
-					thrustOffset = 0;
-				}
-
-				//set the thrust for each engine
-				foreach (Thruster thruster in activeThrusters)
-				{
-					// errStr += thrustOffset.progressBar();
-					Vector3D thrust = thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust;
-					bool noThrust = thrust.LengthSquared() < 0.001f;
-					if (/*!jetpack || */!program.thrustOn || noThrust)
-					{
-						thruster.SetThrust(0);
-						thruster.TheBlock.Enabled = false;
-						thruster.IsOffBecauseDampeners = !program.thrustOn || noThrust;
-					}
-					else
-					{
-						thruster.SetThrust(thrust);
-						thruster.TheBlock.Enabled = true;
-						thruster.IsOffBecauseDampeners = false;
-					}
-				}
-			}
-
-			public void AssignGroup()
-			{
-				//VTThrGroups.Clear();
-				//foreach (VectorThrust na in vectorthrusters)
-				//{
-				bool foundGroup = false;
-
-				foreach (List<VectorThrust> g in program.VTThrGroups)
-				{
-					if (this.Role == g[0].Role)
-					{
-						if (!g.Contains(this)) g.Add(this);
-						foundGroup = true;
-						break;
-					}
-				}
-				if (!foundGroup)
-				{// if it never found a group, add a group
-					program.VTThrGroups.Add(new List<VectorThrust>());
-					program.VTThrGroups[program.VTThrGroups.Count - 1].Add(this);
-				}
-				//}
-			}
-
-			public float CalcTotalEffectiveThrust(IEnumerable<Thruster> thrusters)
-			{
-				float total = 0;
-				foreach (Thruster t in thrusters)
-				{
-					total += t.TheBlock.MaxEffectiveThrust;
-				}
-				return total;
-			}
-
-			string GetVTThrRole(Program p)
-			{
-				string result = "";
-				List<Base6Directions.Axis> cdirs = p.controlledControllers[0].Directions;
-				List<Base6Directions.Axis> rdirs = rotor.Directions;
-
-				for (int i = 0; i < cdirs.Count; i++)
-				{
-					if (cdirs[i] == rdirs[1])
-					{
-						switch (i)
-						{
-							case 0:
-								//Echo("front/back mounted, rotor covers cockpit's up/down/left/right");
-								result = "UDLR";
-								break;
-							case 1:
-								result = "FBLR";
-								//Echo("top/bottom mounted, rotor covers cockpit's forward/back/left/right");
-								break;
-							case 2:
-								result = "FBUP";
-								//Echo("side mounted, rotor covers cockpit's forward/back/up/down");
-								break;
-
-						}
-					}
-				}
-				return result;
-			}
-
-
-			//true if all thrusters are good
-			public bool ValidateThrusters()
-			{
-				bool needsUpdate = false;
-				foreach (Thruster curr in thrusters)
-				{
-
-					bool shownAndFunctional = (curr.TheBlock.ShowInTerminal || !program.ignoreHiddenBlocks) && curr.TheBlock.IsFunctional;
-					if (availableThrusters.Contains(curr))
-					{//is available
-
-						bool wasOnAndIsNowOff = curr.IsOn && !curr.TheBlock.Enabled && !curr.IsOffBecauseDampeners;
-
-						if ((!shownAndFunctional || wasOnAndIsNowOff))
-						{
-							curr.IsOn = false;
-							//remove the thruster
-							availableThrusters.Remove(curr);
-							needsUpdate = true;
-						}
-
-					}
-					else
-					{//not available
-						bool wasOffAndIsNowOn = !curr.IsOn && curr.TheBlock.Enabled;
-						if (shownAndFunctional && wasOffAndIsNowOn)
-						{
-							availableThrusters.Add(curr);
-							needsUpdate = true;
-							curr.IsOn = true;
-						}
-					}
-				}
-				return !needsUpdate;
-			}
-
-			double AI(double Acos, double VecL)
-			{
-				List<double> d = program.MagicNumbers;
-				double result1 = (Acos * d[0]) + (VecL * d[1]) + d[2];
-				double result2 = (Acos * d[3]) + (VecL * d[4]) + d[5];
-
-				double mres1 = Math.Max(0, result1);
-				double mres2 = Math.Max(0, result2);
-
-				double sum = (mres1 * d[6]) + (mres2 * d[7]) + d[8];
-				return Math.Max(0, sum);
-			}
-
-			public void DetectThrustDirection()
-			{
-				Vector3D engineDirection = Vector3D.Zero;
-				Vector3D engineDirectionNeg = Vector3D.Zero;
-				Vector3I thrustDir = Vector3I.Zero;
-				Base6Directions.Direction rotTopUp = rotor.TheBlock.Top.Orientation.Up;
-
-				// add all the thrusters effective power
-				foreach (Thruster t in availableThrusters)
-				{
-					Base6Directions.Direction thrustForward = t.TheBlock.Orientation.Forward; // Exhaust goes this way
-
-					//if its not facing rotor up or rotor down
-					if (!(thrustForward == rotTopUp || thrustForward == Base6Directions.GetFlippedDirection(rotTopUp)))
-					{
-						// add it in
-						var thrustForwardVec = Base6Directions.GetVector(thrustForward);
-						if (thrustForwardVec.X < 0 || thrustForwardVec.Y < 0 || thrustForwardVec.Z < 0)
-						{
-							engineDirectionNeg += Base6Directions.GetVector(thrustForward) * t.TheBlock.MaxEffectiveThrust;
-						}
-						else
-						{
-							engineDirection += Base6Directions.GetVector(thrustForward) * t.TheBlock.MaxEffectiveThrust;
-						}
-					}
-				}
-
-				// get single most powerful direction
-				double max = Math.Max(engineDirection.Z, Math.Max(engineDirection.X, engineDirection.Y));
-				double min = Math.Min(engineDirectionNeg.Z, Math.Min(engineDirectionNeg.X, engineDirectionNeg.Y));
-                double maxAbs;
-                if (max > -1 * min)
-				{
-					maxAbs = max;
-				}
-				else
-				{
-					maxAbs = min;
-				}
-
-				// TODO: swap onbool for each thruster that isn't in this
-				float DELTA = 0.1f;
-				if (Math.Abs(maxAbs - engineDirection.X) < DELTA)
-				{
-					// DTerrStr += $"\nengineDirection.X";
-					thrustDir.X = 1;
-				}
-				else if (Math.Abs(maxAbs - engineDirection.Y) < DELTA)
-				{
-					// DTerrStr += $"\nengineDirection.Y";
-					thrustDir.Y = 1;
-				}
-				else if (Math.Abs(maxAbs - engineDirection.Z) < DELTA)
-				{
-					// DTerrStr += $"\nengineDirection.Z";
-					thrustDir.Z = 1;
-				}
-				else if (Math.Abs(maxAbs - engineDirectionNeg.X) < DELTA)
-				{
-					// DTerrStr += $"\nengineDirectionNeg.X";
-					thrustDir.X = -1;
-				}
-				else if (Math.Abs(maxAbs - engineDirectionNeg.Y) < DELTA)
-				{
-					// DTerrStr += $"\nengineDirectionNeg.Y";
-					thrustDir.Y = -1;
-				}
-				else if (Math.Abs(maxAbs - engineDirectionNeg.Z) < DELTA)
-				{
-					// DTerrStr += $"\nengineDirectionNeg.Z";
-					thrustDir.Z = -1;
-				}
-				else
-				{
-					// DTerrStr += $"\nERROR (detectThrustDirection):\nmaxAbs doesn't match any engineDirection\n{maxAbs}\n{engineDirection}\n{engineDirectionNeg}";
-					return;
-				}
-
-				// use thrustDir to set rotor offset
-				rotor.SetPointDir((Vector3D)thrustDir);
-				// Base6Directions.Direction rotTopForward = rotor.theBlock.Top.Orientation.TransformDirection(Base6Directions.Direction.Forward);
-				// Base6Directions.Direction rotTopLeft = rotor.theBlock.Top.Orientation.TransformDirection(Base6Directions.Direction.Left);
-				// rotor.offset = (float)Math.Acos(rotor.angleBetweenCos(Base6Directions.GetVector(rotTopForward), (Vector3D)thrustDir));
-
-				// disambiguate
-				// if(false && Math.Acos(rotor.angleBetweenCos(Base6Directions.GetVector(rotTopLeft), (Vector3D)thrustDir)) > Math.PI/2) {
-				// rotor.offset += (float)Math.PI;
-				// 	rotor.offset = (float)(2*Math.PI - rotor.offset);
-				// }
-
-				foreach (Thruster t in thrusters)
-				{
-					t.TheBlock.Enabled = false;
-					t.IsOn = false;
-				}
-				activeThrusters.Clear();
-
-				// put thrusters into the active list
-				Base6Directions.Direction thrDir = Base6Directions.GetDirection(thrustDir);
-				foreach (Thruster t in availableThrusters)
-				{
-					Base6Directions.Direction thrustForward = t.TheBlock.Orientation.Forward; // Exhaust goes this way
-
-					if (thrDir == thrustForward)
-					{
-						t.TheBlock.Enabled = true;
-						t.IsOn = true;
-						activeThrusters.Add(t);
-					}
-				}
-			}
-
-		}
-
-		class Thruster : BlockWrapper<IMyThrust>
-		{
-
-			// stays the same when in standby, if not in standby, this gets updated to weather or not the thruster is on
-			public bool IsOn;
-
-			// this indicate the thruster was turned off from the script, and should be kept in the active list
-			public bool IsOffBecauseDampeners = true;
-
-			public Thruster(IMyThrust thruster) : base(thruster)
-			{
-				// this.IsOn = theBlock.Enabled;
-				this.IsOn = false;
-				this.TheBlock.Enabled = true;
-			}
-
-			// sets the thrust in newtons (N)
-			// thrustVec is in worldspace, who'se length is the desired thrust
-			public void SetThrust(Vector3D thrustVec)
-			{
-				SetThrust(thrustVec.Length());
-			}
-
-			// sets the thrust in newtons (N)
-			public void SetThrust(double thrust)
-			{
-
-				if (thrust > TheBlock.MaxThrust)
-				{
-					thrust = TheBlock.MaxThrust;
-					// errStr += $"\nExceeding max thrust";
-				}
-				else if (thrust < 0)
-				{
-					// errStr += $"\nNegative Thrust";
-					thrust = 0;
-				}
-
-				TheBlock.ThrustOverride = (float)(thrust * TheBlock.MaxThrust / TheBlock.MaxEffectiveThrust);
-				/*errStr += $"\nEffective {(100*theBlock.MaxEffectiveThrust / theBlock.MaxThrust).Round(1)}%";
-				errStr += $"\nOverride {theBlock.ThrustOverride}N";*/
-			}
-		}
-
-		public bool FilterThis(IMyTerminalBlock block)
-		{
-			return block.CubeGrid == Me.CubeGrid;
-		}
-
-		public void StabilizeVectorThrusters(bool rotorlock = true)
-		{
-			if (vtthrusters.Empty() && vtrotors.Empty()) return;
-			vtthrusters.ForEach(x => { x.Enabled = !rotorlock; x.ThrustOverride = 0; });
-			vtrotors.ForEach(x => { x.Enabled = !rotorlock; x.TargetVelocityRPM = 0.0f; x.RotorLock = rotorlock; });
-			
-
-			/*if (VTThrGroups.Count > 0)
-			{
-				foreach (List<VectorThrust> n in VTThrGroups)
-				{
-					foreach (VectorThrust na in n)
-					{
-						IMyMotorStator rt = na.rotor.TheBlock;
-						List<Thruster> tr = na.thrusters;
-						foreach (Thruster t in tr) { t.TheBlock.Enabled = !rotorlock; t.TheBlock.ThrustOverride = 0; }
-						rt.TargetVelocityRPM = 0.0f;
-						rt.Enabled = !rotorlock;
-						if ((rotorlock && !rt.RotorLock) || (!rotorlock && rt.RotorLock)) rt.RotorLock = !rt.RotorLock;
-					}
-				}
-			}*/
-		}
-
-		class Rotor : BlockWrapper<IMyMotorStator>
-		{
-			// don't want IMyMotorBase, that includes wheels
-
-			// Depreciated, this is for the old setFromVec
-			public float offset = 0;// radians
-
-			public Program program;
-			public Vector3D direction = Vector3D.Zero;//offset relative to the head
-
-			//public string errStr = "";
-			public float maxRPM;
-
-			public Rotor(IMyMotorStator rotor, Program program) : base(rotor)
-			{
-				this.program = program;
-
-				if (program.maxRotorRPM <= 0)
-				{
-					maxRPM = rotor.GetMaximum<float>("Velocity");
-				}
-				else
-				{
-					maxRPM = program.maxRotorRPM;
-				}
-			}
-
-			public void SetPointDir(Vector3D dir)
-			{
-				// MatrixD inv = MatrixD.Invert(theBlock.Top.WorldMatrix);
-				// direction = Vector3D.TransformNormal(dir, inv);
-				this.direction = dir;
-				//TODO: for some reason, this is equal to rotor.worldmatrix.up
-			}
-
-			/*===| Part of Rotation By Equinox on the KSH discord channel. |===*/
-			private void PointRotorAtVector(IMyMotorStator rotor, Vector3D targetDirection, Vector3D currentDirection, float multiplier)
-			{
-				double errorScale = Math.PI * maxRPM;
-				maxRPM = MathHelper.Clamp(Math.Abs(maxRPM), 0, 60);
-
-				Vector3D angle = Vector3D.Cross(targetDirection, currentDirection);
-				// Project onto rotor
-				double err = Vector3D.Dot(angle, rotor.WorldMatrix.Up);
-				double err2 = Vector3D.Dot(angle.Normalized(), rotor.WorldMatrix.Up);
-				double diff = (rotor.WorldMatrix.Up - angle.Normalized()).Length();
-
-				/*this.errStr += $"\nrotor.WorldMatrix.Up: {rotor.WorldMatrix.Up}";
-				this.errStr += $"\nangle: {Math.Acos(angleBetweenCos(angle, rotor.WorldMatrix.Up)) * 180.0 / Math.PI}";
-				this.errStr += $"\nerr: {err}";
-				this.errStr += $"\ndirection difference: {diff}";
-
-				this.errStr += $"\ncurrDir vs Up: {currentDirection.Dot(rotor.WorldMatrix.Up)}";
-				this.errStr += $"\ntargetDir vs Up: {targetDirection.Dot(rotor.WorldMatrix.Up)}";
-
-				this.errStr += $"\nmaxRPM: {maxRPM}";
-				this.errStr += $"\nerrorScale: {errorScale}";
-				this.errStr += $"\nmultiplier: {multiplier}";*/
-
-				double result;
-
-				double rpm = err * errorScale * multiplier;
-				//double rpm = err2 * errorScale * multiplier;
-				// errStr += $"\nSETTING ROTOR TO {err:N2}";
-				if (rpm > maxRPM)
-				{
-					result = maxRPM;
-					// this.errStr += $"\nRPM Exceedes Max";
-				}
-				else if ((rpm * -1) > maxRPM)
-				{
-					result = maxRPM * -1;
-					// this.errStr += $"\nRPM Exceedes -Max";
-				}
-				else
-				{
-					result = (float)rpm;
-				}
-
-				result = MathHelper.Clamp(result, -program.maxRotorRPM, program.maxRotorRPM);
-				result = MathHelper.Clamp(result, -maxRPM, maxRPM);
-
-				rotor.TargetVelocityRPM = (float)(result.NNaN());
-				// this.errStr += $"\nRPM: {(rotor.TargetVelocityRPM).Round(5)}";
-			}
-
-			// this sets the rotor to face the desired direction in worldspace
-			// desiredVec doesn't have to be in-line with the rotors plane of rotation
-			public double SetFromVec(Vector3D desiredVec, float multiplier, bool point = true)
-			{
-				desiredVec.Normalize();
-				//errStr = "";
-				//desiredVec = desiredVec.reject(theBlock.WorldMatrix.Up);
-				//this.errStr += $"\ncurrent dir: {currentDir}\ntarget dir: {desiredVec}\ndiff: {currentDir - desiredVec}";
-				//Vector3D currentDir = Vector3D.TransformNormal(this.direction, theBlock.Top.WorldMatrix);
-				//                                    only correct if it was built from the head ^ 
-				//                                    it needs to be based on the grid
-				Vector3D currentDir = Vector3D.TransformNormal(this.direction, TheBlock.Top.CubeGrid.WorldMatrix);
-				if (point) PointRotorAtVector(TheBlock, desiredVec, currentDir/*theBlock.Top.WorldMatrix.Forward*/, multiplier);
-
-				return AngleBetweenCos(currentDir, desiredVec, desiredVec.Length());
-			}
-
-			public double SetFromVec(Vector3D desiredVec, bool point = true)
-			{
-				return SetFromVec(desiredVec, 1, point);
-			}
-
-			// gets cos(angle between 2 vectors)
-			// cos returns a number between 0 and 1
-			// use Acos to get the angle
-			//THIS COULD BE NECESSARY IN SOME FUTURE.....
-			public double AngleBetweenCos(Vector3D a, Vector3D b)
-			{
-				double dot = Vector3D.Dot(a, b);
-				double Length = a.Length() * b.Length();
-				return dot / Length;
-			}
-
-			// gets cos(angle between 2 vectors)
-			// cos returns a number between 0 and 1
-			// use Acos to get the angle
-			// doesn't calculate length because thats expensive
-			public double AngleBetweenCos(Vector3D a, Vector3D b, double len_a_times_len_b)
-			{
-				double dot = Vector3D.Dot(a, b);
-				return dot / len_a_times_len_b;
-			}
-
-			// set the angle to be between 0 and 2pi radians (0 and 360 degrees)
-			// this takes and returns radians
-			/*float cutAngle(float angle)
-			{
-				while (angle > Math.PI)
-				{
-					angle -= 2 * (float)Math.PI;
-				}
-				while (angle < -Math.PI)
-				{
-					angle += 2 * (float)Math.PI;
-				}
-				return angle;
-			}*/
-		}
-		class ShipController : BlockWrapper<IMyShipController>
-		{
-			public bool Dampener;
-
-
-			public ShipController(IMyShipController theBlock/*, Program program*/) : base(theBlock)
-			{
-				Dampener = theBlock.DampenersOverride;
-				//program.controllerblocks.Add(theBlock);
-			}
-
-			public void SetDampener(bool val)
-			{
-				Dampener = val;
-				TheBlock.DampenersOverride = val;
-			}
-		}
-
-		interface IBlockWrapper
-		{
-			IMyTerminalBlock TheBlock { get; set; }
-			List<Base6Directions.Axis> Directions { get; }
-
-			string CName { get; }
-		}
-
-		abstract class BlockWrapper<T> : IBlockWrapper where T : class, IMyTerminalBlock
-		{
-			public T TheBlock { get; set; }
-
-			public List<Base6Directions.Axis> Directions { get; }
-			
-			public string CName { get; }
-
-			public BlockWrapper(T block)
-			{
-				TheBlock = block;
-				Directions = GetDirections(block);
-				CName = block.CustomName;
-			}
-
-			// not allowed for some reason
-			//public static implicit operator IMyTerminalBlock(BlockWrapper<T> wrap) => wrap.theBlock;
-
-			IMyTerminalBlock IBlockWrapper.TheBlock
-			{
-				get { return TheBlock; }
-				set { TheBlock = (T)value; }
-			}
-
-			public List<Base6Directions.Axis> GetDirections(IMyTerminalBlock block)
-			{
-				MyBlockOrientation o = block.Orientation;
-				return new List<Base6Directions.Axis> { Base6Directions.GetAxis(o.Forward), Base6Directions.GetAxis(o.Up), Base6Directions.GetAxis(o.Left) };
-			}
-
-			string IBlockWrapper.CName
-			{
-				get { return TheBlock.CustomName; }
-			}
+			_RuntimeTracker.AddInstructions();
 		}
 	}
 }

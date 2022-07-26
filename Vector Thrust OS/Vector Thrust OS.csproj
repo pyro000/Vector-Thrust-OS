@@ -41,7 +41,11 @@
   <Import Project="MDK/MDK.options.props" />
   <Import Project="MDK/MDK.paths.props" Condition="exists('MDK/MDK.paths.props')" />
   <ItemGroup>
-    <Compile Include="Important Classes.cs" />
+    <Compile Include="BlockClasses.cs" />
+    <Compile Include="Config.cs" />
+    <Compile Include="Sequences.cs" />
+    <Compile Include="Functions.cs" />
+    <Compile Include="Classes.cs" />
     <Compile Include="Extension Class.cs" />
     <Compile Include="MDK\Bootstrapper.cs" />
     <AdditionalFiles Include="MDK\MDK.options.props">
