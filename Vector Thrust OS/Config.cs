@@ -29,7 +29,7 @@ namespace IngameScript
 		int SkipFrames = 0;
 
 
-		double RotorStMultiplier = 1000;
+		double RotorStMultiplier = 1;
 		//bool SlowThrustOff = false;
 		double MaxThrustOffRPM = 30;
 		double lowThrustCutOn = 0.5;
@@ -55,7 +55,7 @@ namespace IngameScript
 		double thrustModifierAboveGrav = 0.01;
 		double thrustModifierBelowGrav = 0.01;
 
-		int RotationAverageSamples = 1;
+		//int RotationAverageSamples = 1;
 		string[] tagSurround = new string[] { "|", "|" };
 		//bool UsePID = false;
 		bool cruisePlane = false; // make cruise mode act more like an airplane
@@ -73,7 +73,8 @@ namespace IngameScript
 		const string detectstr = "Vector Thruster Stabilization";
 		const string accelstr = "Acceleration Settings";
 		const string parkstr = "Parking Settings";
-		const string miscstr = "MISC";
+		const string advancedstr = "Advanced Settings";
+		const string configstr = "Config Settings";
 
 		const string myNameStr = "Name Tag";
 		const string TagSurroundStr = "Tag Surround Char(s)";
@@ -82,7 +83,7 @@ namespace IngameScript
 		const string SkipFramesStr = "Skip Frames";
 
 
-		const string RotorStMultiplierStr = "Rotor Stabilization Multiplier";
+		const string RotorStMultiplierStr = "New Rotor Stabilization Multiplier";
 		const string lowThrustCutStr = "Calculated Velocity To Turn On/Off VectorThrusters";
 		const string lowThrustCutCruiseStr = "Calculated Velocity To Turn On/Off VectorThrusters In Cruise";
 		//const string SlowThrustOffStr = "Slow Reposition Of Rotors On Turn Off";
@@ -102,7 +103,7 @@ namespace IngameScript
 		const string thrustModifierSpaceStr = "Thruster Modifier Turn On/Off Space";
 		const string thrustModifierGravStr = "Thruster Modifier Turn On/Off Gravity";
 
-		const string RotationAverageSamplesStr = "Rotor Velocity Average Samples";
+		//const string RotationAverageSamplesStr = "Rotor Velocity Average Samples";
 		//const string UsePIDStr = "Use PID Controller";
 		const string cruisePlaneStr = "Cruise Mode Act Like Plane";
 		const string FramesBetweenActionsStr = "Frames Per Operation: Block Assigner";
@@ -151,17 +152,13 @@ namespace IngameScript
 					tagSurround = new string[] { "|", "|" };
 				}
 
-				TimeForRefresh = config.Get(inistr, TimeForRefreshStr).ToDouble(TimeForRefresh);
-				ShowMetrics = config.Get(inistr, ShowMetricsStr).ToBoolean(ShowMetrics);
-				SkipFrames = config.Get(inistr, SkipFramesStr).ToInt32(SkipFrames);
-
 				RotorStMultiplier = config.Get(detectstr, RotorStMultiplierStr).ToDouble(RotorStMultiplier);
 				//SlowThrustOff = config.Get(detectstr, SlowThrustOffStr).ToBoolean(SlowThrustOff);
 				MaxThrustOffRPM = config.Get(detectstr, MaxThrustOffRPMStr).ToDouble(MaxThrustOffRPM);
 				string temp = config.Get(detectstr, lowThrustCutStr).ToString();
 				try
 				{
-					double[] result = Array.ConvertAll(temp.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
+					double[] result = Array.ConvertAll(temp.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
 					if (result.Length != 2) { force = true; result = defaultltc; }
 					lowThrustCutOn = result[0];
 					lowThrustCutOff = result[1];
@@ -176,7 +173,7 @@ namespace IngameScript
 				temp = config.Get(detectstr, lowThrustCutCruiseStr).ToString();
 				try
 				{
-					double[] result = Array.ConvertAll(temp.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
+					double[] result = Array.ConvertAll(temp.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
 					if (result.Length != 2) { force = true; result = defaultltcc; }
 					lowThrustCutCruiseOn = result[0];
 					lowThrustCutCruiseOff = result[1];
@@ -191,7 +188,7 @@ namespace IngameScript
 				temp = config.Get(accelstr, AccelerationsStr).ToString();
 				try
 				{
-					Accelerations = Array.ConvertAll(temp.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
+					Accelerations = Array.ConvertAll(temp.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
 					if (Accelerations.Length < 2) { force = true; Accelerations = defaultacc; }
 				}
 				catch { force = true; Accelerations = defaultacc; }
@@ -210,10 +207,10 @@ namespace IngameScript
 				AutoAddGridLandingGears = config.Get(parkstr, AutoAddGridLandingGearsStr).ToBoolean(AutoAddGridLandingGears);
 				//UsePIDPark = config.Get(parkstr, UsePIDParkStr).ToBoolean(UsePIDPark);
 
-				temp = config.Get(miscstr, thrustModifierSpaceStr).ToString();
+				temp = config.Get(advancedstr, thrustModifierSpaceStr).ToString();
 				try
 				{
-					double[] result = Array.ConvertAll(temp.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
+					double[] result = Array.ConvertAll(temp.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
 					if (result.Length != 2) { force = true; result = defaulttms; }
 					thrustModifierAboveSpace = result[0];
 					thrustModifierBelowSpace = result[1];
@@ -225,10 +222,10 @@ namespace IngameScript
 					thrustModifierBelowSpace = defaulttms[1];
 				}
 
-				temp = config.Get(miscstr, thrustModifierGravStr).ToString();
+				temp = config.Get(advancedstr, thrustModifierGravStr).ToString();
 				try
 				{
-					double[] result = Array.ConvertAll(temp.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
+					double[] result = Array.ConvertAll(temp.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
 					if (result.Length != 2) { force = true; result = defaulttmg; }
 					thrustModifierAboveGrav = result[0];
 					thrustModifierBelowGrav = result[1];
@@ -239,17 +236,22 @@ namespace IngameScript
 					thrustModifierAboveGrav = defaulttmg[0];
 					thrustModifierBelowGrav = defaulttmg[1];
 				}
-				RotationAverageSamples = config.Get(miscstr, RotationAverageSamplesStr).ToInt32(RotationAverageSamples);
+				//RotationAverageSamples = config.Get(miscstr, RotationAverageSamplesStr).ToInt32(RotationAverageSamples);
 
 				//UsePID = config.Get(miscstr, UsePIDStr).ToBoolean(UsePID);
-				cruisePlane = config.Get(miscstr, cruisePlaneStr).ToBoolean(cruisePlane);
-				FramesBetweenActions = config.Get(miscstr, FramesBetweenActionsStr).ToInt32(FramesBetweenActions);
+				cruisePlane = config.Get(advancedstr, cruisePlaneStr).ToBoolean(cruisePlane);
+				FramesBetweenActions = config.Get(advancedstr, FramesBetweenActionsStr).ToInt32(FramesBetweenActions);
 				if (FramesBetweenActions <= 0)
 				{
 					FramesBetweenActions = 1;
 					force = true;
 				}
 				timepause = FramesBetweenActions * timeperframe;
+				SkipFrames = config.Get(advancedstr, SkipFramesStr).ToInt32(SkipFrames);
+
+
+				TimeForRefresh = config.Get(configstr, TimeForRefreshStr).ToDouble(TimeForRefresh);
+				ShowMetrics = config.Get(configstr, ShowMetricsStr).ToBoolean(ShowMetrics);
 			}
 
 			SetConfig(force);
@@ -269,19 +271,16 @@ namespace IngameScript
 			config.Set(inistr, myNameStr, myName);
 			string sstr = tagSurround[0].Equals(tagSurround[1]) ? tagSurround[0] : tagSurround[0] + tagSurround[1];
 			config.Set(inistr, TagSurroundStr, sstr);
-			config.Set(inistr, TimeForRefreshStr, TimeForRefresh);
-			config.Set(inistr, ShowMetricsStr, ShowMetrics);
-			config.Set(inistr, SkipFramesStr, SkipFrames);
 
 			config.Set(detectstr, RotorStMultiplierStr, RotorStMultiplier);
 			//config.Set(detectstr, SlowThrustOffStr, SlowThrustOff);
 			config.Set(detectstr, MaxThrustOffRPMStr, MaxThrustOffRPM);
-			string ltcstr = String.Join(",", force ? defaultltc : new double[] { lowThrustCutOn, lowThrustCutOff });
+			string ltcstr = String.Join(";", force ? defaultltc : new double[] { lowThrustCutOn, lowThrustCutOff });
 			config.Set(detectstr, lowThrustCutStr, ltcstr);
-			string ltccstr = String.Join(",", force ? defaultltcc : new double[] { lowThrustCutCruiseOn, lowThrustCutCruiseOff });
+			string ltccstr = String.Join(";", force ? defaultltcc : new double[] { lowThrustCutCruiseOn, lowThrustCutCruiseOff });
 			config.Set(detectstr, lowThrustCutCruiseStr, ltccstr);
 
-			string accstr = String.Join(",", force ? defaultacc : Accelerations);
+			string accstr = String.Join(";", force ? defaultacc : Accelerations);
 			config.Set(accelstr, AccelerationsStr, accstr);
 			if (justCompiled) config.Set(accelstr, gearStr, gear);
 
@@ -293,17 +292,21 @@ namespace IngameScript
 			config.Set(parkstr, AutoAddGridLandingGearsStr, AutoAddGridLandingGears);
 			//config.Set(parkstr, UsePIDParkStr, UsePIDPark);
 
-			string tmsstr = String.Join(",", force ? defaulttms : new double[] { thrustModifierAboveSpace, thrustModifierBelowSpace });
-			string tmgstr = String.Join(",", force ? defaulttms : new double[] { thrustModifierAboveGrav, thrustModifierBelowGrav });
+			string tmsstr = String.Join(";", force ? defaulttms : new double[] { thrustModifierAboveSpace, thrustModifierBelowSpace });
+			string tmgstr = String.Join(";", force ? defaulttms : new double[] { thrustModifierAboveGrav, thrustModifierBelowGrav });
 
-			config.Set(miscstr, thrustModifierSpaceStr, tmsstr);
-			config.Set(miscstr, thrustModifierGravStr, tmgstr);
-			config.SetComment(miscstr, thrustModifierSpaceStr, "\n-Thruster Modifier-\nHow far needs the thruster to turn on and off from desired angle.\n Space:");
-			config.SetComment(miscstr, thrustModifierGravStr, "\n Gravity:");
-			config.Set(miscstr, RotationAverageSamplesStr, RotationAverageSamples);
+			config.Set(advancedstr, thrustModifierSpaceStr, tmsstr);
+			config.Set(advancedstr, thrustModifierGravStr, tmgstr);
+			config.SetComment(advancedstr, thrustModifierSpaceStr, "\n-Thruster Modifier-\nHow far needs the thruster to turn on and off from desired angle.\n Space:");
+			config.SetComment(advancedstr, thrustModifierGravStr, "\n Gravity:");
+			//config.Set(miscstr, RotationAverageSamplesStr, RotationAverageSamples);
 			//config.Set(miscstr, UsePIDStr, UsePID);
-			config.Set(miscstr, cruisePlaneStr, cruisePlane);
-			config.Set(miscstr, FramesBetweenActionsStr, FramesBetweenActions);
+			config.Set(advancedstr, cruisePlaneStr, cruisePlane);
+			config.Set(advancedstr, FramesBetweenActionsStr, FramesBetweenActions);
+			config.Set(advancedstr, SkipFramesStr, SkipFrames);
+
+			config.Set(configstr, TimeForRefreshStr, TimeForRefresh);
+			config.Set(configstr, ShowMetricsStr, ShowMetrics);
 		}
 
 		void RConfig(string output, bool force = false)

@@ -341,14 +341,43 @@ namespace IngameScript
 		{ //this is executed only if there's not new mass
 			while (true)
 			{
+				foreach (IMyShipConnector cn in connectorblocks) 
+				{
+					if (((AutoAddGridConnectors && FilterThis(cn)) || HasTag(cn)) && !connectors.Contains(cn)) {
+						yield return timepause;
+						connectors.Add(cn);
+						yield return timepause;
+						log.AppendNR($"New CON: {cn.CustomName}\n");
+						yield return timepause;
+					}
+					yield return timepause;
+				}
+
+				foreach (IMyLandingGear lg in landinggearblocks)
+				{
+					if (((AutoAddGridLandingGears && FilterThis(lg)) || HasTag(lg)) && !landinggears.Contains(lg)) {
+						yield return timepause;
+						landinggears.Add(lg);
+						yield return timepause;
+						log.AppendNR($"New LanGear: {lg.CustomName}\n");
+						yield return timepause;
+					}
+					yield return timepause;
+				}
+
 				for (int i = normalbats.Count - 1; i >= 0; i--)
 				{
 					IMyBatteryBlock b = normalbats[i];
+					yield return timepause;
 					if (HasTag(b))
 					{
-						log.AppendNR($"Filtered Bat: {b.CustomName}");
+						yield return timepause;
+						log.AppendNR($"Filtered Bat: {b.CustomName}\n");
+						yield return timepause;
 						normalbats.RemoveAt(i);
+						yield return timepause;
 						if (!taggedbats.Contains(b)) taggedbats.Add(b);
+						yield return timepause;
 					}
 					yield return timepause;
 				}
@@ -356,11 +385,16 @@ namespace IngameScript
 				for (int i = taggedbats.Count - 1; i >= 0; i--)
 				{
 					IMyBatteryBlock b = taggedbats[i];
+					yield return timepause;
 					if (!HasTag(b))
 					{
-						log.AppendNR($"Filtered TagBat: {b.CustomName}");
+						yield return timepause;
+						log.AppendNR($"Filtered TagBat: {b.CustomName}\n");
+						yield return timepause;
 						taggedbats.RemoveAt(i);
+						yield return timepause;
 						if (FilterThis(b) && !normalbats.Contains(b)) normalbats.Add(b);
+						yield return timepause;
 					}
 					yield return timepause;
 				}
@@ -368,12 +402,19 @@ namespace IngameScript
 				for (int i = connectors.Count - 1; i >= 0; i--)
 				{
 					IMyShipConnector c = connectors[i];
+					yield return timepause;
 					bool hastag = HasTag(c);
+					yield return timepause;
 
 					if ((!AutoAddGridConnectors && !hastag) || (AutoAddGridConnectors && (!hastag || !FilterThis(c))))
 					{
-						log.AppendNR($"Filtered Con: {c.CustomName}");
+						yield return timepause;
+						log.AppendNR($"Filtered Con: {c.CustomName}\n");
+						yield return timepause;
 						connectors.RemoveAt(i);
+						yield return timepause;
+						forceunpark = true;
+						yield return timepause;
 					}
 					yield return timepause;
 				}
@@ -381,10 +422,16 @@ namespace IngameScript
 				for (int i = landinggears.Count - 1; i >= 0; i--)
 				{
 					IMyLandingGear l = landinggears[i];
+					yield return timepause;
 					if ((AutoAddGridLandingGears && !HasTag(l) && !FilterThis(l)) || (!AutoAddGridLandingGears && !HasTag(l)))
 					{
-						log.AppendNR($"Filtered LanGear: {l.CustomName}");
+						yield return timepause;
+						log.AppendNR($"Filtered LanGear: {l.CustomName}\n");
+						yield return timepause;
 						landinggears.RemoveAt(i);
+						yield return timepause;
+						forceunpark = true;
+						yield return timepause;
 					}
 					yield return timepause;
 				}
@@ -394,6 +441,11 @@ namespace IngameScript
 			}
 
 		}
+
+		List<IMySoundBlock> soundblocks = new List<IMySoundBlock>();
+		readonly List<IMyShipConnector> connectorblocks = new List<IMyShipConnector>();
+		readonly List<IMyLandingGear> landinggearblocks = new List<IMyLandingGear>();
+		readonly List<IMyBatteryBlock> batteriesblocks = new List<IMyBatteryBlock>();
 
 		public IEnumerable<double> CheckVectorThrustersSeq()
 		{
@@ -433,7 +485,9 @@ namespace IngameScript
 
 				List<IMyTerminalBlock> allblocks = new List<IMyTerminalBlock>(connectors);
 				allblocks = allblocks
+							.Concat(connectorblocks)
 							.Concat(landinggears)
+							.Concat(landinggearblocks)
 							.Concat(tankblocks)
 							.Concat(taggedbats)
 							.Concat(normalbats) //insead of gridbats
@@ -450,20 +504,23 @@ namespace IngameScript
 							.ToList();
 
 				if (pauseseq) yield return timepause;
-				int oldNThrC = normalThrusters.Count;
+				bool oldnthr = !normalThrusters.Empty();
 
 				foreach (IMyTerminalBlock b in allblocks)
 				{
-
 					bool tagallcond = TagAll && (b is IMyBatteryBlock || b is IMyGasTank || b is IMyLandingGear || b is IMyShipConnector);
 					bool tagcond = b is IMyShipController || vtthrusters.Contains(b) || b is IMyMotorStator;
 
 					if (!GridTerminalSystem.CanAccess(b))
 					{
-						if (b is IMyLandingGear || b is IMyShipConnector)
+						if (b is IMyLandingGear)
 						{
-							if (b is IMyShipConnector) connectors.Remove((IMyShipConnector)b);
-							else landinggears.Remove((IMyLandingGear)b);
+							landinggearblocks.Remove((IMyLandingGear)b);
+							landinggears.Remove((IMyLandingGear)b);
+						}
+						else if (b is IMyShipConnector) {
+							connectorblocks.Remove((IMyShipConnector)b);
+							connectors.Remove((IMyShipConnector)b);
 						}
 						else if (b is IMyGasTank)
 						{
@@ -499,6 +556,9 @@ namespace IngameScript
 							screens.Remove((IMyTextPanel)b);
 							RemoveSurface((IMyTextPanel)b);
 						}
+						else if (b is IMySoundBlock) {
+							soundblocks.Remove((IMySoundBlock)b);
+						}
 
 					}
 					else if (applyTags && (tagallcond || tagcond))
@@ -516,8 +576,7 @@ namespace IngameScript
 					if (pauseseq) yield return timepause;
 				}
 
-				int NThrC = normalThrusters.Count;
-				if (NThrC == 0 && NThrC != oldNThrC)
+				if (normalThrusters.Empty() && oldnthr)
 				{
 					dampeners = true; //Put dampeners back on if normalthrusters got removed entirely
 				}
@@ -561,7 +620,9 @@ namespace IngameScript
 				if (pauseseq) yield return timepause;
 
 				blocks = blocks.Except(connectors)
+					.Except(connectorblocks)
 					.Except(landinggears)
+					.Except(landinggearblocks)
 					.Except(tankblocks)
 					.Except(taggedbats) //batteriesblocks
 					.Except(normalbats) //backupbats
@@ -629,13 +690,35 @@ namespace IngameScript
 						input_screens.Add((IMyTextPanel)b);
 					}
 
-					else if ((iscon || island) && ((AutoAddGridConnectors && (samegrid || hastag)) || TagAll || (!AutoAddGridConnectors && hastag) || (AutoAddGridLandingGears && island && samegrid)))
+					else if ((iscon || island) /*&& ((AutoAddGridConnectors && (samegrid || hastag)) || TagAll || (!AutoAddGridConnectors && hastag) || (AutoAddGridLandingGears && island && samegrid))*/)
 					{
 						if (TagAll) AddTag(b);
-						if (iscon && !connectors.Contains(b)) connectors.Add((IMyShipConnector)b);
-						else if (island && !landinggears.Contains(b)) landinggears.Add((IMyLandingGear)b);
+
+						bool xor = (samegrid || hastag);
+						// cond5 = TagAll : not necessary
+
+						if (iscon)
+						{
+							bool cond1 = AutoAddGridConnectors && xor;
+							bool cond2 = !AutoAddGridConnectors && hastag;
+
+							bool cncond = cond1 || cond2;
+
+							connectorblocks.Add((IMyShipConnector)b);
+							if (cncond && !connectors.Contains(b)) connectors.Add((IMyShipConnector)b);
+						}
+						else if (island)
+						{
+							bool cond3 = AutoAddGridLandingGears/* && island*/ && xor;
+							bool cond4 = !AutoAddGridLandingGears/* && island*/ && hastag;
+
+							bool lgcond = cond3 || cond4;
+
+							landinggearblocks.Add((IMyLandingGear)b);
+							if (lgcond && !landinggears.Contains(b)) landinggears.Add((IMyLandingGear)b);
+						}
 					}
-					else if (b is IMyGasTank && (hastag || TagAll || FilterThis(b)))
+					else if (b is IMyGasTank && (hastag || TagAll || samegrid))
 					{
 						if (TagAll) AddTag(b);
 						tankblocks.Add((IMyGasTank)b);
@@ -643,13 +726,27 @@ namespace IngameScript
 					}
 					else if (b is IMyBatteryBlock)
 					{
-						if (TagAll) AddTag(b);
-						if (justCompiled && (hastag || samegrid)) (b as IMyBatteryBlock).ChargeMode = ChargeMode.Auto;
+						IMyBatteryBlock bat = (IMyBatteryBlock)b;
 
-						if (hastag) taggedbats.Add((IMyBatteryBlock)b);
-						else if (samegrid) normalbats.Add((IMyBatteryBlock)b);
+						batteriesblocks.Add(bat);
+
+						if (TagAll) AddTag(b);
+						if (justCompiled && (hastag || samegrid)) bat.ChargeMode = ChargeMode.Auto;
+
+						if (hastag) taggedbats.Add(bat);
+						else if (samegrid) normalbats.Add(bat);
 						//else remainingbats.Add((IMyBatteryBlock)b);
 					}
+					else if (b is IMySoundBlock && hastag)
+					{
+						IMySoundBlock sb = (IMySoundBlock)b;
+						sb.LoopPeriod = 1;
+						sb.SelectedSound = "Alert 2";
+						//sb.Enabled = true;
+						soundblocks.Add(sb);
+					}
+
+
 					if (pauseseq) yield return timepause;
 				}
 				// TODO: Compare if blocks are equal, or make other quick way to gather correct blocks (DONE)

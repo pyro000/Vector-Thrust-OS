@@ -32,6 +32,11 @@ namespace IngameScript
 
 		void Printer()
 		{
+			Echo(echosb.ToString());
+			Write(screensb.ToString());
+			echosb.Clear();
+			screensb.Clear();
+
 			string cstr = mainController != null ? mainController.TheBlock.CustomName : "DEAD";
 			if (ShowMetrics) screensb.GetSpinner(ref pc).Append($" {Runtime.LastRunTimeMs.Round(2)}ms ").GetSpinner(ref pc);
 			screensb.Append(progressbar);
@@ -44,6 +49,7 @@ namespace IngameScript
 				screensb.AppendLine($"\nAM: {(accel / gravLength).Round(2)}g");
 				screensb.AppendLine($"Active VectorThrusters: {vectorthrusters.Count}");
 				screensb.AppendLine($"Main/Ref Cont: {cstr}");
+				screensb.AppendLine($"ThrustOn: {thrustOn}");
 			}
 			echosb.GetSpinner(ref pc).Append(" VTos ").GetSpinner(ref pc);
 			echosb.AppendLine($"\n\n--- Main ---");
@@ -55,20 +61,13 @@ namespace IngameScript
 			if (isstation) echosb.AppendLine("CAN'T FLY A STATION, RUNNING WITH LESS RUNTIME.");
 		}
 
-		void WriteOutput()
-		{
-			Echo(echosb.ToString());
-			Write(screensb.ToString());
-			echosb.Clear();
-			screensb.Clear();
-		}
 		bool SkipFrameHandler(bool tagcheck, string argument)
 		{
-			bool notrun = argument.Equals("") && !cruise && !dampchanged;
 			bool handlers = false;
 			if (!isstation)
 			{
 				MainChecker.Run();//RUNS VARIOUS PROCESSES SEPARATED BY A TIMER
+				bool notrun = argument.Equals("") && !cruise && !dampchanged;
 				if (notrun)
 				{
 					handlers = PerformanceHandler();
@@ -107,15 +106,19 @@ namespace IngameScript
 			Echo(log.ToString());
 			Runtime.UpdateFrequency = UpdateFrequency.None;
 		}
-		void GenerateProgressBar(bool perf = false)
+		void GenerateProgressBar(string argument)
 		{
 			double percent = gearaccel / maxaccel;
-			if (!perf)
+			if (justCompiled || argument.Contains(gearArg))
 			{
 				progressbar.Clear();
 				progressbar.ProgressBar(percent, 30);
 			}
-			trueaccel = $" ({(percent * totaleffectivethrust).Round(2)} {{m/s^2}}) ";
+			trueaccel = $" ({(!thrustOn ? (percent * totaleffectivethrust).Round(2) : tthrust.Round(2))} {{m/s^2}}) ";
+		}
+
+		public bool CheckRotor(IMyMotorStator rt) { 
+			return rt != null /*&& !rt.Closed && rt.IsWorking && rt.IsAlive()*/ && rt.Top != null && GridTerminalSystem.CanAccess(rt);
 		}
 
 		public void Print(params object[] args)
@@ -181,15 +184,15 @@ namespace IngameScript
 		public void StabilizeVectorThrusters(bool rotorlock = true)
 		{
 			if (vtthrusters.Empty() && vtrotors.Empty()) return;
-			vtthrusters.ForEach(x => { x.Enabled = !rotorlock; x.ThrustOverridePercentage = 0; });
-			vtrotors.ForEach(x => { x.Enabled = !rotorlock; x.TargetVelocityRPM = 0; x.RotorLock = rotorlock; });
+			vtthrusters.ForEach(x => { x.Enabled = !rotorlock; if (rotorlock) x.ThrustOverridePercentage = 0; });
+			vtrotors.ForEach(x => { if ((rotorlock && x.TargetVelocityRPM == 0) || !rotorlock) x.Enabled = !rotorlock; if (rotorlock) x.TargetVelocityRPM = 0; x.RotorLock = rotorlock; });
 		}
 
 		ShipController FindACockpit()
 		{
 			foreach (ShipController cont in controlledControllers)
 			{
-				if (!cont.TheBlock.Closed && cont.TheBlock.IsWorking)
+				if (/*!cont.TheBlock.Closed && */cont.TheBlock.IsWorking && GridTerminalSystem.CanAccess(cont.TheBlock))
 				{
 					return cont;
 				}
@@ -230,6 +233,8 @@ namespace IngameScript
 			bool cond2 = !tag.Equals(oldTag) && Me.CustomName.Contains(oldTag);
 			bool cond3 = greedy && Me.CustomName.Contains(oldTag);
 
+			log.AppendNR("cond:" + cond2);
+
 			if (cond1 && (cond2 || cond3 || force))
 			{
 				if (logthis) log.AppendNR(" -Cleaning Tags To Prevent Future Errors, just in case\n");
@@ -237,8 +242,9 @@ namespace IngameScript
 				List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
 				GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(blocks);
 				foreach (IMyTerminalBlock block in blocks)
-					RemoveTag(block);
-				//block.CustomName = block.CustomName.Replace(oldTag, "").Trim();
+					//RemoveTag(block);
+				//blocks.ForEach(x=>RemoveTag(x));
+				block.CustomName = block.CustomName.Replace(oldTag, "").Trim();
 			}
 			this.greedy = !HasTag(Me);
 			oldTag = tag;
@@ -265,7 +271,9 @@ namespace IngameScript
 		{
 			log.AppendLine("Init() Start");
 			Config();
+			//log.AppendLine("--------");
 			ManageTag();
+			//log.AppendLine("--------");
 			InitControllers();
 
 			check = true;
@@ -280,15 +288,15 @@ namespace IngameScript
 			//return !error;
 		}
 
-		void InitControllers(List<IMyShipController> blocks = null) //New GetControllers(), only for using in init() purpose 
+		void InitControllers(/*List<IMyShipController> blocks = null*/) //New GetControllers(), only for using in init() purpose 
 		{
 			bool greedy = this.greedy || this.applyTags;// || this.removeTags;
 
-			if (blocks == null)
-			{
-				blocks = new List<IMyShipController>();
-				GridTerminalSystem.GetBlocksOfType<IMyShipController>(blocks);
-			}
+			//if (blocks == null)
+			//{
+			List < IMyShipController> blocks = new List<IMyShipController>();
+			GridTerminalSystem.GetBlocksOfType<IMyShipController>(blocks);
+			//}
 
 			List<ShipController> conts = new List<ShipController>();
 			foreach (IMyShipController imy in blocks)
@@ -438,9 +446,12 @@ namespace IngameScript
 			return false;
 		}
 
+		bool forceunpark = false;
+
 		bool ParkHandler()
 		{
-			if (connectors.Count == 0 && landinggears.Count == 0) return false;
+			if (connectors.Count == 0 && landinggears.Count == 0 && !forceunpark) return false;
+
 
 			if (unparkedcompletely)
 			{
@@ -472,6 +483,8 @@ namespace IngameScript
 			}
 			if (pendingrotation) screensb.GetSpinner(ref pc).Append(" PARKING ").GetSpinner(ref pc, after: "\n");
 
+
+			if (unparkedcompletely) forceunpark = false;
 			return parkedcompletely;
 		}
 
@@ -855,7 +868,7 @@ namespace IngameScript
 				this.oldMass = bm; //else:
 			}
 			OneRunMainChecker(false);
-			if (!justCompiled) GenerateProgressBar(true);
+			//if (!justCompiled) GenerateProgressBar(true);
 		}
 
 		void EndBM(bool scanned)
