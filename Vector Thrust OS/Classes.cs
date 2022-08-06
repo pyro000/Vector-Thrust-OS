@@ -58,6 +58,8 @@ namespace IngameScript
 				bool config = sumlastrun < tfr;
 
 				_program.globalAppend = false;
+
+				if (_program.pc >= 1000) _program.pc = 0;
 				if (_program.Runtime.UpdateFrequency == _program.update_frequency) _program.pc++;
 				else if (_program.Runtime.UpdateFrequency == UpdateFrequency.Update10) _program.pc += 10;
 				else _program.pc += 100;

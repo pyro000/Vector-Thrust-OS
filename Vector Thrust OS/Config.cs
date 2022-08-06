@@ -25,12 +25,8 @@ namespace IngameScript
 		// ------- Default configs --------
 		string myName = "VT";
 		double TimeForRefresh = 10;
-		bool ShowMetrics = false;
-		int SkipFrames = 0;
-
-
+		
 		double RotorStMultiplier = 1;
-		//bool SlowThrustOff = false;
 		double MaxThrustOffRPM = 30;
 		double lowThrustCutOn = 0.5;
 		double lowThrustCutOff = 0.01;
@@ -43,11 +39,12 @@ namespace IngameScript
 
 		bool TurnOffThrustersOnPark = true;
 		bool RechargeOnPark = true;
-		string BackupSubstring = ":Backup";
+		string BackupSubstring = "Backup";
 		bool PerformanceWhilePark = false;
 		bool AutoAddGridConnectors = false;
 		bool AutoAddGridLandingGears = false;
-		//bool UsePIDPark = true;
+		bool forceparkifstatic = true;
+		bool allowpark = false; //Dangerous setting it as config
 
 		double thrustModifierAboveSpace = 0.01;
 		double thrustModifierBelowSpace = 0.01;
@@ -55,11 +52,13 @@ namespace IngameScript
 		double thrustModifierAboveGrav = 0.01;
 		double thrustModifierBelowGrav = 0.01;
 
-		//int RotationAverageSamples = 1;
 		string[] tagSurround = new string[] { "|", "|" };
-		//bool UsePID = false;
 		bool cruisePlane = false; // make cruise mode act more like an airplane
 		int FramesBetweenActions = 1;
+		bool ShowMetrics = false;
+		int SkipFrames = 0;
+		int tpframes = 2;
+		int framesperprint = 10;
 
 		// ------- End default configs ---------
 
@@ -78,15 +77,10 @@ namespace IngameScript
 
 		const string myNameStr = "Name Tag";
 		const string TagSurroundStr = "Tag Surround Char(s)";
-		const string ShowMetricsStr = "Show Metrics";
-		const string TimeForRefreshStr = "Time For Each Refresh";
-		const string SkipFramesStr = "Skip Frames";
-
-
+		
 		const string RotorStMultiplierStr = "New Rotor Stabilization Multiplier";
 		const string lowThrustCutStr = "Calculated Velocity To Turn On/Off VectorThrusters";
 		const string lowThrustCutCruiseStr = "Calculated Velocity To Turn On/Off VectorThrusters In Cruise";
-		//const string SlowThrustOffStr = "Slow Reposition Of Rotors On Turn Off";
 		const string MaxThrustOffRPMStr = "Max Rotor RPM On Turn Off";
 
 		const string AccelerationsStr = "Accelerations";
@@ -94,19 +88,23 @@ namespace IngameScript
 
 		const string TurnOffThrustersOnParkStr = "Turn Off Thrusters On Park";
 		const string RechargeOnParkStr = "Set Batteries/Tanks to Recharge/Stockpile On Park";
-		const string BackupSubstringStr = "Assign Backup Batteries With SubTag";
+		const string BackupSubstringStr = "Assign Backup Batteries With Surname";
 		const string PerformanceWhileParkStr = "Run Script Each 100 Frames When Parked";
 		const string AutoAddGridConnectorsStr = "Add Automatically Same Grid Connectors";
 		const string AutoAddGridLandingGearsStr = "Add Automatically Same Grid Landing Gears";
-		//const string UsePIDParkStr = "Use PID Controller to Handle Parking";
+		const string forceparkifstaticStr = "Activate Park Mode If Parked In Static Grid or Ground";
+		//const string allowparkStr = "Whether Park Trigger Is Set To On or Off on (Re)Compile";
 
 		const string thrustModifierSpaceStr = "Thruster Modifier Turn On/Off Space";
 		const string thrustModifierGravStr = "Thruster Modifier Turn On/Off Gravity";
 
-		//const string RotationAverageSamplesStr = "Rotor Velocity Average Samples";
-		//const string UsePIDStr = "Use PID Controller";
 		const string cruisePlaneStr = "Cruise Mode Act Like Plane";
-		const string FramesBetweenActionsStr = "Frames Per Operation: Block Assigner";
+		const string FramesBetweenActionsStr = "Frames Per Operation: Task Splitter";
+		const string ShowMetricsStr = "Show Metrics";
+		const string TimeForRefreshStr = "Time For Each Refresh";
+		const string SkipFramesStr = "Skip Frames";
+		const string tpframesStr = "Frames Needed To Detect If Ship's Parked in Static Grid";
+		const string framesperprintStr = "Frames Where The Script Won't Print";
 
 		// END STRINGS AND VARS
 
@@ -153,7 +151,6 @@ namespace IngameScript
 				}
 
 				RotorStMultiplier = config.Get(detectstr, RotorStMultiplierStr).ToDouble(RotorStMultiplier);
-				//SlowThrustOff = config.Get(detectstr, SlowThrustOffStr).ToBoolean(SlowThrustOff);
 				MaxThrustOffRPM = config.Get(detectstr, MaxThrustOffRPMStr).ToDouble(MaxThrustOffRPM);
 				string temp = config.Get(detectstr, lowThrustCutStr).ToString();
 				try
@@ -202,10 +199,12 @@ namespace IngameScript
 				TurnOffThrustersOnPark = config.Get(parkstr, TurnOffThrustersOnParkStr).ToBoolean(TurnOffThrustersOnPark);
 				RechargeOnPark = config.Get(parkstr, RechargeOnParkStr).ToBoolean(RechargeOnPark);
 				BackupSubstring = config.Get(parkstr, BackupSubstringStr).ToString(BackupSubstring);
-				PerformanceWhilePark = config.Get(parkstr, PerformanceWhileParkStr).ToBoolean(PerformanceWhilePark);
 				AutoAddGridConnectors = config.Get(parkstr, AutoAddGridConnectorsStr).ToBoolean(AutoAddGridConnectors);
 				AutoAddGridLandingGears = config.Get(parkstr, AutoAddGridLandingGearsStr).ToBoolean(AutoAddGridLandingGears);
-				//UsePIDPark = config.Get(parkstr, UsePIDParkStr).ToBoolean(UsePIDPark);
+				forceparkifstatic = config.Get(parkstr, forceparkifstaticStr).ToBoolean(forceparkifstatic);
+				//if (justCompiled) allowpark = config.Get(parkstr, allowparkStr).ToBoolean(allowpark);
+				tpframes = config.Get(parkstr, tpframesStr).ToInt32(tpframes);
+				PerformanceWhilePark = config.Get(parkstr, PerformanceWhileParkStr).ToBoolean(PerformanceWhilePark);
 
 				temp = config.Get(advancedstr, thrustModifierSpaceStr).ToString();
 				try
@@ -236,9 +235,7 @@ namespace IngameScript
 					thrustModifierAboveGrav = defaulttmg[0];
 					thrustModifierBelowGrav = defaulttmg[1];
 				}
-				//RotationAverageSamples = config.Get(miscstr, RotationAverageSamplesStr).ToInt32(RotationAverageSamples);
 
-				//UsePID = config.Get(miscstr, UsePIDStr).ToBoolean(UsePID);
 				cruisePlane = config.Get(advancedstr, cruisePlaneStr).ToBoolean(cruisePlane);
 				FramesBetweenActions = config.Get(advancedstr, FramesBetweenActionsStr).ToInt32(FramesBetweenActions);
 				if (FramesBetweenActions <= 0)
@@ -251,6 +248,7 @@ namespace IngameScript
 
 
 				TimeForRefresh = config.Get(configstr, TimeForRefreshStr).ToDouble(TimeForRefresh);
+				framesperprint = config.Get(configstr, framesperprintStr).ToInt32(framesperprint);
 				ShowMetrics = config.Get(configstr, ShowMetricsStr).ToBoolean(ShowMetrics);
 			}
 
@@ -273,12 +271,14 @@ namespace IngameScript
 			config.Set(inistr, TagSurroundStr, sstr);
 
 			config.Set(detectstr, RotorStMultiplierStr, RotorStMultiplier);
-			//config.Set(detectstr, SlowThrustOffStr, SlowThrustOff);
+			config.SetComment(detectstr, RotorStMultiplierStr, "\n The more the value, the smoother the rotors will act. But, it sacrifies\n precision and velocity. Increase this number slowly with decimals (±0.1)");
 			config.Set(detectstr, MaxThrustOffRPMStr, MaxThrustOffRPM);
+			config.SetComment(detectstr, MaxThrustOffRPMStr, "\n Decrease this if when in space, the thrusters turn back on repeatedly\n when it's supposed to stop completely. (Recommended: 15)");
 			string ltcstr = String.Join(";", force ? defaultltc : new double[] { lowThrustCutOn, lowThrustCutOff });
 			config.Set(detectstr, lowThrustCutStr, ltcstr);
 			string ltccstr = String.Join(";", force ? defaultltcc : new double[] { lowThrustCutCruiseOn, lowThrustCutCruiseOff });
 			config.Set(detectstr, lowThrustCutCruiseStr, ltccstr);
+			config.SetComment(detectstr, lowThrustCutStr, "\n Increase these values if your ship is having a hard time to turn off\n thrusters on braking in Space. I recommend adding ±2;0.25 Normal\n And ±3;0.5 Cruise");
 
 			string accstr = String.Join(";", force ? defaultacc : Accelerations);
 			config.Set(accelstr, AccelerationsStr, accstr);
@@ -287,25 +287,31 @@ namespace IngameScript
 			config.Set(parkstr, TurnOffThrustersOnParkStr, TurnOffThrustersOnPark);
 			config.Set(parkstr, RechargeOnParkStr, RechargeOnPark);
 			config.Set(parkstr, BackupSubstringStr, BackupSubstring);
-			config.Set(parkstr, PerformanceWhileParkStr, PerformanceWhilePark);
+			
 			config.Set(parkstr, AutoAddGridConnectorsStr, AutoAddGridConnectors);
+			config.SetComment(parkstr, AutoAddGridConnectorsStr, "\n");
 			config.Set(parkstr, AutoAddGridLandingGearsStr, AutoAddGridLandingGears);
-			//config.Set(parkstr, UsePIDParkStr, UsePIDPark);
+			
+			config.Set(parkstr, forceparkifstaticStr, forceparkifstatic);
+			//config.Set(parkstr, allowparkStr, allowpark);
+			//config.SetComment(parkstr, allowparkStr, "\n");
+			config.Set(parkstr, tpframesStr, tpframes);
+			config.SetComment(parkstr, forceparkifstaticStr, "\n");
+			config.Set(parkstr, PerformanceWhileParkStr, PerformanceWhilePark);
 
 			string tmsstr = String.Join(";", force ? defaulttms : new double[] { thrustModifierAboveSpace, thrustModifierBelowSpace });
 			string tmgstr = String.Join(";", force ? defaulttms : new double[] { thrustModifierAboveGrav, thrustModifierBelowGrav });
 
 			config.Set(advancedstr, thrustModifierSpaceStr, tmsstr);
 			config.Set(advancedstr, thrustModifierGravStr, tmgstr);
-			config.SetComment(advancedstr, thrustModifierSpaceStr, "\n-Thruster Modifier-\nHow far needs the thruster to turn on and off from desired angle.\n Space:");
-			config.SetComment(advancedstr, thrustModifierGravStr, "\n Gravity:");
-			//config.Set(miscstr, RotationAverageSamplesStr, RotationAverageSamples);
-			//config.Set(miscstr, UsePIDStr, UsePID);
+			config.SetComment(advancedstr, thrustModifierSpaceStr, " -Thruster Modifier-\n The less the value, the less the thruster will use thrust if it's too far\n from the desired angle.");
 			config.Set(advancedstr, cruisePlaneStr, cruisePlane);
+			config.SetComment(advancedstr, cruisePlaneStr, "\n");
 			config.Set(advancedstr, FramesBetweenActionsStr, FramesBetweenActions);
 			config.Set(advancedstr, SkipFramesStr, SkipFrames);
 
 			config.Set(configstr, TimeForRefreshStr, TimeForRefresh);
+			config.Set(configstr, framesperprintStr, framesperprint);
 			config.Set(configstr, ShowMetricsStr, ShowMetrics);
 		}
 

@@ -97,11 +97,20 @@ namespace IngameScript
 
 		// Control Module params... this can always be true, but it's deprecated
 		bool controlModule = true;
-		const string dampenersButton = "c.damping";
-		const string cruiseButton = "c.cubesizemode";
-		const string lowerAccel = "c.switchleft";
-		const string raiseAccel = "c.switchright";
-		const string resetAccel = "pipe";
+		const string dampenersButton = "c.damping"; //Z
+		const string cruiseButton = "c.cubesizemode"; //R
+		const string gearButton = "c.sprint"; //Shift
+		const string allowparkButton = "c.thrusts";//X //"c.stationrotation"; //B
+		bool dampenersIsPressed = false;
+		bool cruiseIsPressed = false;
+		//bool plusIsPressed = false;
+		//bool minusIsPressed = false;
+		bool gearIsPressed = false;
+		bool allowparkIsPressed = false;
+
+		//const string lowerAccel = "c.switchleft";
+		//const string raiseAccel = "c.switchright";
+		//const string resetAccel = "pipe";
 
 
 		double totaleffectivethrust = 0;
@@ -111,11 +120,6 @@ namespace IngameScript
 
 		double totalVTThrprecision = 0;
 		bool rotorsstopped = false;
-
-		bool dampenersIsPressed = false;
-		bool cruiseIsPressed = false;
-		bool plusIsPressed = false;
-		bool minusIsPressed = false;
 		bool globalAppend = false;
 
 		ShipController mainController = null;
@@ -141,7 +145,7 @@ namespace IngameScript
 
 		List<IMyThrust> thrusters_input = new List<IMyThrust>();
 		List<IMyMotorStator> rotors_input = new List<IMyMotorStator>();
-		readonly List<ShipController> controllers_input = new List<ShipController>();
+		List<ShipController> controllers_input = new List<ShipController>();
 		readonly List<IMyTextPanel> input_screens = new List<IMyTextPanel>();
 		readonly List<IMyMotorStator> abandonedrotors = new List<IMyMotorStator>();
 		readonly List<IMyThrust> abandonedthrusters = new List<IMyThrust>();
@@ -194,11 +198,15 @@ namespace IngameScript
 		{
 			log.AppendLine("Program() Start");
 
-			string[] stg = Storage.Split(new string[] { ":" }, StringSplitOptions.RemoveEmptyEntries);
-			if (stg.Length == 2)
-			{
-				oldTag = stg[0]; //loading tag
-				greedy = bool.Parse(stg[1]); //loading greedy
+			string[] saved = Storage.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries);
+			if (saved.Length == 2) {
+				allowpark = bool.Parse(saved[1]); //Gets if the user set in park mode when recompile or reload, prevents accidents
+				
+				string[] stg = saved[0].Split(new string[] { ":" }, StringSplitOptions.RemoveEmptyEntries);
+				if (stg.Length == 2) {
+					oldTag = stg[0]; //loading tag
+					greedy = bool.Parse(stg[1]); //loading greedy
+				}
 			}
 
 			timeperframe = scriptslower ?  1.0 / 6.0 : 1.0 / 60.0; //SetTimePerFrame();
@@ -212,8 +220,6 @@ namespace IngameScript
 			GetVectorThrusters = new SimpleTimerSM(this, GetVectorThrustersSeq(), true);
 			CheckParkBlocks = new SimpleTimerSM(this, CheckParkBlocksSeq(), true);
 
-			//log.AppendNR("oldtag: " + oldTag);
-
 			Init();
 			update_frequency = scriptslower ? UpdateFrequency.Update10 : update_frequency;
 			if (!error) Runtime.UpdateFrequency = update_frequency;
@@ -224,17 +230,17 @@ namespace IngameScript
 
 		public void Save()
 		{
-			string save = string.Join(";", string.Join(":", tag, greedy));
+			string save = string.Join(";", string.Join(":", tag, greedy), allowpark);
 			Storage = save; //saving the old tag and greedy to prevent recompile or script update confusion
 		}
+
+		bool trulyparked = false;
+		bool parkavailable = false;
 
 		public void Main(string argument/*, UpdateType runType*/)
 		{
 			// ========== STARTUP ==========
 			_RuntimeTracker.AddRuntime();
-
-			// writes and clears outputs
-			//WriteOutput();
 
 			argument = argument.ToLower();
 			bool tagArg =
@@ -245,7 +251,6 @@ namespace IngameScript
 			if (_RuntimeTracker.configtrigger)
 			{
 				_RuntimeTracker.configtrigger = false;
-				//log.AppendNR("config");
 				Config();
 				ManageTag();
 			}
@@ -381,7 +386,7 @@ namespace IngameScript
 			}
 
 			double len = requiredVec.Length();
-			echosb.AppendLine($"Required Force: {len.Round(0)}N");
+			if (CanPrint()) { echosb.AppendLine($"Required Force: {len.Round(0)}N"); }
 			// ========== END OF PHYSICS ==========
 
 
@@ -394,8 +399,10 @@ namespace IngameScript
 			if (mvin != 0 || dampchanged && dampeners || (!cruise && sv > lowThrustCutOn) || (cruise && len > cutoncruise))
 			{//this not longer causes problems if there are many small nacelles (SOLVED)
 				thrustOn = true;
+				trulyparked = false;
 				accelExponent_A = Accelerations[gear];
 			}
+
 			if (mvin == 0)
 			{
 				accelExponent_A = 0;
@@ -404,13 +411,20 @@ namespace IngameScript
 					if (thrustOn)
 					{
 						thrustontimer += Runtime.TimeSinceLastRun.TotalSeconds;
-						screensb.GetSpinner(ref pc).Append(" STABILIZING ").GetSpinner(ref pc, after: "\n");
+						/*Write($"{Spinner} STABILIZING {Spinner}\n");
+						if (CanPrint()) screensb.Append($"{Spinner} STABILIZING {Spinner}\n");*/
+						// It is so fast that is useless to try putting this here;
 					}
-					else screensb.AppendLine(" - (NOT) PARKED -");
 				}
 				else thrustontimer = 0;
-				if ((wgv == 0 && ((!cruise && sv < lowThrustCutOff) || ((cruise || !dampeners) && len < cutoffcruise))) || !(!parked || !alreadyparked) || thrustontimer > 0.1)
+
+				bool trigger = thrustontimer > timeperframe * tpframes;
+
+				if ((wgv == 0 && ((!cruise && sv < lowThrustCutOff) || ((cruise || !dampeners) && len < cutoffcruise))) || !(!parked || !alreadyparked) || trigger)
+				{ 
 					thrustOn = false;
+					if (trigger) trulyparked = true;
+				}
 			}
 
 			if (!thrustOn)
@@ -559,26 +573,27 @@ namespace IngameScript
 				tthrust /= myshipmass.TotalMass;
 			}
 
-			/*if (justCompiled || argument.Contains(gearArg)) */
 			GenerateProgressBar(argument);
-				
-			echosb.AppendLine($"Total Force: {total.Round(0)}N\n");
-			echosb = _RuntimeTracker.Append(echosb);
-			echosb.AppendLine("--- Log ---");
-			echosb.Append(log);
 
-			if (ShowMetrics) { 
-				echosb.Append(info);
-				screensb.Append(info);
+			if (CanPrint()) { 
+				echosb.AppendLine($"Total Force: {total.Round(0)}N\n");
+				echosb = _RuntimeTracker.Append(echosb);
+				echosb.AppendLine("--- Log ---");
+				echosb.Append(log);
+
+				if (ShowMetrics) { 
+					echosb.Append(info);
+					screensb.Append(info);
+				}
+
+				log.Append(surfaceProviderErrorStr);
 			}
 
 			//TODO: make activeNacelles account for the number of nacelles that are actually active (activeThrusters.Count > 0) (I GUESS SOLVED??)
 			// ========== END OF MAIN ==========
 
-			log.Append(surfaceProviderErrorStr);
 			justCompiled = false;
 			_RuntimeTracker.AddInstructions();
-
 			// AVG RUNTIME: 0.09 - 0.10 AVG INSTRUCTIONS: 228
 			// WO : 0.079 213
 		}

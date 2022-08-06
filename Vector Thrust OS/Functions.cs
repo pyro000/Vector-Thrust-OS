@@ -30,35 +30,46 @@ namespace IngameScript
 			return res + title + res;
 		}
 
+
+		bool CanPrint() {
+			return pc % framesperprint == 0 || Runtime.UpdateFrequency != UpdateFrequency.Update1 || justCompiled;
+		}
+
 		void Printer()
 		{
+			GenSpinner();
+
 			Echo(echosb.ToString());
 			Write(screensb.ToString());
-			echosb.Clear();
-			screensb.Clear();
 
-			string cstr = mainController != null ? mainController.TheBlock.CustomName : "DEAD";
-			if (ShowMetrics) screensb.GetSpinner(ref pc).Append($" {Runtime.LastRunTimeMs.Round(2)}ms ").GetSpinner(ref pc);
-			screensb.Append(progressbar);
+			if (CanPrint()) { 
+				echosb.Clear();
+				screensb.Clear();
 
-			screensb.Append("\n").GetSpinner(ref pc).Append(trueaccel).GetSpinner(ref pc);
-			screensb.AppendLine($"\nCruise: {cruise}");
-			if (normalThrusters.Count == 0) screensb.AppendLine($"Dampeners: {dampeners}");
-			if (ShowMetrics)
-			{
-				screensb.AppendLine($"\nAM: {(accel / gravLength).Round(2)}g");
-				screensb.AppendLine($"Active VectorThrusters: {vectorthrusters.Count}");
-				screensb.AppendLine($"Main/Ref Cont: {cstr}");
-				screensb.AppendLine($"ThrustOn: {thrustOn}");
+				string cstr = mainController != null ? mainController.TheBlock.CustomName : "DEAD";
+				string pstr = parkavailable ? $" | Park: {(allowpark ? "On" : "Off")}" : "";
+				if (ShowMetrics) screensb.Append($"{Spinner} {Runtime.LastRunTimeMs.Round(2)}ms {Spinner}").Append("\n");
+				screensb.Append(progressbar);
+
+				screensb.Append("\n").Append($"{Spinner} {trueaccel} {Spinner}");
+				screensb.AppendLine($"\nCruise: {(cruise ? "On" : "Off")}{pstr}");
+				if (normalThrusters.Count == 0) screensb.AppendLine($"Dampeners: {(dampeners ? "On" : "Off")}");
+				if (ShowMetrics)
+				{
+					screensb.AppendLine($"AM: {(accel / gravLength).Round(2)}g");
+					screensb.AppendLine($"Active VectorThrusters: {vectorthrusters.Count}");
+					screensb.AppendLine($"Main/Ref Cont: {cstr}");
+					screensb.AppendLine($"ThrustOn: {thrustOn}");
+				}
+				echosb.Append($"{Spinner} VtOS {Spinner}");
+				echosb.AppendLine($"\n\n--- Main ---");
+				echosb.AppendLine(" >Remaining: " + _RuntimeTracker.tremaining);
+				echosb.AppendLine(" >Greedy: " + greedy);
+				echosb.AppendLine($" >Angle Objective: {totalVTThrprecision.Round(1)}%");
+				echosb.AppendLine($" >Main/Reference Controller: {cstr}");
+				echosb.AppendLine($" >Parked: {parkedcompletely}/{unparkedcompletely}");
+				if (isstation) echosb.AppendLine("CAN'T FLY A STATION, RUNNING WITH LESS RUNTIME.");
 			}
-			echosb.GetSpinner(ref pc).Append(" VTos ").GetSpinner(ref pc);
-			echosb.AppendLine($"\n\n--- Main ---");
-			echosb.AppendLine(" >Remaining: " + _RuntimeTracker.tremaining);
-			echosb.AppendLine(" >Greedy: " + greedy);
-			echosb.AppendLine($" >Angle Objective: {totalVTThrprecision.Round(1)}%");
-			echosb.AppendLine($" >Main/Reference Controller: {cstr}");
-			echosb.AppendLine($" >Parked: {parkedcompletely}/{unparkedcompletely}");
-			if (isstation) echosb.AppendLine("CAN'T FLY A STATION, RUNNING WITH LESS RUNTIME.");
 		}
 
 		bool SkipFrameHandler(bool tagcheck, string argument)
@@ -67,12 +78,12 @@ namespace IngameScript
 			if (!isstation)
 			{
 				MainChecker.Run();//RUNS VARIOUS PROCESSES SEPARATED BY A TIMER
-				bool notrun = argument.Equals("") && !cruise && !dampchanged;
+				bool notrun = argument.Equals("") /*&& !cruise*/ && !dampchanged;
 				if (notrun)
 				{
 					handlers = PerformanceHandler();
 					handlers = ParkHandler() || handlers;
-					handlers = VTThrHandler() || handlers;
+					if (!cruise) handlers = VTThrHandler() || handlers;
 				}
 				else if (tagcheck) MainTag(argument);
 			}
@@ -84,18 +95,19 @@ namespace IngameScript
 			else if (isstation) return true;
 			else if (handlers)
 			{
-				echosb.AppendLine("Required Force: ---N");
-				echosb.AppendLine("Total Force: ---N\n");
-				echosb = _RuntimeTracker.Append(echosb);
-				echosb.AppendLine("--- Log ---");
-				echosb.Append(log);
+				if (CanPrint()) { 
+					echosb.AppendLine("Required Force: ---N");
+					echosb.AppendLine("Total Force: ---N\n");
+					echosb = _RuntimeTracker.Append(echosb);
+					echosb.AppendLine("--- Log ---");
+					echosb.Append(log);
+				}
 				_RuntimeTracker.AddInstructions();
 			}
 			return handlers;
 		}
 		void ShutDown()
 		{
-
 			if (wgv == 0)
 			{
 				vtthrusters.ForEach(tr => tr.Brake());
@@ -109,12 +121,12 @@ namespace IngameScript
 		void GenerateProgressBar(string argument)
 		{
 			double percent = gearaccel / maxaccel;
-			if (justCompiled || argument.Contains(gearArg))
+			if (justCompiled || argument.Contains(gearArg) || gearIsPressed)
 			{
 				progressbar.Clear();
 				progressbar.ProgressBar(percent, 30);
 			}
-			trueaccel = $" ({(!thrustOn ? (percent * totaleffectivethrust).Round(2) : tthrust.Round(2))} {{m/s^2}}) ";
+			if (CanPrint()) trueaccel = $" ({(!thrustOn ? (percent * totaleffectivethrust).Round(2) : tthrust.Round(2))} {{m/s²}}) ";
 		}
 
 		public bool CheckRotor(IMyMotorStator rt) { 
@@ -192,7 +204,7 @@ namespace IngameScript
 		{
 			foreach (ShipController cont in controlledControllers)
 			{
-				if (/*!cont.TheBlock.Closed && */cont.TheBlock.IsWorking && GridTerminalSystem.CanAccess(cont.TheBlock))
+				if (cont.TheBlock.IsWorking/* && GridTerminalSystem.CanAccess(cont.TheBlock)*/)
 				{
 					return cont;
 				}
@@ -233,18 +245,13 @@ namespace IngameScript
 			bool cond2 = !tag.Equals(oldTag) && Me.CustomName.Contains(oldTag);
 			bool cond3 = greedy && Me.CustomName.Contains(oldTag);
 
-			log.AppendNR("cond:" + cond2);
-
 			if (cond1 && (cond2 || cond3 || force))
 			{
 				if (logthis) log.AppendNR(" -Cleaning Tags To Prevent Future Errors, just in case\n");
 				else log.AppendNR(" -Removing Tags\n");
 				List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
 				GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(blocks);
-				foreach (IMyTerminalBlock block in blocks)
-					//RemoveTag(block);
-				//blocks.ForEach(x=>RemoveTag(x));
-				block.CustomName = block.CustomName.Replace(oldTag, "").Trim();
+				foreach (IMyTerminalBlock block in blocks) RemoveTag(block);
 			}
 			this.greedy = !HasTag(Me);
 			oldTag = tag;
@@ -264,16 +271,14 @@ namespace IngameScript
 
 		void RemoveTag(IMyTerminalBlock block)
 		{
-			block.CustomName = block.CustomName.Replace(tag, "").Trim();
+			block.CustomName = tag == oldTag ? block.CustomName.Replace(tag, "").Trim() : block.CustomName.Replace(oldTag, "").Trim();
 		}
 
 		void Init()
 		{
 			log.AppendLine("Init() Start");
 			Config();
-			//log.AppendLine("--------");
 			ManageTag();
-			//log.AppendLine("--------");
 			InitControllers();
 
 			check = true;
@@ -284,28 +289,21 @@ namespace IngameScript
 			}
 			OneRunMainChecker();
 			log.AppendLine("Init " + (error ? "Failed" : "Completed Sucessfully"));
-
-			//return !error;
 		}
 
-		void InitControllers(/*List<IMyShipController> blocks = null*/) //New GetControllers(), only for using in init() purpose 
+		void InitControllers() //New GetControllers(), only for using in init() purpose 
 		{
-			bool greedy = this.greedy || this.applyTags;// || this.removeTags;
+			bool greedy = this.greedy || this.applyTags;
 
-			//if (blocks == null)
-			//{
 			List < IMyShipController> blocks = new List<IMyShipController>();
 			GridTerminalSystem.GetBlocksOfType<IMyShipController>(blocks);
-			//}
 
 			List<ShipController> conts = new List<ShipController>();
 			foreach (IMyShipController imy in blocks)
 			{
-				//vtcontrollers.Add(imy);
 				controllerblocks.Add(imy);
-				conts.Add(new ShipController(imy/*, this*/));
+				conts.Add(new ShipController(imy));
 			}
-			//return getControllers(conts);
 
 			controllers = conts;
 
@@ -338,10 +336,6 @@ namespace IngameScript
 					currreason.AppendLine("  Doesn't match my tag\n");
 					canAdd = false;
 				}
-				/*if (this.removeTags)
-				{
-					RemoveTag(s.TheBlock);
-				}*/
 
 				if (canAdd)
 				{
@@ -365,7 +359,7 @@ namespace IngameScript
 				reason.AppendLine("No Controller Found.\nEither for missing tag, not working or removed.");
 			}
 
-			if (controlledControllers.Count == 0 /*&& usableControllers.Count == 0*/)
+			if (controlledControllers.Count == 0)
 			{
 				log.AppendNR("ERROR: no usable ship controller found. Reason: \n");
 				log.AppendNR(reason.ToString());
@@ -408,11 +402,9 @@ namespace IngameScript
 			bool partiallyparked = parked && alreadyparked;
 			bool standby = (nograv || partiallyparked) && totalVTThrprecision.Round(1) == 100 && setTOV && !thrustOn && mvin == 0;
 
-			//screensb.AppendLine($"S: {standby}/{parkedcompletely}=>{rotorsstopped}/{unparking}");
-			//screensb.AppendLine($"CONDS: {totalVTThrprecision.Round(1) == 100}/{setTOV}/{!thrustOn}/{mvin == 0}");
 			if (standby || parkedcompletely)
 			{
-				echosb.AppendLine("\nEverything stopped, performance mode.\n");
+				if (CanPrint()) echosb.AppendLine("\nEverything stopped, performance mode.\n");
 
 				bool cond1 = vtthrusters.All(x => x.Enabled == false && x.ThrustOverridePercentage == 0);
 				bool cond2 = vtrotors.All(x => x.Enabled == false && x.TargetVelocityRPM == 0 && x.RotorLock == true);
@@ -431,7 +423,7 @@ namespace IngameScript
 		}
 		bool PerformanceHandler()
 		{
-			if (SkipFrames > 0)
+			if (SkipFrames > 0 && CanPrint())
 			{
 				echosb.AppendLine($"--SkipFrame[{ SkipFrames}]--");
 				echosb.AppendLine($" >Skipped: {frame}");
@@ -450,17 +442,21 @@ namespace IngameScript
 
 		bool ParkHandler()
 		{
-			if (connectors.Count == 0 && landinggears.Count == 0 && !forceunpark) return false;
+			parkavailable = !connectors.Empty() || !landinggears.Empty();
+			if (trulyparked && !parked && CanPrint()) screensb.AppendLine($"- (NOT) PARKED -");
+			if (!parkavailable && !forceunpark) return false;
 
-
+			bool changedpark = false;
 			if (unparkedcompletely)
 			{
 				parkedwithcn = connectors.Any(x => x.Status == MyShipConnectorStatus.Connected);
-				parked = landinggears.Any(x => x.IsLocked) || parkedwithcn;
+				parked = (landinggears.Any(x => x.IsLocked) || parkedwithcn) && ((wgv == 0 && allowpark) || (/*wgv != 0 && */allowpark || (trulyparked && forceparkifstatic)));
 			}
 			else
 			{ //Modifying
-				parked = landinggears.Any(x => x.IsLocked) || connectors.Any(x => x.Status == MyShipConnectorStatus.Connected);
+				bool newpark = (landinggears.Any(x => x.IsLocked) || connectors.Any(x => x.Status == MyShipConnectorStatus.Connected)) && (allowpark || (trulyparked && forceparkifstatic));
+				changedpark = newpark != parked;
+				parked = newpark;
 			}
 			unparkedcompletely = !parked && !alreadyparked;
 			if (unparkedcompletely) return false;
@@ -468,27 +464,50 @@ namespace IngameScript
 			bool setvector = parked && alreadyparked && setTOV;
 			bool gotvector = totalVTThrprecision.Round(1) == 100;
 			parkedcompletely = setvector && gotvector;
+			//bool rarepark = !parked && alreadyparked && setTOV && gotvector;
+			//if (changedpark) screensb.AppendLine($"AAAAAAAAAAAAAAAAAAAA");
 
 			bool pendingrotation = setvector && !gotvector;
 			bool parking = parked && !alreadyparked;
 			bool unparking = !parked && alreadyparked;
 
-			if (parking || (unparking && BlockManager.Doneloop)) ResetParkingSeq();
+			if (parking || (unparking && BlockManager.Doneloop) || changedpark) ResetParkingSeq();
 			if (parkedcompletely || (unparking && !BlockManager.Doneloop))
 			{
-				if (parkedcompletely && BlockManager.Doneloop) screensb.AppendLine("- PARKED -");
-				else if (parkedcompletely && !BlockManager.Doneloop) screensb.GetSpinner(ref pc).Append(" ASSIGNING ").GetSpinner(ref pc, after: "\n");
-				else screensb.GetSpinner(ref pc).Append(" UNPARKING ").GetSpinner(ref pc, after: "\n");
+				//if (rarepark) screensb.AppendLine("RARE");
+				if (CanPrint()) { 
+					if (parkedcompletely && BlockManager.Doneloop) screensb.AppendLine("- PARKED - ");
+					else if (parkedcompletely && !BlockManager.Doneloop) screensb.Append($"{Spinner} ASSIGNING {Spinner}\n");
+					else screensb.Append($"{Spinner} UNPARKING {Spinner}\n");
+				}
 				BlockManager.Run();
 			}
-			if (pendingrotation) screensb.GetSpinner(ref pc).Append(" PARKING ").GetSpinner(ref pc, after: "\n");
-
+			if (parking && CanPrint()) screensb.Append($"{Spinner} PARKING {Spinner}\n");
+			
 
 			if (unparkedcompletely) forceunpark = false;
 			return parkedcompletely;
 		}
 
+		string Spinner = "";
 
+		void GenSpinner() {
+			switch (pc / 10 % 4)
+			{
+				case 0:
+					Spinner = "|";
+					break;
+				case 1:
+					Spinner = "\\";
+					break;
+				case 2:
+					Spinner = "-";
+					break;
+				case 3:
+					Spinner = "/";
+					break;
+			}
+		}
 
 		bool AddSurfaceProvider(IMyTerminalBlock block)
 		{
@@ -661,52 +680,46 @@ namespace IngameScript
 			if (controlModule)
 			{
 				// non-movement controls
-				if (this.CMinputs.ContainsKey(dampenersButton) && !dampenersIsPressed)
+				if (!dampenersIsPressed && this.CMinputs.ContainsKey(dampenersButton))
 				{//inertia dampener key
 					dampeners = !dampeners;//toggle
 					dampenersIsPressed = true;
 				}
-				if (!this.CMinputs.ContainsKey(dampenersButton))
+				else if (dampenersIsPressed && !this.CMinputs.ContainsKey(dampenersButton))
 				{
 					dampenersIsPressed = false;
 				}
 
-
-				if (this.CMinputs.ContainsKey(cruiseButton) && !cruiseIsPressed)
+				if (!cruiseIsPressed && this.CMinputs.ContainsKey(cruiseButton))
 				{//cruise key
 					cruise = !cruise;//toggle
 					cruiseIsPressed = true;
 				}
-				if (!this.CMinputs.ContainsKey(cruiseButton))
+				else if (cruiseIsPressed && !this.CMinputs.ContainsKey(cruiseButton))
 				{
 					cruiseIsPressed = false;
 				}
 
-				if (this.CMinputs.ContainsKey(raiseAccel) && !plusIsPressed)
+				if (!gearIsPressed && this.CMinputs.ContainsKey(gearButton))
 				{//throttle up
-					accelExponent++;
-					plusIsPressed = true;
+					if (gear == Accelerations.Length - 1) gear = 0;
+					else gear++;
+					gearIsPressed = true;
 				}
-				if (!this.CMinputs.ContainsKey(raiseAccel))
+				else if (gearIsPressed && !this.CMinputs.ContainsKey(gearButton))
 				{ //increase target acceleration
-					plusIsPressed = false;
+					gearIsPressed = false;
 				}
 
-				if (this.CMinputs.ContainsKey(lowerAccel) && !minusIsPressed)
+				if (!allowparkIsPressed && this.CMinputs.ContainsKey(allowparkButton))
 				{//throttle down
-					accelExponent--;
-					minusIsPressed = true;
+					allowpark = !allowpark;
+					allowparkIsPressed = true;
 				}
-				if (!this.CMinputs.ContainsKey(lowerAccel))
-				{ //lower target acceleration
-					minusIsPressed = false;
+				else if (allowparkIsPressed && !this.CMinputs.ContainsKey(allowparkButton))
+				{ //increase target acceleration
+					allowparkIsPressed = false;
 				}
-
-				if (this.CMinputs.ContainsKey(resetAccel))
-				{ //default target acceleration
-					accelExponent = 0;
-				}
-
 			}
 
 			bool changeDampeners = false;
@@ -739,6 +752,9 @@ namespace IngameScript
 				{
 					if (gear == Accelerations.Length - 1) gear = 0;
 					else gear++;
+				}
+				else if (arg.Contains("park")) {
+					allowpark = !allowpark;
 				}
 			}
 
@@ -876,8 +892,8 @@ namespace IngameScript
 			if (scanned && parked)
 			{
 				BlockManager.Doneloop = true;
-				if (PerformanceWhilePark && gravLength == 0 && Runtime.UpdateFrequency != UpdateFrequency.Update100) Runtime.UpdateFrequency = UpdateFrequency.Update100;
-				else if ((!PerformanceWhilePark || gravLength > 0) && Runtime.UpdateFrequency != UpdateFrequency.Update10) Runtime.UpdateFrequency = UpdateFrequency.Update10;
+				if (PerformanceWhilePark && wgv == 0 && Runtime.UpdateFrequency != UpdateFrequency.Update100) Runtime.UpdateFrequency = UpdateFrequency.Update100;
+				else if ((!PerformanceWhilePark || wgv > 0) && Runtime.UpdateFrequency != UpdateFrequency.Update10) Runtime.UpdateFrequency = UpdateFrequency.Update10;
 			}
 			else if (!parked)
 			{

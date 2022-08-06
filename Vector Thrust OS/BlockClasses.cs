@@ -12,9 +12,6 @@ namespace IngameScript
         class VectorThrust
         {
             public Program program;
-            //public readonly PID pid = new PID(1, 0, 0, (1.0 / 60.0));
-            //readonly PidController c = new PidController(25, 0, 0.1, 60, -60);
-            //Lag avg;
 
             // physical parts
             public Rotor rotor;
@@ -29,17 +26,13 @@ namespace IngameScript
 
             public float totalEffectiveThrust = 0;
 
-            public double totalmaxthrust = 0;
-
             public int detectThrustCounter = 0;
             public Vector3D currDir = Vector3D.Zero;
 
             public double old_angleCos = 0;
             float CorrectionRPM = 0;
             int AngleCosCount = 0;
-            //int avgsamples;
 
-            //public Nacelle() { }// don't use this if it is possible for the instance to be kept (Not necessary)
             public VectorThrust(Rotor rotor, Program program)
             {
                 this.program = program;
@@ -48,128 +41,64 @@ namespace IngameScript
                 this.availableThrusters = new List<Thruster>();
                 this.activeThrusters = new List<Thruster>();
                 Role = GetVTThrRole(program);
-                //this.avgsamples = program.RotationAverageSamples;
-                //this.avg = new Lag(this.avgsamples);
             }
 
             // final calculations and setting physical components
             public void Go()
             {
-                // 134 0.068
-
-                /*if (avgsamples != program.RotationAverageSamples)
-				{
-					avgsamples = program.RotationAverageSamples;
-					avg = new Lag(avgsamples);
-				}*/
 
                 // 0.06 135.9
 
-                /*totalEffectiveThrust = */
-                CalcTotalEffectiveThrust(/*activeThrusters*/);
+                CalcTotalEffectiveThrust();
+
                 double maxlength = MathHelper.Clamp(requiredVec.Length(), 0, 15000);
-                // 0.07  148
                 double multiplier = totalEffectiveThrust * 29.167 / program.myshipmass.PhysicalMass;
-
                 double accel = program.maxaccel * program.myshipmass.PhysicalMass;
-
                 double additional = program.sv > 100 ? program.sv / 4 : 1;
-
-                //program.screensb.AppendLine("vel: " + additional);
-
                 double correction = 4714.285714 * requiredVec.Length() / accel;
-                //program.screensb.AppendLine("x:" + accel.Round(0) + " / " + correction.Round(0));
-
-
-                //bool usepid = (program.parked && program.UsePIDPark) || program.UsePID;
-                //requiredVec = new Vector3D(requiredVec.X, 0, requiredVec.Z);
-                //program.Write();
+                // 0.07  148
 
                 double angleCos = rotor.SetFromVec(requiredVec);
                 double angleCosPercent = angleCos * 100;
-
-                //double req = requiredVec.Length();
-                //req /= program.mvin != 0 && angleCosPercent > 90 ? program.sv/50 : 1;
-
-                //bool dampeners = program.dampeners;
-                //bool TO = program.thrustOn;
-                //bool cruise = program.cruise;
-                //bool nthr = program.normalThrusters != null;
-                //bool movement = program.mvin > 0;
-                //bool slowThrustOff = program.SlowThrustOff;
-                //bool park = program.parked && program.alreadyparked && program.setTOV;
-                //double rVecLength = requiredVec.Length();
-                //double multiplier = program.RotorStMultiplier;
-                //float MaxRPM = program.maxRotorRPM;
-                //float STval = (float)program.MaxThrustOffRPM;
                 float iarpm = AI(angleCosPercent, correction / (program.RotorStMultiplier * additional)).NNaN();
 
                 // 0.077  180 / 0.073 180
-                //return;
-
-                //TODO: MAKE IT WORK WITH PARK AND STOP, WORKS NOW
-                //if (!usepid)
-                //{
-                //if (program.wgv == 0) {
-                if (/*!program.normalThrusters.Empty() &&*/ program.dampeners && !program.cruise /*&& program.mvin == 0*/ && program.thrustOn && Math.Abs(angleCosPercent - old_angleCos) <= 15 && angleCosPercent < 95 && iarpm < 5) AngleCosCount++;
+                
+                /*if (program.dampeners && !program.cruise && program.thrustOn && Math.Abs(angleCosPercent - old_angleCos) <= 10 && angleCosPercent < 95 && iarpm < 5) AngleCosCount++;
                 else AngleCosCount = 0;
-                //}
+                if (AngleCosCount % 60 == 0 && angleCosPercent < 95) CorrectionRPM += 5;
+                else if (angleCosPercent > 98 || iarpm <= 2.5 || AngleCosCount == 0) CorrectionRPM = 0;*/
 
-                //if (program.wgv == 0) { 
-                if (AngleCosCount > 60 && angleCosPercent < 95) CorrectionRPM += iarpm /*program.wgv == 0 ? AngleCosCount : 15*/;
-                else if (angleCosPercent > 95/* || iarpm <= 2.5*/) CorrectionRPM = 0;
-                old_angleCos = angleCosPercent;
-                //}
-                //}
-
-                // 0.077 180
-
-                //double rtangle = rotor.TheBlock.Angle;
-                //double angle = rtangle * 180 / Math.PI;
-                //double angleRad = Math.Acos(angleCos) * 2;
-                //double desiredRad = rtangle - angleRad;
-                //double error = (desiredRad - rtangle).NNaN();
-                //float result = (float)pid.Control(error);
-
-                //I can't get PID to work, using it only to handle parking
-                //program.screensb.AppendLine("rs: " + result.Round(2) + " drad: " + desiredRad.Round(2));
-                //program.screensb.AppendLine("er:"+error);
-                /*float dif = result + 3.1416f;
-				if (dif < 0) {
-					result = Math.Abs(dif);
-				}*/
-                //program.Echo("frpm: " + iarpm);
-
-                //program.Write(rotor.CName);
-                //program.Write("a:" + requiredVec.Round(0));
-
-
-
-                //if (!usepid)
+               // if (!usepid)
                 //{
+                    if (program.dampeners && !program.cruise /*&& program.mvin == 0*/ && program.thrustOn && Math.Abs(angleCosPercent - old_angleCos) <= 15 && angleCosPercent < 90) AngleCosCount++;
+                    else AngleCosCount = 0;
+
+                //}
+                old_angleCos = angleCosPercent;
+                //if (!usepid)
+               // {
+                    if (AngleCosCount > 10 && angleCosPercent < 90) CorrectionRPM = AngleCosCount;
+                    else if (angleCosPercent > 98 || iarpm <= 2.5) CorrectionRPM = 0;
+               // }
+
+
+               // old_angleCos = angleCosPercent;
                 float finalrpm = CorrectionRPM + iarpm;
-                //avg.Update(truerpm);
-                //float finalrpm = (float)avg.Value;
 
                 // 0.08  184
 
 
                 if (!program.thrustOn || program.parked)
-                {
+                { //This handles rotor speed when parked, in 0G if it's too fast it will turn thrusters back on.
                     double anglecosfixed = angleCosPercent <= 0 ? 1 : angleCosPercent;
                     finalrpm = (float)(0.1 * 17000 / anglecosfixed); // TODO: Find a more precise way to solve this.
                     if (!program.parked) finalrpm = MathHelper.Clamp(finalrpm, 1, (float)program.MaxThrustOffRPM);
                 }
 
-                //rotor.maxRPM = (TO || program.parked) ? finalrpm : ((!TO && !program.parked && (slowThrustOff || cruise))/* || (program.parked)*/ ? STval : finalrpm);
                 rotor.maxRPM = finalrpm;
 
                 // 0.08 189
-                //}
-                //else {
-                //float test = RotateThrusterTowards(requiredVec, thrusters[0].TheBlock, rotor.TheBlock);
-                //rotor.TheBlock.TargetVelocityRad = Math.Abs(error) < 0.01 ? 0 : result;
-                //}
 
                 // the clipping value 'thrustModifier' defines how far the rotor can be away from the desired direction of thrust, and have the power still at max
                 // if 'thrustModifier' is at 1, the thruster will be at full desired power when it is at 90 degrees from the direction of travel
@@ -183,31 +112,17 @@ namespace IngameScript
                 if (bel < 0) { bel = 0; }
                 // put it in some graphing calculator software where 'angleCos' is cos(x) and adjust the thrustModifier values between 0 and 1, then you can visualise it
                 double thrustOffset = ((((angleCos + 1) * (1 + bel)) / 2) - bel) * (((angleCos + 1) * (1 + abo)) / 2);// the other one is simpler, but this one performs better
-                                                                                                                      // double thrustOffset = (angleCos * (1 + abo) * (1 + bel) + abo - bel + 1) / 2;
-                /*if (thrustOffset > 1)
-				{
-					thrustOffset = 1;
-				}
-				else if (thrustOffset < 0)
-				{
-					thrustOffset = 0;
-				}*/
 
                 thrustOffset = MathHelper.Clamp(thrustOffset, 0, 1);
 
                 //set the thrust for each engine
                 foreach (Thruster thruster in activeThrusters)
                 {
-                    //program.screensb.AppendLine("tr:" + thruster.TheBlock.MaxEffectiveThrust);
-
-                    // errStr += thrustOffset.progressBar();
                     Vector3D thrust = thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust;
                     bool noThrust = thrust.LengthSquared() < 0.001f || (program.wgv == 0 && angleCosPercent < 85);
                     program.tthrust += noThrust ? 0 : MathHelper.Clamp(thrust.Length(), 0, thruster.TheBlock.MaxEffectiveThrust);
 
-
-
-                    if (/*!jetpack || */!program.thrustOn || noThrust)
+                    if (!program.thrustOn || noThrust)
                     {
                         thruster.SetThrust(0);
                         thruster.TheBlock.Enabled = false;
@@ -242,15 +157,13 @@ namespace IngameScript
                 }
             }
 
-            public void CalcTotalEffectiveThrust(/*IEnumerable<Thruster> thrusters*/)
+            public void CalcTotalEffectiveThrust()
             {
                 totalEffectiveThrust = 0;
-                foreach (Thruster t in /*thrusters*/activeThrusters)
+                foreach (Thruster t in activeThrusters)
                 {
                     totalEffectiveThrust += t.TheBlock.MaxEffectiveThrust;
-                    totalmaxthrust += t.TheBlock.MaxThrust;
                 }
-                //return total;
             }
 
             string GetVTThrRole(Program p)
@@ -586,9 +499,6 @@ namespace IngameScript
             public double SetFromVec(Vector3D desiredVec, float multiplier, bool point = true)
             {
                 desiredVec.Normalize();
-                //errStr = "";
-                //desiredVec = desiredVec.reject(theBlock.WorldMatrix.Up);
-                //this.errStr += $"\ncurrent dir: {currentDir}\ntarget dir: {desiredVec}\ndiff: {currentDir - desiredVec}";
                 //Vector3D currentDir = Vector3D.TransformNormal(this.direction, theBlock.Top.WorldMatrix);
                 //                                    only correct if it was built from the head ^ 
                 //                                    it needs to be based on the grid

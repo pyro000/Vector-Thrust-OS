@@ -30,10 +30,12 @@ namespace IngameScript
 			if (parked && !alreadyparked) alreadyparked = true;
 			else if (!parked && alreadyparked) Runtime.UpdateFrequency = update_frequency;
 			thrustOn = !parked;
+			if (!parked) trulyparked = false; //Careful in setting this to anything than false
 		}
 
 		void ResetVTHandlers()
 		{
+			if (check) log.AppendNR("Checking Blocks Again");
 			GetScreen.Start();
 			GetControllers.Start();
 			GetVectorThrusters.Start();
@@ -81,7 +83,7 @@ namespace IngameScript
 				{
 					if (pauseseq) yield return timepause;
 					log.AppendNR($"  ->Done. Total Screens {screens.Count} => Total Surfaces:{surfaces.Count}\n");
-					LND(ref surfaces); //just in case}
+					LND(ref surfaces); //just in case
 				}
 				GetScreen.Doneloop = true;
 				yield return timepause;
@@ -100,8 +102,6 @@ namespace IngameScript
 					controllers_input.Clear();
 					if (pauseseq) yield return timepause;
 				}
-
-				//LND(ref controllers_input); doesn't do anything
 
 				StringBuilder reason = new StringBuilder();
 				foreach (ShipController s in this.controllers)
@@ -200,7 +200,8 @@ namespace IngameScript
 				bool greedy = this.applyTags || this.greedy;
 
 				log.AppendNR("  >Getting Rotors\n");
-				// make this.nacelles out of all valid rotors
+
+				// makes this.nacelles out of all valid rotors
 				foreach (IMyTerminalBlock r in vtrotors)
 				{
 					if (this.applyTags)
@@ -273,7 +274,6 @@ namespace IngameScript
 								AddTag(thrusters_input[j]);
 							}
 							//doesn't add it if it already exists
-
 
 							if (cond && !cond2)
 							{
@@ -394,6 +394,24 @@ namespace IngameScript
 						taggedbats.RemoveAt(i);
 						yield return timepause;
 						if (FilterThis(b) && !normalbats.Contains(b)) normalbats.Add(b);
+						else if (!batteriesblocks.Contains(b)) batteriesblocks.Add(b);
+						yield return timepause;
+					}
+					yield return timepause;
+				}
+
+				for (int i = batteriesblocks.Count - 1; i >= 0; i--)
+				{
+					IMyBatteryBlock b = batteriesblocks[i];
+					yield return timepause;
+					if (HasTag(b))
+					{
+						yield return timepause;
+						log.AppendNR($"Added TagBat: {b.CustomName}\n");
+						yield return timepause;
+						batteriesblocks.RemoveAt(i);
+						yield return timepause;
+						if (!taggedbats.Contains(b)) taggedbats.Add(b);
 						yield return timepause;
 					}
 					yield return timepause;
@@ -406,7 +424,7 @@ namespace IngameScript
 					bool hastag = HasTag(c);
 					yield return timepause;
 
-					if ((!AutoAddGridConnectors && !hastag) || (AutoAddGridConnectors && (!hastag || !FilterThis(c))))
+					if ((!AutoAddGridConnectors && !hastag) || (AutoAddGridConnectors && !hastag && !FilterThis(c)))
 					{
 						yield return timepause;
 						log.AppendNR($"Filtered Con: {c.CustomName}\n");
@@ -447,6 +465,7 @@ namespace IngameScript
 		readonly List<IMyLandingGear> landinggearblocks = new List<IMyLandingGear>();
 		readonly List<IMyBatteryBlock> batteriesblocks = new List<IMyBatteryBlock>();
 
+
 		public IEnumerable<double> CheckVectorThrustersSeq()
 		{
 			while (true)
@@ -455,7 +474,6 @@ namespace IngameScript
 				if (pauseseq) yield return timepause;
 				if (!check)
 				{
-
 					while (!GetControllers.Doneloop)
 					{
 						GetControllers.Run();
@@ -490,8 +508,8 @@ namespace IngameScript
 							.Concat(landinggearblocks)
 							.Concat(tankblocks)
 							.Concat(taggedbats)
-							.Concat(normalbats) //insead of gridbats
-												//.Concat(remainingbats) 
+							.Concat(normalbats) 
+							.Concat(batteriesblocks) 
 							.Concat(cruiseThr)
 							.Concat(normalThrusters)
 							.Concat(controllerblocks)
@@ -504,7 +522,6 @@ namespace IngameScript
 							.ToList();
 
 				if (pauseseq) yield return timepause;
-				bool oldnthr = !normalThrusters.Empty();
 
 				foreach (IMyTerminalBlock b in allblocks)
 				{
@@ -528,6 +545,7 @@ namespace IngameScript
 						}
 						else if (b is IMyBatteryBlock)
 						{
+							batteriesblocks.Remove((IMyBatteryBlock)b);
 							taggedbats.Remove((IMyBatteryBlock)b);
 							normalbats.Remove((IMyBatteryBlock)b);
 						}
@@ -540,11 +558,18 @@ namespace IngameScript
 						{
 							abandonedthrusters.Remove((IMyThrust)b);
 							vtthrusters.Remove((IMyThrust)b);
-							if (FilterThis(b))
+							//if (FilterThis(b))
+							//{
+							cruiseThr.Remove((IMyThrust)b);
+							bool oldnthr = !normalThrusters.Empty();
+							normalThrusters.Remove((IMyThrust)b);
+
+							if (normalThrusters.Empty() && oldnthr)
 							{
-								cruiseThr.Remove((IMyThrust)b);
-								normalThrusters.Remove((IMyThrust)b);
+								dampeners = true; //Put dampeners back on if normalthrusters got removed entirely
 							}
+
+							//}
 						}
 						else if (b is IMyShipController)
 						{
@@ -574,12 +599,14 @@ namespace IngameScript
 						vtrotors.Remove((IMyMotorStator)b);
 					}
 					if (pauseseq) yield return timepause;
-				}
+				};
 
-				if (normalThrusters.Empty() && oldnthr)
-				{
-					dampeners = true; //Put dampeners back on if normalthrusters got removed entirely
-				}
+				controllers_input.Clear();
+				if (pauseseq) yield return timepause;
+				rotors_input.Clear();
+				if (pauseseq) yield return timepause;
+				thrusters_input.Clear();
+				if (pauseseq) yield return timepause;
 
 				controllers.RemoveAll(x => !GridTerminalSystem.CanAccess(x.TheBlock));
 				if (pauseseq) yield return timepause;
@@ -624,9 +651,9 @@ namespace IngameScript
 					.Except(landinggears)
 					.Except(landinggearblocks)
 					.Except(tankblocks)
-					.Except(taggedbats) //batteriesblocks
-					.Except(normalbats) //backupbats
-										//.Except(remainingbats) //batteries that the script won't touch (for now)
+					.Except(taggedbats)
+					.Except(normalbats) 
+					.Except(batteriesblocks) //backupbats
 					.Except(cruiseThr)
 					.Except(normalThrusters)
 					.Except(ccontrollerblocks)
@@ -639,117 +666,109 @@ namespace IngameScript
 					.ToList();
 				if (pauseseq) yield return timepause;
 
-
-
-
-				//artificial scope (Removed)
 				foreach (IMyTerminalBlock b in blocks)
 				{
+					if (GridTerminalSystem.CanAccess(b)) { 
 
-					bool island = b is IMyLandingGear;
-					bool iscon = b is IMyShipConnector;
-					bool samegrid = FilterThis(b);
-					bool hastag = HasTag(b);
-
-					if (b is IMyShipController)
-					{
-						controllerblocks.Add((IMyShipController)b);
-						controllers_input.Add(new ShipController((IMyShipController)b));
-					}
-					else if (b is IMyMotorStator)
-					{
-						IMyMotorStator rt = (IMyMotorStator)b;
-						rotors_input.Add(rt);
-
-					}
-					else if (b is IMyThrust)
-					{
-						IMyThrust tr = (IMyThrust)b;
-
-						if (samegrid)
-						{
-							normalThrusters.Add((IMyThrust)b);
-							if (b.Orientation.Forward == mainController.TheBlock.Orientation.Forward) //changing
-							{
-								cruiseThr.Add((IMyThrust)b);
-								log.AppendNR("Added back thrust: " + b.CustomName);
-							}
-							(b as IMyFunctionalBlock).Enabled = true;
-						}
-						else
-						{
-							thrusters_input.Add(tr);
-						}
-					}
-					/*if (b is IMyProgrammableBlock) // I will use it in the future maybe for autopilot
-					{
-						programBlocks.Add((IMyProgrammableBlock)b);
-					}*/
-					else if (b is IMyTextPanel)
-					{
-						input_screens.Add((IMyTextPanel)b);
-					}
-
-					else if ((iscon || island) /*&& ((AutoAddGridConnectors && (samegrid || hastag)) || TagAll || (!AutoAddGridConnectors && hastag) || (AutoAddGridLandingGears && island && samegrid))*/)
-					{
-						if (TagAll) AddTag(b);
-
+						bool island = b is IMyLandingGear;
+						bool iscon = b is IMyShipConnector;
+						bool samegrid = FilterThis(b);
+						bool hastag = HasTag(b);
 						bool xor = (samegrid || hastag);
-						// cond5 = TagAll : not necessary
 
-						if (iscon)
+						if (b is IMyShipController)
 						{
-							bool cond1 = AutoAddGridConnectors && xor;
-							bool cond2 = !AutoAddGridConnectors && hastag;
-
-							bool cncond = cond1 || cond2;
-
-							connectorblocks.Add((IMyShipConnector)b);
-							if (cncond && !connectors.Contains(b)) connectors.Add((IMyShipConnector)b);
+							controllerblocks.Add((IMyShipController)b);
+							controllers_input.Add(new ShipController((IMyShipController)b));
 						}
-						else if (island)
+						else if (b is IMyMotorStator)
 						{
-							bool cond3 = AutoAddGridLandingGears/* && island*/ && xor;
-							bool cond4 = !AutoAddGridLandingGears/* && island*/ && hastag;
+							IMyMotorStator rt = (IMyMotorStator)b;
+							rotors_input.Add(rt);
 
-							bool lgcond = cond3 || cond4;
+						}
+						else if (b is IMyThrust)
+						{
+							IMyThrust tr = (IMyThrust)b;
 
-							landinggearblocks.Add((IMyLandingGear)b);
-							if (lgcond && !landinggears.Contains(b)) landinggears.Add((IMyLandingGear)b);
+							if (samegrid)
+							{
+								normalThrusters.Add((IMyThrust)b);
+								if (b.Orientation.Forward == mainController.TheBlock.Orientation.Forward) //changing
+								{
+									cruiseThr.Add((IMyThrust)b);
+									log.AppendNR("Added back thrust: " + b.CustomName);
+								}
+								(b as IMyFunctionalBlock).Enabled = true;
+							}
+							else
+							{
+								thrusters_input.Add(tr);
+							}
+						}
+						/*if (b is IMyProgrammableBlock) // I will use it in the future maybe for autopilot
+						{ //TODO, make the script detect if this has same tag and same surround to prevent future errors.
+							programBlocks.Add((IMyProgrammableBlock)b);
+						}*/
+						else if (b is IMyTextPanel)
+						{
+							input_screens.Add((IMyTextPanel)b);
+						}
+							else if (iscon)
+							{
+								if (TagAll) AddTag(b);
+								bool cond1 = AutoAddGridConnectors && xor;
+								bool cond2 = !AutoAddGridConnectors && hastag;
+
+								bool cncond = cond1 || cond2;
+
+								connectorblocks.Add((IMyShipConnector)b);
+								if (cncond && !connectors.Contains(b)) connectors.Add((IMyShipConnector)b);
+							}
+							else if (island)
+							{
+								if (TagAll) AddTag(b);
+								bool cond3 = AutoAddGridLandingGears/* && island*/ && xor;
+								bool cond4 = !AutoAddGridLandingGears/* && island*/ && hastag;
+
+								bool lgcond = cond3 || cond4;
+
+								landinggearblocks.Add((IMyLandingGear)b);
+								if (lgcond && !landinggears.Contains(b)) landinggears.Add((IMyLandingGear)b);
+							}
+						else if (b is IMyGasTank && (hastag || TagAll || samegrid))
+						{
+							if (TagAll) AddTag(b);
+							tankblocks.Add((IMyGasTank)b);
+							if (hastag) (b as IMyGasTank).Stockpile = false;
+						}
+						else if (b is IMyBatteryBlock)
+						{
+							IMyBatteryBlock bat = (IMyBatteryBlock)b;
+
+							if (TagAll) AddTag(b);
+							if (justCompiled && (hastag || samegrid)) bat.ChargeMode = ChargeMode.Auto;
+
+							if (hastag) taggedbats.Add(bat);
+							else if (samegrid) normalbats.Add(bat);
+							else batteriesblocks.Add(bat);
+						}
+						else if (b is IMySoundBlock && hastag)
+						{
+							IMySoundBlock sb = (IMySoundBlock)b;
+							sb.LoopPeriod = 1;
+							sb.SelectedSound = "Alert 2";
+							//sb.Enabled = true;
+							soundblocks.Add(sb);
 						}
 					}
-					else if (b is IMyGasTank && (hastag || TagAll || samegrid))
-					{
-						if (TagAll) AddTag(b);
-						tankblocks.Add((IMyGasTank)b);
-						if (hastag) (b as IMyGasTank).Stockpile = false;
-					}
-					else if (b is IMyBatteryBlock)
-					{
-						IMyBatteryBlock bat = (IMyBatteryBlock)b;
-
-						batteriesblocks.Add(bat);
-
-						if (TagAll) AddTag(b);
-						if (justCompiled && (hastag || samegrid)) bat.ChargeMode = ChargeMode.Auto;
-
-						if (hastag) taggedbats.Add(bat);
-						else if (samegrid) normalbats.Add(bat);
-						//else remainingbats.Add((IMyBatteryBlock)b);
-					}
-					else if (b is IMySoundBlock && hastag)
-					{
-						IMySoundBlock sb = (IMySoundBlock)b;
-						sb.LoopPeriod = 1;
-						sb.SelectedSound = "Alert 2";
-						//sb.Enabled = true;
-						soundblocks.Add(sb);
-					}
-
 
 					if (pauseseq) yield return timepause;
 				}
 				// TODO: Compare if blocks are equal, or make other quick way to gather correct blocks (DONE)
+
+				//batteriesblocks = batteriesblocks.Except(normalbats).Except(taggedbats).ToList(); //aplied with a better method
+				//if (pauseseq) yield return timepause;
 
 				while (!GetControllers.Doneloop)
 				{
@@ -854,7 +873,7 @@ namespace IngameScript
 					setthr = true;
 				}
 
-				if ((normalbats.Count + taggedbats.Count < 2) || !RechargeOnPark)
+				if ((normalbats.Count + taggedbats.Count < 2) || !RechargeOnPark || !parkedwithcn)
 				{
 					EndBM(true);
 					yield return timepause;
@@ -865,7 +884,7 @@ namespace IngameScript
 				{
 					List<IMyBatteryBlock> allbats = new List<IMyBatteryBlock>(taggedbats).Concat(normalbats).ToList();
 					if (parked) yield return timepause;
-					backupbatteries = allbats.FindAll(x => x.CustomName.Contains(tag + BackupSubstring));
+					backupbatteries = allbats.FindAll(x => x.CustomName.Contains(/*tag + */BackupSubstring));
 					if (parked) yield return timepause;
 
 					if (!backupbatteries.Empty() && allbats.SequenceEqual(backupbatteries)/* && backupbatteries.Count == taggedbats.Count + normalbats.Count*/)
@@ -914,16 +933,18 @@ namespace IngameScript
 
 				if (!donescan || (BlockManager.Doneloop && parked))
 				{
-					batsseq = new List<IMyTerminalBlock>(pw);
-					while (!BatteryStats.Doneloop)
-					{
-						BatteryStats.Run();
-						yield return timepause;
-					}
-					BatteryStats.Doneloop = false;
+					if (parked) { //temporary fix
+						batsseq = new List<IMyTerminalBlock>(pw);
+						while (!BatteryStats.Doneloop)
+						{
+							BatteryStats.Run();
+							yield return timepause;
+						}
+						BatteryStats.Doneloop = false;
 
-					donescan = true;
-					statsPW = new List<double>(outputbatsseq);
+						donescan = true;
+						statsPW = new List<double>(outputbatsseq);
+					}
 					yield return timepause;
 
 					batsseq = new List<IMyTerminalBlock>(backupbatteries);

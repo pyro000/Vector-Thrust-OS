@@ -27,11 +27,6 @@ namespace IngameScript
 			return block.CubeGrid.GetCubeBlock(block.Position)?.FatBlock == block;
 		}
 
-		/*public static StringBuilder Table(this StringBuilder str) {
-			string[] test = str.ToString().Split('\n');
-			foreach (string t in test) { 
-			string[] test2 = }}*/
-
 		public static List<string> Between(this string STR, string STR1, string STR2 = "")
 		{
 			if (STR2.Equals("")) STR2 = STR1;
@@ -90,7 +85,7 @@ namespace IngameScript
 			return (desired * isval) / ifval;
 		}
 
-		public static StringBuilder GetSpinner(this StringBuilder spinner, ref long pc, string before = "", string after = "")
+		/*public static StringBuilder GetSpinner(this StringBuilder spinner, ref long pc, string before = "", string after = "")
 		{
 			long splitter = pc / 10 % 4;
 
@@ -111,12 +106,12 @@ namespace IngameScript
 					spinner.Append("/");
 					break;
 			}
-			if (pc >= 1000) pc = 0;
+			
 
 			spinner.Append(after);
 
 			return spinner;
-		}
+		}*/
 
 		public static int Count<T>(this List<T> el, List<T>[] args) {
 			return el.Count + args.Sum(x => x.Count);
@@ -124,6 +119,11 @@ namespace IngameScript
 
 		public static bool Empty<T>(this List<T> list) {
 			return list.Count == 0;
+		}
+
+		public static bool Empty<T>(this T[] array)
+		{
+			return array.Length == 0;
 		}
 
 		public static double Abs(this double d) {

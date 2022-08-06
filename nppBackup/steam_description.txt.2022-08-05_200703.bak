@@ -1,0 +1,82 @@
+[h1][b] Vector Thrust OS [/b][/h1]
+
+[h1][b] Welcome to the best meta/agility script of Space Engineers. Not only controls roto-thrusters, it's an entire OS.[/b][/h1]
+[b] Fork from VectorThrust2 [/b]
+
+[b] Big thanks to Digi, Whiplash, d1ag0n, feoranis, Malware, and so on to help me with part of the code and solving some problems. [/b]
+[b] I cannot rule out my thanks also to 1wsx10, the original author of Vector Thrust 2 and for providing the mayority of the code where this script is working. [/b]
+
+If you have [url=http://steamcommunity.com/sharedfiles/filedetails/?id=655948251&searchtext=control+module] Control Module [/url] installed in the world, it will unlock some benefits. [b] But now I guess is deprecated [/b]
+
+[url=https://github.com/pyro000/Vector-Thrust-OS] New Github Repository [/url]
+
+[h1] Features: [/h1]
+[list]
+[*] Movement in space and in gravity totally possible with a variety of possibilities, rotors and thrusters more stable, thanks to some maths and a custom sensibility value.
+[*] Improved performance considerably, no more stanby/jetpack mode.
+[*] All configuration handled in the Custom Data of the Programmable Block.
+[*] Fully customizable accelerations, you can switch them like the gears of a car.
+[*] Tag assignation for blocks and screens is now fully customizable and really easy to implement.
+[*] You can park with landing gears and connectors and assign which batteries and tanks will be set to recharge/stockpile, also turns off all thrusters of the ship if you want it.
+[*] Better dampeners and cruise mode.
+[*] Improved UI.
+[*] Added some utilities to improve the experience in configuration, like Runtime Tracker by Whiplash or SimpleTimerSM by Digi.
+[*] If the script is too demanding for a server, you can increase some values in configuration (Skipframes, Frames Where The Script Won't Print, Frames Per Operation: Task Splitter, etc) to reduce average runtime to 0.025ms!
+[*] And the list goes on...
+[/list]
+
+[h1] GUIDE/SETUPS: [/h1]
+[url=https://steamcommunity.com/workshop/filedetails/discussion/2831096030/3409804177170279657/] You can open the guide here. [/url]
+
+[url=https://youtu.be/EsEJnOKxPhs]And Tutorial Here.[/url]
+
+Soon there will be a video and more blueprint examples.
+
+[h1] SCRIPT IS TOO HEAVY FOR YOUR SERVER? [/h1]
+
+Don't worry! There's an option I added for that desired low end gameplay, I present you "Skipframes=", each frame is processed, N frames will be skipped, improving performance but making the script less precise the more the value, I recommend putting it no more than 4 in space and 2 in planets. 
+Example: Assuming if the frame that will not be processed is [0] and processed [1]. If you set Skipframes to 1, the frames will go like this: [0][1][0][1]...
+But if you set it to 3, it will go like this: [0][0][0][1][0][0][0][1]
+
+
+[h1] VANILLA BUTTONS SETUP [/h1]
+
+1. Get in your Controller (Cockpit, Remote Control), press G.
+2. Drag the Programmable Block to the bar and select "Run".
+3. Write or paste the argument for your controls. you will need:
+* gear
+* cruise
+* dampeners (If you don't have any normal thrusters available, otherwise use vanilla [Z]).
+
+[h1] CONTROL MODULE SETUP (FULLY FUNCTIONAL)[/h1]
+ [b] Inertia Dampeners key (Default Z) [/b]: Inertia Dampeners On/Off.
+ [b] Gear key (Default Shift) [/b]:	Increase accelerations saved in the custom data, like a car's gears, similar to "gear" argument.
+ [b] Cruise key (Default R) [/b]: Toggle cruise mode, turns off thrusters depending of the controller's direction.
+ [b] Toggle park mode (Jetpack Button) (Default X) [/b]: Toggle park mode, if you added a landing gear or connector to the script, you can toggle this to shutdown everything properly and set tanks and batteries to recharge automatically.
+
+[h1] INFO PANEL SETUP [/h1]
+[b] While this is Optional, I highly recommend it. [/b]
+1. Place a text panel
+2. put [b]NameTag[/b]LCD in the name
+3. For Controller screens add [b]NameTag[/b]:n , where n can be from 0 to the (length of all screens available - 1).
+
+[h1] BUGS [/h1]
+- Sometimes if the thrusters are so strong, at full acceleration, the vector thruster that doesn't have to do anything does a coordinated zigzag pattern, it doesn't affect gameplay or movement at all.
+If you want to report a bug go to Issues tab.
+- You tell me.
+
+[h1] EXAMPLE UPDATED BLUEPRINTS[/h1]
+
+[h2] Small Grid [/h2]
+
+Most basic one (Space): https://steamcommunity.com/sharedfiles/filedetails/?id=2839606252
+
+I like this one (Atmo): https://steamcommunity.com/sharedfiles/filedetails/?id=2843960670 
+Uses the new math to stabilize that much power.
+
+https://steamcommunity.com/sharedfiles/filedetails/?id=2831142313
+https://steamcommunity.com/sharedfiles/filedetails/?id=2831355817
+https://steamcommunity.com/sharedfiles/filedetails/?id=2831140613
+
+[h2] Large Grid [/h2]
+https://steamcommunity.com/sharedfiles/filedetails/?id=2839587694
