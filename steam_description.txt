@@ -1,18 +1,22 @@
 [h1][b] Vector Thrust OS [/b][/h1]
 
 [h1][b] Welcome to the best meta/agility script of Space Engineers. Not only controls rotor-thrusters, it's an entire OS.[/b][/h1]
-[b] Fork from VectorThrust2 [/b]
+[b] Fork from [url=https://steamcommunity.com/sharedfiles/filedetails/?id=1210578673]VectorThrust2 [/url][/b]
 
 [b] Big thanks to Digi, Whiplash, d1ag0n, feoranis, Malware, and so on to help me with part of the code and solving some problems. [/b]
 [b] I cannot rule out my thanks also to 1wsx10, the original author of Vector Thrust 2 and for providing the mayority of the code where this script is working. [/b]
 
-If you have [url=http://steamcommunity.com/sharedfiles/filedetails/?id=655948251&searchtext=control+module] Control Module [/url] installed in the world, it will unlock some benefits. [b] But now I guess is deprecated [/b]
+If you have [url=http://steamcommunity.com/sharedfiles/filedetails/?id=655948251&searchtext=control+module] Control Module [/url] installed in the world, then you don't need to set up Actions in your Toolbar, use the controls of your keyboard. [b] NOW FULLY FUNCTIONAL [/b]
 
 [url=https://github.com/pyro000/Vector-Thrust-OS] New Github Repository [/url]
+[url=https://github.com/1wsx10/VectorThrust2] Old Github Repository [/url] (Vector Thrust 2)
+
+[h1]NEW UPDATE INCLUDES MOST PART OF [url=https://github.com/1wsx10/VectorThrust2]WHIPLASH'S ARTIFICIAL HORIZON REDUX[/url], MAKE SURE TO GIVE IT A VISIT AND A THANKS[/h1]
 
 [h1] Features: [/h1]
 [list]
 [*] Movement in space and in gravity totally possible with a variety of possibilities, rotors and thrusters more stable, thanks to some maths and a custom sensibility value.
+[*] Includes it's own artificial horizon, based completely on the coded by Whiplash, Whip's Artificial Horizon Redux, Thank you so much Whip!
 [*] Improved performance considerably, no more stanby/jetpack mode.
 [*] All configuration handled in the Custom Data of the Programmable Block.
 [*] Fully customizable accelerations, you can switch them like the gears of a car.
@@ -28,7 +32,7 @@ If you have [url=http://steamcommunity.com/sharedfiles/filedetails/?id=655948251
 [h1] GUIDE/SETUPS: [/h1]
 [url=https://steamcommunity.com/workshop/filedetails/discussion/2831096030/3409804177170279657/] You can open the guide here. [/url]
 
-[url=https://youtu.be/EsEJnOKxPhs]And Ultra Basic Tutorial Here.[/url]
+[url=https://www.youtube.com/watch?v=EsEJnOKxPhs&list=PLFYAKmbY8k-HhFkvaeYCEpDaVrdMwEzi0&index=2&ab_channel=VantablackPyro] And Youtube Tutorials Playlist Here[/url] (Not completed, YET).
 
 Soon I will upload more tutorials, but for now I'm modifing the script and doing relevant changes, I am afraid that if I change something that appears on a video it could become obsolete quickly.
 
@@ -80,3 +84,9 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=2831140613
 
 [h2] Large Grid [/h2]
 https://steamcommunity.com/sharedfiles/filedetails/?id=2839587694
+
+[h1] BEFORE YOU COMMENT OR REPORT BUG [/h1]
+[list]
+[*] When you are moving the ship and you see that the vector thrusters are pointing the opposite direction of your desired movement, you should check the [url=https://youtu.be/gJstRpvCOzg] Tutorial 2[/url]
+[*] ---
+[/list]

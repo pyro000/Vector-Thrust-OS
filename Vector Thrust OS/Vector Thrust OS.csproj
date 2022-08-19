@@ -42,6 +42,7 @@
   <Import Project="MDK/MDK.paths.props" Condition="exists('MDK/MDK.paths.props')" />
   <ItemGroup>
     <Compile Include="BlockClasses.cs" />
+    <Compile Include="WhipHorizon.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="Sequences.cs" />
     <Compile Include="Functions.cs" />
