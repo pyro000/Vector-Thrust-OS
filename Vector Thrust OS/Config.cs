@@ -9,6 +9,7 @@ namespace IngameScript
     partial class Program
     {
         // ------- Default configs --------
+
         string myName = "VT";
         double TimeForRefresh = 10;
 

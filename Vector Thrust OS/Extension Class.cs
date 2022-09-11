@@ -37,6 +37,7 @@ namespace IngameScript
             return str;
         }
 
+
         public static void Brake(this IMyMotorStator rotor) => rotor.TargetVelocityRPM = 0;
         public static void Brake(this IMyThrust thruster) => thruster.ThrustOverridePercentage = 0;
 

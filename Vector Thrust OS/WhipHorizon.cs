@@ -217,6 +217,7 @@ namespace IngameScript
                                 }
                             }
                         }
+
                         Vector2 position_s;
 
                         float lenghtpb = 200 / 2 * minScale * progressbarsize + 140 / 2 * minScale * 1.5f; //used to calculate lenght of the progressbar

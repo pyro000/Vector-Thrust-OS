@@ -954,6 +954,7 @@ namespace IngameScript
                     outputbatsseq = new List<double> { inputs, outputs, percents.Round(0) };
                     yield return timepause;
                 }
+
                 BatteryStats.Doneloop = true;
                 yield return timepause;
             }

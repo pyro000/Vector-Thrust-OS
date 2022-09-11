@@ -97,6 +97,7 @@ namespace IngameScript
                 //else if (angleCosPercent > 98 || (program.wgv == 0 && iarpm <= 2.5)) CorrectionRPM = 0;
                 // }
 
+
                 // old_angleCos = angleCosPercent;
                 float finalrpm = CorrectionRPM + iarpm;
 

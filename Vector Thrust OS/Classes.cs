@@ -67,6 +67,7 @@ namespace IngameScript
                     configtrigger = true;
                 }
 
+
                 double runtime = _program.Runtime.LastRunTimeMs;
 
                 LastRuntime = runtime;

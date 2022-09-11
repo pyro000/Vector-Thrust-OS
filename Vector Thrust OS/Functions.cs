@@ -41,6 +41,7 @@ namespace IngameScript
                 //accelExponent_A = Accelerations[gear];
             }
 
+
             if (mvin == 0)
             {
                 //accelExponent_A = 0;

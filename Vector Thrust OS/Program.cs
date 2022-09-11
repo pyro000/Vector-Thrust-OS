@@ -483,6 +483,7 @@ namespace IngameScript
             // AVG RUNTIME: 0.051- AVG INSTRUCTIONS: 109 - min: 106
             //residuethrust = Vector3D.Zero;
 
+
             foreach (List<VectorThrust> g in VTThrGroups)
             {
                 if (g.Empty()) continue;
