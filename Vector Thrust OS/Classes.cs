@@ -29,6 +29,7 @@ namespace IngameScript
             double sumlastrun;
             public double tremaining = 0;
             public bool configtrigger = false;
+            public StringBuilder actionsused = new StringBuilder();
 
             public RuntimeTracker(Program program, int capacity = 100, double sensitivity = 0.005)
             {
@@ -86,6 +87,11 @@ namespace IngameScript
                     _runtimes.Dequeue();
                 }
 
+                if (actionsused.Length > 0 && LastRuntime > 0.09) {
+                    _program.log.AppendNR($"!{LastRuntime}: {actionsused}\n");
+                }
+                actionsused.Clear();
+
                 MaxRuntime = _runtimes.Max();
             }
 
@@ -133,6 +139,10 @@ namespace IngameScript
                 sba.AppendLine($"   >Last: {LastRuntime:n4} ms");
                 sba.AppendLine($"   >Max [{Capacity}]: {MaxRuntime:n4} ms");
                 return sba;
+            }
+
+            public void RegisterAction(string s) {
+                actionsused.Append(s + "/");
             }
         }
 

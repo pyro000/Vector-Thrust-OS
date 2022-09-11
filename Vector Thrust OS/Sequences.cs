@@ -187,6 +187,8 @@ namespace IngameScript
         {
             while (true)
             {
+                
+
                 bool greedy = this.applyTags || this.greedy;
 
                 log.AppendNR("  >Getting Rotors\n");
@@ -277,6 +279,7 @@ namespace IngameScript
                                 abandonedthrusters.Remove(thrusters_input[j]);
                                 this.vectorthrusters[i].thrusters.Add(new Thruster(thrusters_input[j]));
                                 vtthrusters.Add(thrusters_input[j]);
+                                VTMaxThrust += thrusters_input[j].MaxThrust;
                                 thrusters_input.RemoveAt(j);// shorten the list we have to check (It discards thrusters for next nacelle)
                             }
                         }
@@ -321,6 +324,13 @@ namespace IngameScript
                     ManageTag(true);
                     if (pauseseq) yield return timepause;
                 }
+
+                for (int i = 0; i < VTThrGroups.Count; i++) {
+                    VTThrGroups[i] = VTThrGroups[i].OrderBy(o => o.totalEffectiveThrust).ToList();
+                    if (pauseseq) yield return timepause;
+                }
+               
+                if (pauseseq) yield return timepause;
                 thrusters_input.Clear();
                 rotors_input.Clear();
                 GetVectorThrusters.Doneloop = true;
@@ -469,6 +479,7 @@ namespace IngameScript
                     while (!GetControllers.Doneloop)
                     {
                         GetControllers.Run();
+                        //_RuntimeTracker.RegisterAction("CheckConts");
                         yield return timepause;
                     }
                     GetControllers.Doneloop = false;
@@ -476,6 +487,7 @@ namespace IngameScript
                     while (!GetScreen.Doneloop)
                     {
                         GetScreen.Run();
+                        //_RuntimeTracker.RegisterAction("CheckScreen");
                         yield return timepause;
                     }
                     GetScreen.Doneloop = false;
@@ -483,6 +495,7 @@ namespace IngameScript
                     while (!CheckParkBlocks.Doneloop)
                     {
                         CheckParkBlocks.Run();
+                        //_RuntimeTracker.RegisterAction("CheckParkB");
                         yield return timepause;
                     }
                     CheckParkBlocks.Doneloop = false;
@@ -492,6 +505,90 @@ namespace IngameScript
                 }
 
                 if (!justCompiled) log.AppendNR("  -Mass is different, checking everything\n");
+
+                bool quick = vtthrusters.Any(x => !GridTerminalSystem.CanAccess(x));
+                ;
+                if (pauseseq) yield return timepause;
+                quick = quick || vtrotors.Any(x => !GridTerminalSystem.CanAccess(x));
+                //_RuntimeTracker.RegisterAction("rtany");
+                if (pauseseq) yield return timepause;
+                quick = quick && wgv != 0;
+
+                List<IMyTerminalBlock> vtblocks = new List<IMyTerminalBlock>(vtthrusters).Concat(vtrotors).ToList();
+                //_RuntimeTracker.RegisterAction("vtblocksfilter");
+                if (pauseseq&& !quick) yield return timepause;
+
+                foreach (IMyTerminalBlock b in vtblocks)
+                {
+                    if (!GridTerminalSystem.CanAccess(b))
+                    {
+                        if (b is IMyThrust)
+                        {
+                            VTMaxThrust -= (b as IMyThrust).MaxThrust;
+                            vtthrusters.Remove((IMyThrust)b);
+                        }
+                        else { 
+                            vtrotors.Remove((IMyMotorStator)b);
+                            abandonedrotors.Remove((IMyMotorStator)b);
+                        }
+                    }
+                    //_RuntimeTracker.RegisterAction("VTRTRemove");
+                    if (pauseseq && !quick) yield return timepause;
+                }
+
+                vectorthrusters.RemoveAll(x => !vtrotors.Contains(x.rotor.TheBlock));
+                if (pauseseq && !quick) yield return timepause;
+
+                foreach (VectorThrust vt in vectorthrusters)
+                {
+                    vt.thrusters.RemoveAll(x => !vtthrusters.Contains(x.TheBlock));
+                    vt.activeThrusters.RemoveAll(x => !vt.thrusters.Contains(x));
+                    vt.availableThrusters.RemoveAll(x => !vt.thrusters.Contains(x));
+                    //_RuntimeTracker.RegisterAction("VTHandlerFilter");
+                    if (pauseseq) yield return timepause;
+                }
+
+                foreach (List<VectorThrust> group in VTThrGroups)
+                {
+                    group.RemoveAll(x => !vectorthrusters.Contains(x) || x.thrusters.Count < 1);
+                    //_RuntimeTracker.RegisterAction("ProcVTGroup");
+                    if (pauseseq) yield return timepause;
+                }
+
+                VTThrGroups.RemoveAll(x => x.Count < 1);
+                //_RuntimeTracker.RegisterAction("DelVTGroups");
+                if (pauseseq) yield return timepause;
+
+                rotors_input.Clear();
+                if (pauseseq) yield return timepause;
+                thrusters_input.Clear();
+                if (pauseseq) yield return timepause;
+
+                List<IMyTerminalBlock> newvtblocks = new List<IMyTerminalBlock>();
+                GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(newvtblocks, x => (x is IMyThrust && !FilterThis(x)) || x is IMyMotorStator);
+                newvtblocks = newvtblocks.Except(vtrotors).Except(vtthrusters).ToList();
+                //_RuntimeTracker.RegisterAction("GettingNewVTS");
+                if (pauseseq) yield return timepause;
+
+                foreach (IMyTerminalBlock b in newvtblocks) {
+                    if (b is IMyThrust)
+                    {
+                        thrusters_input.Add((IMyThrust)b);
+                    }
+                    else {
+                        rotors_input.Add((IMyMotorStator)b);
+                    }
+                    //_RuntimeTracker.RegisterAction("NewVTs");
+                    if (pauseseq) yield return timepause;
+                }
+
+                while (!GetVectorThrusters.Doneloop)
+                {
+                    GetVectorThrusters.Run();
+                    //_RuntimeTracker.RegisterAction("GetVectorThruster");
+                    if (pauseseq) yield return timepause;
+                }
+                GetVectorThrusters.Doneloop = false;
 
                 List<IMyTerminalBlock> allblocks = new List<IMyTerminalBlock>(connectors);
                 allblocks = allblocks
@@ -506,13 +603,13 @@ namespace IngameScript
                             .Concat(normalThrusters)
                             .Concat(controllerblocks)
                             .Concat(ccontrollerblocks)
-                            .Concat(vtrotors)
+                            //.Concat(vtrotors)
                             .Concat(abandonedrotors)
                             .Concat(abandonedthrusters) // to remove deleted ones, don't panic if you don't find this variable anywhere
-                            .Concat(vtthrusters)
+                            //.Concat(vtthrusters)
                             .Concat(screens)
                             .ToList();
-
+                //_RuntimeTracker.RegisterAction("FilteringOldBlocks");
                 if (pauseseq) yield return timepause;
 
                 foreach (IMyTerminalBlock b in allblocks)
@@ -542,15 +639,19 @@ namespace IngameScript
                             taggedbats.Remove((IMyBatteryBlock)b);
                             normalbats.Remove((IMyBatteryBlock)b);
                         }
-                        else if (b is IMyMotorStator)
+                        /*else if (b is IMyMotorStator)
                         {
                             abandonedrotors.Remove((IMyMotorStator)b);
-                            vtrotors.Remove((IMyMotorStator)b);
-                        }
+                            //vtrotors.Remove((IMyMotorStator)b);
+                        }*/
                         else if (b is IMyThrust)
                         {
                             abandonedthrusters.Remove((IMyThrust)b);
-                            vtthrusters.Remove((IMyThrust)b);
+
+                            /*if (vtthrusters.Contains((IMyThrust)b)) {
+                                VTMaxThrust -= (b as IMyThrust).MaxThrust;
+                                vtthrusters.Remove((IMyThrust)b);
+                            }*/
                             //if (FilterThis(b))
                             //{
                             cruiseThr.Remove((IMyThrust)b);
@@ -592,20 +693,23 @@ namespace IngameScript
                         abandonedrotors.Remove((IMyMotorStator)b);
                         vtrotors.Remove((IMyMotorStator)b);
                     }
+
+                    //_RuntimeTracker.RegisterAction("ProcBrokenBlock");
                     if (pauseseq) yield return timepause;
                 };
 
                 controllers_input.Clear();
                 if (pauseseq) yield return timepause;
-                rotors_input.Clear();
+                /*rotors_input.Clear();
                 if (pauseseq) yield return timepause;
                 thrusters_input.Clear();
-                if (pauseseq) yield return timepause;
+                if (pauseseq) yield return timepause;*/
 
                 controllers.RemoveAll(x => !GridTerminalSystem.CanAccess(x.TheBlock));
+                //_RuntimeTracker.RegisterAction("RemoveAllControllers");
                 if (pauseseq) yield return timepause;
 
-                vectorthrusters.RemoveAll(x => !vtrotors.Contains(x.rotor.TheBlock));
+                /*vectorthrusters.RemoveAll(x => !vtrotors.Contains(x.rotor.TheBlock));
                 if (pauseseq) yield return timepause;
 
                 foreach (VectorThrust vt in vectorthrusters)
@@ -623,21 +727,22 @@ namespace IngameScript
                 }
 
                 VTThrGroups.RemoveAll(x => x.Count < 1);
-                if (pauseseq) yield return timepause;
+                if (pauseseq) yield return timepause;*/
 
                 for (int i = controlledControllers.Count - 1; i >= 0; i--)
                 {
-                    if (pauseseq) yield return timepause;
                     if (!GridTerminalSystem.CanAccess(controlledControllers[i].TheBlock))
                     {
                         RemoveSurfaceProvider(controlledControllers[i].TheBlock);
                         controlledControllers.RemoveAt(i);
                     }
+                    //_RuntimeTracker.RegisterAction("RemControllers");
                     if (pauseseq) yield return timepause;
                 }
 
                 List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
                 GridTerminalSystem.GetBlocksOfType<IMyTerminalBlock>(blocks);
+                //_RuntimeTracker.RegisterAction("GettingAllBlocks");
                 if (pauseseq) yield return timepause;
 
                 blocks = blocks.Except(connectors)
@@ -658,6 +763,7 @@ namespace IngameScript
                     .Except(abandonedrotors)
                     .Except(abandonedthrusters)
                     .ToList();
+                //_RuntimeTracker.RegisterAction("FilteringNewBlocks");
                 if (pauseseq) yield return timepause;
 
                 foreach (IMyTerminalBlock b in blocks)
@@ -676,30 +782,29 @@ namespace IngameScript
                             controllerblocks.Add((IMyShipController)b);
                             controllers_input.Add(new ShipController((IMyShipController)b));
                         }
-                        else if (b is IMyMotorStator)
+                        /*else if (b is IMyMotorStator)
                         {
                             IMyMotorStator rt = (IMyMotorStator)b;
-                            rotors_input.Add(rt);
 
-                        }
-                        else if (b is IMyThrust)
+                        }*/
+                        else if (b is IMyThrust && samegrid)
                         {
                             IMyThrust tr = (IMyThrust)b;
 
-                            if (samegrid)
+                            //if (samegrid)
+                            //{
+                            normalThrusters.Add((IMyThrust)b);
+                            if (b.Orientation.Forward == mainController.TheBlock.Orientation.Forward) //changing
                             {
-                                normalThrusters.Add((IMyThrust)b);
-                                if (b.Orientation.Forward == mainController.TheBlock.Orientation.Forward) //changing
-                                {
-                                    cruiseThr.Add((IMyThrust)b);
-                                    log.AppendNR("Added back thrust: " + b.CustomName);
-                                }
-                                if (!justCompiled && stockvalues) (b as IMyFunctionalBlock).Enabled = true;
+                                cruiseThr.Add((IMyThrust)b);
+                                log.AppendNR("Added back thrust: " + b.CustomName);
                             }
-                            else
+                            if (!justCompiled && stockvalues) (b as IMyFunctionalBlock).Enabled = true;
+                            //}
+                            /*else
                             {
                                 thrusters_input.Add(tr);
-                            }
+                            }*/
                         }
                         /*if (b is IMyProgrammableBlock) // I will use it in the future maybe for autopilot
 						{ //TODO, make the script detect if this has same tag and same surround to prevent future errors.
@@ -757,7 +862,7 @@ namespace IngameScript
                             soundblocks.Add(sb);
                         }
                     }
-
+                    //_RuntimeTracker.RegisterAction("ProcBlock");
                     if (pauseseq) yield return timepause;
                 }
                 // TODO: Compare if blocks are equal, or make other quick way to gather correct blocks (DONE)
@@ -768,6 +873,7 @@ namespace IngameScript
                 while (!GetControllers.Doneloop)
                 {
                     GetControllers.Run();
+                    //_RuntimeTracker.RegisterAction("GetControllers");
                     if (pauseseq) yield return timepause;
                 }
                 GetControllers.Doneloop = false;
@@ -775,16 +881,17 @@ namespace IngameScript
                 while (!GetScreen.Doneloop)
                 {
                     GetScreen.Run();
+                    //_RuntimeTracker.RegisterAction("GetScreens");
                     if (pauseseq) yield return timepause;
                 }
                 GetScreen.Doneloop = false;
 
-                while (!GetVectorThrusters.Doneloop)
+                /*while (!GetVectorThrusters.Doneloop)
                 {
                     GetVectorThrusters.Run();
                     if (pauseseq) yield return timepause;
                 }
-                GetVectorThrusters.Doneloop = false;
+                GetVectorThrusters.Doneloop = false;*/
 
                 LND(ref controllerblocks);
                 if (pauseseq) yield return timepause;
@@ -819,6 +926,8 @@ namespace IngameScript
         {
             while (true)
             {
+                //_RuntimeTracker.RegisterAction("GetBatStats");
+
                 outputbatsseq.Clear();
                 if (batsseq.Count > 0)
                 {
@@ -835,6 +944,7 @@ namespace IngameScript
                         }
 
                         outputs -= b.MaxOutput;
+                        //_RuntimeTracker.RegisterAction("GBatSStep");
                         yield return timepause;
                     }
                     inputs /= inputs != 0 ? batsseq.Count : 1;

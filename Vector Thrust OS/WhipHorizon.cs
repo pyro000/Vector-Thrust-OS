@@ -26,7 +26,9 @@ namespace IngameScript
             public Color Offlinecolor { get; set; } = new Color(99, 99, 99); //Gray color of the text box of damp, cruise, etc
             public Color Onlinecolor { get; set; } = new Color(255, 40, 40); //Red color of the text box of damp, cruise, etc
             public Color ForwardArrowColor { get; set; } = new Color(0, 175, 0, 150); // Green Color of the arrow if it is pointing to the front
-            public Color TextBoxBackground { get; set; } = new Color(10, 10, 10, 150); // Background of textbox of damp, cruise, etc 
+            public Color TextBoxBackground { get; set; } = Color.Black; // Background of textbox of damp, cruise, etc 
+            public Color ProgressBarBackground { get; set; } = Color.Black; // Background of textbox of damp, cruise, etc 
+            public Color GearBackground { get; set; } = Color.Black; // Background of textbox of damp, cruise, etc 
             public float ReticuleSens { get; set; } = 1; // Reticule sensitivity, the more the value, the more sens will have the velocity reticule
             public float DampreticuleSens { get; set; } = 0.5f; // How far it needs to be from the center to trigger arrow mode while in dampeners
             public List<IMyTextSurface> Surfaces { get; set; } // Surfaces, gets updated every time
@@ -224,15 +226,15 @@ namespace IngameScript
 
                         float percent = (float)(p.gearaccel / p.maxaccel * 100);
 
-                        DrawProgressBar(frame, position_s, percent, minScale * progressbarsize, center: true, background: Color.Black);
+                        DrawProgressBar(frame, position_s, percent, minScale * progressbarsize, center: true, background: ProgressBarBackground);
 
                         position_s = new Vector2(position_s.X + lenghtpb, positionpbar);
 
-                        TextBox(frame, position_s, $"{Math.Round(p.accel_aux, 2)} m/s²", minScale * progressbarsize, background: Color.Black);
+                        TextBox(frame, position_s, $"{Math.Round(p.accel_aux, 2)} m/s²", minScale * progressbarsize, background: TextBoxBackground);
 
                         position_s = new Vector2(_viewport_s.X + (_viewport_s.Width * 0.5f), positionbar2);
 
-                        DrawGear(frame, position_s, minScale * progressbarsize);
+                        DrawGear(frame, position_s, minScale * progressbarsize, background: GearBackground);
 
                         float[] wh1 = new float[] { _viewport_s.Width * 0.15f, _viewport_s.Height * 0.25f };
                         float[] wh2 = new float[] { _viewport_s.Width * 0.85f, _viewport_s.Height * 0.25f };
@@ -261,6 +263,7 @@ namespace IngameScript
 
                         Vector2 LoadingPos = new Vector2(screenCenter.X, screenCenter.Y - minScale * 50);
                         Vector2 LTextPos = new Vector2(screenCenter.X, screenCenter.Y + 25f * minScale + 3f);
+                        Vector2 PrinterPos = new Vector2(screenCenter.X, _viewport_s.Y + 12f * minScale);
                         Vector2 BTextBox = new Vector2(_viewport_s.X + (_viewport_s.Width * 0.5f), _viewport_s.Y + (_viewport_s.Height * 0.5f) - minScale * 50);
 
                         if (p.parkedcompletely && p.BlockManager.Doneloop)
@@ -278,7 +281,7 @@ namespace IngameScript
                             Loading(frame, LoadingPos, minScale * 2, 1.2f);
                         } //UNPARKING
 
-                        if (((p.parked && p.alreadyparked) || p.trulyparked) && p.setTOV && p.totalVTThrprecision.Round(1) != 100)
+                        if (((p.parked && p.alreadyparked) || p.trulyparked) && p.setTOV && (p.totalVTThrprecision.Round(1) != 100 || p.temp1 <= 0.5))
                         {
                             Write("PARKING", frame, LTextPos, minScale * 2);
                             Loading(frame, LoadingPos, minScale * 2, 0.5f);
@@ -287,6 +290,9 @@ namespace IngameScript
                         {
                             Write("(NOT) PARKED", frame, BTextBox, minScale * 3f);
                         }
+
+
+                        Write(p.screensb.ToString(), frame, PrinterPos, minScale);
 
                         frame.Dispose();
                     }
@@ -660,7 +666,7 @@ namespace IngameScript
                 }); // text2
             }
 
-            void DrawProgressBar(MySpriteDrawFrame frame, Vector2 centerPos, float percentage, float scale = 1f, bool center = true, Color? background = null)
+            void DrawProgressBar(MySpriteDrawFrame frame, Vector2 centerPos, float percentage, float scale = 1f, bool center = true, Color? color = null, Color ? barcolor = null, Color ? background = null)
             {
                 Vector2 pos = center ? new Vector2(centerPos.X - (200f * scale / 2.25f), centerPos.Y) : centerPos;
                 TextAlignment ta = center ? TextAlignment.LEFT : TextAlignment.CENTER;
@@ -668,6 +674,9 @@ namespace IngameScript
                 percentage = MathHelper.Clamp(percentage, 0, 100);
 
                 percentage = (percentage * 180) / 100;
+
+                color = color ?? Color.White;
+                barcolor = barcolor ?? new Color(0, 255, 255, 255);
 
                 if (background != null)
                 {
@@ -690,7 +699,7 @@ namespace IngameScript
                     Data = "SquareSimple",
                     Position = pos,
                     Size = new Vector2(percentage, 20f) * scale,
-                    Color = new Color(0, 255, 255, 255),
+                    Color = barcolor,
                     RotationOrScale = 0f
                 }); // sprite1Copy
                 frame.Add(new MySprite()
@@ -700,9 +709,115 @@ namespace IngameScript
                     Data = "SquareHollow",
                     Position = centerPos,
                     Size = new Vector2(200f, 25f) * scale,
-                    Color = new Color(255, 255, 255, 255),
+                    Color = color,
                     RotationOrScale = 0f
                 }); // sprite1
+            }
+
+            void DrawGear(MySpriteDrawFrame frame, Vector2 centerPos, float scale = 1f, Color? color = null, Color? background = null, Color? barcolor = null)
+            {
+                float width = 200f;
+                float xcoord = -100 + 75 * 0.5f;
+                color = color ?? Color.White;
+                background = background ?? Color.Black;
+                barcolor = barcolor ?? new Color(0, 255, 0, 255);
+
+                frame.Add(new MySprite()
+                {
+                    Type = SpriteType.TEXTURE,
+                    Alignment = TextAlignment.LEFT,
+                    Data = "SquareSimple",
+                    Position = new Vector2(xcoord, 0f) * scale + centerPos,
+                    Size = new Vector2(width + scale * 12, 25f) * scale,
+                    Color = Color.Black,
+                    RotationOrScale = 0f
+                });
+
+                frame.Add(new MySprite()
+                {
+                    Type = SpriteType.TEXTURE,
+                    Alignment = TextAlignment.LEFT,
+                    Data = "SquareHollow",
+                    Position = new Vector2(xcoord, 0f) * scale + centerPos,
+                    Size = new Vector2(width + scale * 12, 25f) * scale,
+                    Color = color,
+                    RotationOrScale = 0f
+                });
+
+                float stocksize = 58f;
+                float stockdiv = 61f;
+                int stocknumber = 3;
+
+                int dnum = p.Accelerations.Length;
+                int cnum = p.gear + 1;
+
+                int dif = dnum - cnum;
+
+                float formula = stocksize * stocknumber / dnum;
+                float formula2 = stockdiv * stocknumber / dnum;
+
+                float currentpos = xcoord + width - formula2;
+
+                for (int i = 0; i < dnum; i++)
+                {
+                    frame.Add(new MySprite()
+                    {
+                        Type = SpriteType.TEXTURE,
+                        Alignment = TextAlignment.LEFT,
+                        Data = "SquareSimple",
+                        Position = new Vector2(currentpos, 0f) * scale + centerPos,
+                        Size = new Vector2(formula, 20f) * scale,
+                        Color = dif != 0 ? Color.Black : barcolor,
+                        RotationOrScale = 0f
+                    });
+
+
+                    frame.Add(new MySprite()
+                    {
+                        Type = SpriteType.TEXTURE,
+                        Alignment = TextAlignment.LEFT,
+                        Data = "SquareHollow",
+                        Position = new Vector2(currentpos, 0f) * scale + centerPos,
+                        Size = new Vector2(formula, 25) * scale,
+                        Color = color,
+                        RotationOrScale = 0f
+                    });
+
+                    if (dif != 0) dif--;
+                    currentpos -= formula2;
+                }
+
+                frame.Add(new MySprite()
+                {
+                    Type = SpriteType.TEXTURE,
+                    Alignment = TextAlignment.LEFT,
+                    Data = "SquareSimple",
+                    Position = new Vector2(-100 - 75 * 0.5f, 0f) * scale + centerPos,
+                    Size = new Vector2(75f, 25f) * scale,
+                    Color = background,
+                    RotationOrScale = 0f
+                });
+
+                frame.Add(new MySprite()
+                {
+                    Type = SpriteType.TEXTURE,
+                    Alignment = TextAlignment.LEFT,
+                    Data = "SquareHollow",
+                    Position = new Vector2(-100 - 75 * 0.5f, 0f) * scale + centerPos,
+                    Size = new Vector2(75f, 25f) * scale,
+                    Color = color,
+                    RotationOrScale = 0f
+                });
+                frame.Add(new MySprite()
+                {
+                    Type = SpriteType.TEXT,
+                    Alignment = TextAlignment.LEFT,
+                    Data = "GEAR",
+                    Position = new Vector2(-125, -13f) * scale + centerPos,
+                    Color = color,
+                    FontId = "Debug",
+                    RotationOrScale = 0.8f * scale
+                });
             }
 
             public void Loading(MySpriteDrawFrame frame, Vector2 centerPos, float scale = 1f, float speed = 1)
@@ -900,109 +1015,6 @@ namespace IngameScript
                 frame.Add(xLabel);
             }
 
-            void DrawGear(MySpriteDrawFrame frame, Vector2 centerPos, float scale = 1f)
-            {
-                float width = 200f;
-                float xcoord = -100 + 75 * 0.5f;
-
-                frame.Add(new MySprite()
-                {
-                    Type = SpriteType.TEXTURE,
-                    Alignment = TextAlignment.LEFT,
-                    Data = "SquareSimple",
-                    Position = new Vector2(xcoord, 0f) * scale + centerPos,
-                    Size = new Vector2(width + scale * 12, 25f) * scale,
-                    Color = Color.Black,
-                    RotationOrScale = 0f
-                });
-
-                frame.Add(new MySprite()
-                {
-                    Type = SpriteType.TEXTURE,
-                    Alignment = TextAlignment.LEFT,
-                    Data = "SquareHollow",
-                    Position = new Vector2(xcoord, 0f) * scale + centerPos,
-                    Size = new Vector2(width + scale * 12, 25f) * scale,
-                    Color = new Color(255, 255, 255, 255),
-                    RotationOrScale = 0f
-                });
-
-                float stocksize = 58f;
-                float stockdiv = 61f;
-                int stocknumber = 3;
-
-                int dnum = p.Accelerations.Length;
-                int cnum = p.gear + 1;
-
-                int dif = dnum - cnum;
-
-                float formula = stocksize * stocknumber / dnum;
-                float formula2 = stockdiv * stocknumber / dnum;
-
-                float currentpos = xcoord + width - formula2;
-
-                for (int i = 0; i < dnum; i++)
-                {
-                    frame.Add(new MySprite()
-                    {
-                        Type = SpriteType.TEXTURE,
-                        Alignment = TextAlignment.LEFT,
-                        Data = "SquareSimple",
-                        Position = new Vector2(currentpos, 0f) * scale + centerPos,
-                        Size = new Vector2(formula, 20f) * scale,
-                        Color = dif != 0 ? Color.Black : new Color(0, 255, 0, 255),
-                        RotationOrScale = 0f
-                    });
-
-
-                    frame.Add(new MySprite()
-                    {
-                        Type = SpriteType.TEXTURE,
-                        Alignment = TextAlignment.LEFT,
-                        Data = "SquareHollow",
-                        Position = new Vector2(currentpos, 0f) * scale + centerPos,
-                        Size = new Vector2(formula, 25) * scale,
-                        Color = Color.White,
-                        RotationOrScale = 0f
-                    });
-
-                    if (dif != 0) dif--;
-                    currentpos -= formula2;
-                }
-
-                frame.Add(new MySprite()
-                {
-                    Type = SpriteType.TEXTURE,
-                    Alignment = TextAlignment.LEFT,
-                    Data = "SquareSimple",
-                    Position = new Vector2(-100 - 75 * 0.5f, 0f) * scale + centerPos,
-                    Size = new Vector2(75f, 25f) * scale,
-                    Color = Color.Black,
-                    RotationOrScale = 0f
-                });
-
-                frame.Add(new MySprite()
-                {
-                    Type = SpriteType.TEXTURE,
-                    Alignment = TextAlignment.LEFT,
-                    Data = "SquareHollow",
-                    Position = new Vector2(-100 - 75 * 0.5f, 0f) * scale + centerPos,
-                    Size = new Vector2(75f, 25f) * scale,
-                    Color = Color.White,
-                    RotationOrScale = 0f
-                });
-                frame.Add(new MySprite()
-                {
-                    Type = SpriteType.TEXT,
-                    Alignment = TextAlignment.LEFT,
-                    Data = "GEAR",
-                    Position = new Vector2(-125, -13f) * scale + centerPos,
-                    Color = Color.White,
-                    FontId = "Debug",
-                    RotationOrScale = 0.8f * scale
-                });
-            }
-
             string GetAxisIcon(double z)
             {
                 return z < 0 ? "CircleHollow" : "Circle";
@@ -1106,8 +1118,5 @@ namespace IngameScript
             else
                 return Math.Acos(MathHelper.Clamp(a.Dot(b) / Math.Sqrt(a.LengthSquared() * b.LengthSquared()), -1, 1));
         }
-
-
-
     }
 }

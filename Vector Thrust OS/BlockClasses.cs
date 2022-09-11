@@ -29,9 +29,9 @@ namespace IngameScript
             public int detectThrustCounter = 0;
             public Vector3D currDir = Vector3D.Zero;
 
-            public double old_angleCos = 0;
+            public double LastAngleCos = 0;
             float CorrectionRPM = 0;
-            int AngleCosCount = 0;
+            //int AngleCosCount = 0;
 
             public VectorThrust(Rotor rotor, Program program)
             {
@@ -48,14 +48,16 @@ namespace IngameScript
             {
 
                 // 0.06 135.9
+                //CalcTotalEffectiveThrust();
 
-                CalcTotalEffectiveThrust();
-
-                double maxlength = MathHelper.Clamp(requiredVec.Length(), 0, 15000);
-                double multiplier = totalEffectiveThrust * 29.167 / program.myshipmass.PhysicalMass;
-                double accel = program.maxaccel * program.myshipmass.PhysicalMass;
-                double additional = program.sv > 100 ? program.sv / 4 : 1;
-                double correction = 4714.285714 * requiredVec.Length() / accel;
+                //double maxlength = MathHelper.Clamp(requiredVec.Length(), 0, 15000);
+                //double multiplier = totalEffectiveThrust * 29.167 / program.myshipmass.PhysicalMass;
+                //double accel_beta = program.VTMaxThrust * 2;
+                //double accel = program.maxaccel * program.myshipmass.PhysicalMass;
+                //double temp = program.VTMaxThrust * 4;
+                //program.Echo($"{accel_beta}/{accel}/{temp}");
+                double additional = program.sv > 100 ? program.sv / 10 : 1;
+                double correction = /*4714.285714*/1178 * requiredVec.Length() / program.VTMaxThrust/* accel*/;
                 // 0.07  148
 
                 double angleCos = rotor.SetFromVec(requiredVec);
@@ -63,27 +65,39 @@ namespace IngameScript
                 float iarpm = AI(angleCosPercent, correction / (program.RotorStMultiplier * additional)).NNaN();
 
                 // 0.077  180 / 0.073 180
-                
+
                 /*if (program.dampeners && !program.cruise && program.thrustOn && Math.Abs(angleCosPercent - old_angleCos) <= 10 && angleCosPercent < 95 && iarpm < 5) AngleCosCount++;
                 else AngleCosCount = 0;
                 if (AngleCosCount % 60 == 0 && angleCosPercent < 95) CorrectionRPM += 5;
                 else if (angleCosPercent > 98 || iarpm <= 2.5 || AngleCosCount == 0) CorrectionRPM = 0;*/
 
-               // if (!usepid)
+                //if (program.CanPrint()) program.screensb.AppendLine($"R: {Math.Abs(angleCosPercent - LastAngleCos).Round(2)}");
+                // if (!usepid)
                 //{
-                    if (program.dampeners && !program.cruise /*&& program.mvin == 0*/ && program.thrustOn && Math.Abs(angleCosPercent - old_angleCos) <= 15 && angleCosPercent < 90) AngleCosCount++;
-                    else AngleCosCount = 0;
+                if (((program.wgv == 0 && program.dampeners) || (program.wgv != 0)) /*&& ((program.wgv == 0 && !program.cruise) ||
+                    (program.wgv != 0)) /*&& program.mvin == 0*/ && program.thrustOn && Math.Abs(angleCosPercent - LastAngleCos) <= program.RPMLimit && angleCosPercent < 90)
+                {
+                    //AngleCosCount++;
+                    //if (program.CanPrint()) program.screensb.AppendLine($"TURNING");
+                    CorrectionRPM += program.RPMIncrement;
+                }
+                else if (angleCosPercent > 98 || (program.wgv == 0 && iarpm <= 2.5) || Math.Abs(angleCosPercent - LastAngleCos) > program.RPMLimit) //6
+                { 
+                    //AngleCosCount = 0;
+                    CorrectionRPM = 0;
+                }
 
                 //}
-                old_angleCos = angleCosPercent;
+                LastAngleCos = angleCosPercent;
                 //if (!usepid)
-               // {
-                    if (AngleCosCount > 10 && angleCosPercent < 90) CorrectionRPM = AngleCosCount;
-                    else if (angleCosPercent > 98 || iarpm <= 2.5) CorrectionRPM = 0;
-               // }
+                //
+                //float ac = (float)MathHelper.Clamp(angleCos + 1, 0.1, 2);
 
+                //if (AngleCosCount > 10 && angleCosPercent < 90) CorrectionRPM += program.RPMIncrement/* / ac*/;
+                //else if (angleCosPercent > 98 || (program.wgv == 0 && iarpm <= 2.5)) CorrectionRPM = 0;
+                // }
 
-               // old_angleCos = angleCosPercent;
+                // old_angleCos = angleCosPercent;
                 float finalrpm = CorrectionRPM + iarpm;
 
                 // 0.08  184
@@ -118,9 +132,23 @@ namespace IngameScript
                 //set the thrust for each engine
                 foreach (Thruster thruster in activeThrusters)
                 {
-                    Vector3D thrust = thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust;
+                    //Vector3D vec = program.mvin != 0 ? requiredVec.Normalized() * totalEffectiveThrust * program.Accelerations[program.gear] : requiredVec;
+                    //program.Echo($"{vec.Length()}/{requiredVec.Length()}");
+                    
+
+                    Vector3D thrust = (thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust) + program.residuethrust;
+                    /*if (thrust.Length() > 0.1)
+                    {
+                        program.Echo($"T: {thrust.Length()}");
+                        program.Echo($"LEN: {requiredVec.Length()}");
+                    }*/
                     bool noThrust = thrust.LengthSquared() < 0.001f || (program.wgv == 0 && angleCosPercent < 85);
                     program.tthrust += noThrust ? 0 : MathHelper.Clamp(thrust.Length(), 0, thruster.TheBlock.MaxEffectiveThrust);
+
+                    /*if (thrust.Length() > totalEffectiveThrust) program.residuethrust = thrust.Normalized() * (thrust.Length() - totalEffectiveThrust);
+                    else program.residuethrust = Vector3D.Zero;*/
+
+                    //if (program.residuethrust.Length() != 0) program.Echo($"res: {program.residuethrust}");
 
                     if (!program.thrustOn || noThrust)
                     {
@@ -337,30 +365,37 @@ namespace IngameScript
                 // 	rotor.offset = (float)(2*Math.PI - rotor.offset);
                 // }
 
-                foreach (Thruster t in thrusters)
-                {
-                    t.TheBlock.Enabled = false;
-                    t.IsOn = false;
-                }
-                activeThrusters.Clear();
+                
 
                 // put thrusters into the active list
                 Base6Directions.Direction thrDir = Base6Directions.GetDirection(thrustDir);
+                ActiveList(thrDir);
+
+                //}
+            }
+
+            public void ActiveList(Base6Directions.Direction? thrDir = null, bool Override = false) {
+                if (!Override) {
+                    foreach (Thruster t in thrusters)
+                    {
+                        t.TheBlock.Enabled = false;
+                        t.IsOn = false;
+                    }
+                    activeThrusters.Clear();
+                }
                 //if (program.thrustOn) { //IDK IF THIS DOES SOMETHING USEFUL
                 foreach (Thruster t in availableThrusters)
                 {
                     Base6Directions.Direction thrustForward = t.TheBlock.Orientation.Forward; // Exhaust goes this way
 
-                    if (thrDir == thrustForward && ((t.TheBlock.MaxEffectiveThrust != 0 && t.TheBlock.Enabled) || !t.TheBlock.Enabled))
+                    if ((thrDir == thrustForward || Override) && ((t.TheBlock.MaxEffectiveThrust != 0 && t.TheBlock.Enabled) || (!program.parked && !t.TheBlock.Enabled)))
                     {
                         t.TheBlock.Enabled = true;
                         t.IsOn = true;
-                        activeThrusters.Add(t);
+                        if (!activeThrusters.Contains(t)) activeThrusters.Add(t);
                     }
                 }
-                //}
             }
-
         }
 
         class Thruster : BlockWrapper<IMyThrust>

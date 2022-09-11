@@ -67,6 +67,15 @@ namespace IngameScript
             return double.IsNaN(inp) ? 1 * Math.Pow(10, -10) : inp;
         }
 
+        public static float Pow(this float p, float n) {
+            return (float)Math.Pow(p, n);
+        }
+
+        public static double Pow(this double p, double n)
+        {
+            return Math.Pow(p, n);
+        }
+
         public static float NNaN(this float inp)
         {
             return float.IsNaN(inp) ? (float)(1 * Math.Pow(10, -10)) : (float)inp;
@@ -138,17 +147,17 @@ namespace IngameScript
             return sb;
         }
 
-        public static Vector3D Round(this Vector3D vec, int num)
+        public static Vector3D Round(this Vector3D vec, int num = 0)
         {
             return Vector3D.Round(vec, num);
         }
 
-        public static double Round(this double val, int num)
+        public static double Round(this double val, int num = 0)
         {
             return Math.Round(val, num);
         }
 
-        public static float Round(this float val, int num)
+        public static float Round(this float val, int num = 0)
         {
             return (float)Math.Round(val, num);
         }
