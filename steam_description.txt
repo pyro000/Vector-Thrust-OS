@@ -8,8 +8,10 @@
 
 If you have [url=http://steamcommunity.com/sharedfiles/filedetails/?id=655948251&searchtext=control+module] Control Module [/url] installed in the world, then you don't need to set up Actions in your Toolbar, use the controls of your keyboard. [b] NOW FULLY FUNCTIONAL [/b]
 
+
 [url=https://github.com/pyro000/Vector-Thrust-OS] New Github Repository [/url]
 [url=https://github.com/1wsx10/VectorThrust2] Old Github Repository [/url] (Vector Thrust 2)
+
 
 [h1]NEW UPDATE INCLUDES MOST PART OF [url=https://steamcommunity.com/sharedfiles/filedetails/?id=1721247350]WHIPLASH'S ARTIFICIAL HORIZON REDUX[/url], MAKE SURE TO GIVE IT A VISIT AND A THANKS[/h1]
 
