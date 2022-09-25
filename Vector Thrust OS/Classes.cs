@@ -147,129 +147,6 @@ namespace IngameScript
             }
         }
 
-        public class PidController
-        {
-            private double processVariable = 0;
-
-            public PidController(double GainProportional, double GainIntegral, double GainDerivative, double OutputMax, double OutputMin)
-            {
-                this.GainDerivative = GainDerivative;
-                this.GainIntegral = GainIntegral;
-                this.GainProportional = GainProportional;
-                this.OutputMax = OutputMax;
-                this.OutputMin = OutputMin;
-            }
-
-            /// <summary>
-            /// The controller output
-            /// </summary>
-            /// <param name="timeSinceLastUpdate">timespan of the elapsed time
-            /// since the previous time that ControlVariable was called</param>
-            /// <returns>Value of the variable that needs to be controlled</returns>
-            public double ControlVariable(TimeSpan timeSinceLastUpdate)
-            {
-                double error = SetPoint - ProcessVariable;
-
-                // integral term calculation
-                IntegralTerm += (GainIntegral * error * timeSinceLastUpdate.TotalSeconds);
-                IntegralTerm = Clamp(IntegralTerm);
-
-                // derivative term calculation
-                double dInput = processVariable - ProcessVariableLast;
-                double derivativeTerm = GainDerivative * (dInput / timeSinceLastUpdate.TotalSeconds);
-
-                // proportional term calcullation
-                double proportionalTerm = GainProportional * error;
-
-                double output = proportionalTerm + IntegralTerm - derivativeTerm;
-
-                output = Clamp(output);
-
-                return output;
-            }
-
-            /// <summary>
-            /// The derivative term is proportional to the rate of
-            /// change of the error
-            /// </summary>
-            public double GainDerivative { get; set; } = 0;
-
-            /// <summary>
-            /// The integral term is proportional to both the magnitude
-            /// of the error and the duration of the error
-            /// </summary>
-            public double GainIntegral { get; set; } = 0;
-
-            /// <summary>
-            /// The proportional term produces an output value that
-            /// is proportional to the current error value
-            /// </summary>
-            /// <remarks>
-            /// Tuning theory and industrial practice indicate that the
-            /// proportional term should contribute the bulk of the output change.
-            /// </remarks>
-            public double GainProportional { get; set; } = 0;
-
-            /// <summary>
-            /// The max output value the control device can accept.
-            /// </summary>
-            public double OutputMax { get; private set; } = 0;
-
-            /// <summary>
-            /// The minimum ouput value the control device can accept.
-            /// </summary>
-            public double OutputMin { get; private set; } = 0;
-
-            /// <summary>
-            /// Adjustment made by considering the accumulated error over time
-            /// </summary>
-            /// <remarks>
-            /// An alternative formulation of the integral action, is the
-            /// proportional-summation-difference used in discrete-time systems
-            /// </remarks>
-            public double IntegralTerm { get; private set; } = 0;
-
-
-            /// <summary>
-            /// The current value
-            /// </summary>
-            public double ProcessVariable
-            {
-                get { return processVariable; }
-                set
-                {
-                    ProcessVariableLast = processVariable;
-                    processVariable = value;
-                }
-            }
-
-            /// <summary>
-            /// The last reported value (used to calculate the rate of change)
-            /// </summary>
-            public double ProcessVariableLast { get; private set; } = 0;
-
-            /// <summary>
-            /// The desired value
-            /// </summary>
-            public double SetPoint { get; set; } = 0;
-
-            /// <summary>
-            /// Limit a variable to the set OutputMax and OutputMin properties
-            /// </summary>
-            /// <returns>
-            /// A value that is between the OutputMax and OutputMin properties
-            /// </returns>
-            /// <remarks>
-            /// Inspiration from http://stackoverflow.com/questions/3176602/how-to-force-a-number-to-be-in-a-range-in-c
-            /// </remarks>
-            private double Clamp(double variableToClamp)
-            {
-                if (variableToClamp <= OutputMin) { return OutputMin; }
-                if (variableToClamp >= OutputMax) { return OutputMax; }
-                return variableToClamp;
-            }
-        }
-
         // Thanks to Digi for creating this example class
         class SimpleTimerSM
         {
@@ -344,30 +221,29 @@ namespace IngameScript
         }
 
         #region PID Class
-        // THANK YOU WHIP!!! 
+
         /// <summary>
         /// Discrete time PID controller class.
-        /// (Whiplash141 - 11/22/2018)
+        /// Last edited: 2022/08/11 - Whiplash141
         /// </summary>
         public class PID
         {
-            readonly double _kP = 0;
-            readonly double _kI = 0;
-            readonly double _kD = 0;
+            public double Kp { get; set; } = 0;
+            public double Ki { get; set; } = 0;
+            public double Kd { get; set; } = 0;
+            public double Value { get; private set; }
 
             double _timeStep = 0;
             double _inverseTimeStep = 0;
             double _errorSum = 0;
-            public double _lastError = 0;
+            double _lastError = 0;
             bool _firstRun = true;
 
-            public double Value { get; private set; }
-
-            public PID(double kP, double kI, double kD, double timeStep)
+            public PID(double kp, double ki, double kd, double timeStep)
             {
-                _kP = kP;
-                _kI = kI;
-                _kD = kD;
+                Kp = kp;
+                Ki = ki;
+                Kd = kd;
                 _timeStep = timeStep;
                 _inverseTimeStep = 1 / _timeStep;
             }
@@ -380,7 +256,7 @@ namespace IngameScript
             public double Control(double error)
             {
                 //Compute derivative term
-                var errorDerivative = (error - _lastError) * _inverseTimeStep;
+                double errorDerivative = (error - _lastError) * _inverseTimeStep;
 
                 if (_firstRun)
                 {
@@ -395,8 +271,8 @@ namespace IngameScript
                 _lastError = error;
 
                 //Construct output
-                this.Value = _kP * error + _kI * _errorSum + _kD * errorDerivative;
-                return this.Value;
+                Value = Kp * error + Ki * _errorSum + Kd * errorDerivative;
+                return Value;
             }
 
             public double Control(double error, double timeStep)
@@ -409,7 +285,7 @@ namespace IngameScript
                 return Control(error);
             }
 
-            public void Reset()
+            public virtual void Reset()
             {
                 _errorSum = 0;
                 _lastError = 0;
@@ -419,57 +295,64 @@ namespace IngameScript
 
         public class DecayingIntegralPID : PID
         {
-            readonly double _decayRatio;
+            public double IntegralDecayRatio { get; set; }
 
-            public DecayingIntegralPID(double kP, double kI, double kD, double timeStep, double decayRatio) : base(kP, kI, kD, timeStep)
+            public DecayingIntegralPID(double kp, double ki, double kd, double timeStep, double decayRatio) : base(kp, ki, kd, timeStep)
             {
-                _decayRatio = decayRatio;
+                IntegralDecayRatio = decayRatio;
             }
 
             protected override double GetIntegral(double currentError, double errorSum, double timeStep)
             {
-                return errorSum * (1.0 - _decayRatio) + currentError * timeStep;
+                return errorSum * (1.0 - IntegralDecayRatio) + currentError * timeStep;
             }
         }
 
         public class ClampedIntegralPID : PID
         {
-            readonly double _upperBound;
-            readonly double _lowerBound;
+            public double IntegralUpperBound { get; set; }
+            public double IntegralLowerBound { get; set; }
 
-            public ClampedIntegralPID(double kP, double kI, double kD, double timeStep, double lowerBound, double upperBound) : base(kP, kI, kD, timeStep)
+            public ClampedIntegralPID(double kp, double ki, double kd, double timeStep, double lowerBound, double upperBound) : base(kp, ki, kd, timeStep)
             {
-                _upperBound = upperBound;
-                _lowerBound = lowerBound;
+                IntegralUpperBound = upperBound;
+                IntegralLowerBound = lowerBound;
             }
 
             protected override double GetIntegral(double currentError, double errorSum, double timeStep)
             {
                 errorSum += currentError * timeStep;
-                return Math.Min(_upperBound, Math.Max(errorSum, _lowerBound));
+                return Math.Min(IntegralUpperBound, Math.Max(errorSum, IntegralLowerBound));
             }
         }
 
         public class BufferedIntegralPID : PID
         {
             readonly Queue<double> _integralBuffer = new Queue<double>();
-            readonly int _bufferSize = 0;
+            public int IntegralBufferSize { get; set; } = 0;
 
-            public BufferedIntegralPID(double kP, double kI, double kD, double timeStep, int bufferSize) : base(kP, kI, kD, timeStep)
+            public BufferedIntegralPID(double kp, double ki, double kd, double timeStep, int bufferSize) : base(kp, ki, kd, timeStep)
             {
-                _bufferSize = bufferSize;
+                IntegralBufferSize = bufferSize;
             }
 
             protected override double GetIntegral(double currentError, double errorSum, double timeStep)
             {
-                if (_integralBuffer.Count == _bufferSize)
+                if (_integralBuffer.Count == IntegralBufferSize)
                     _integralBuffer.Dequeue();
                 _integralBuffer.Enqueue(currentError * timeStep);
                 return _integralBuffer.Sum();
             }
+
+            public override void Reset()
+            {
+                base.Reset();
+                _integralBuffer.Clear();
+            }
         }
 
         #endregion
+
 
         // LAG CLASS BY D1R4G0N, THANK YOU!
         public class Lag

@@ -22,7 +22,7 @@ namespace IngameScript
 
         // wether or not cruise mode is on when you start the script
         readonly float maxRotorRPM = 60f; // set to -1 for the fastest speed in the game (changes with mods)
-        readonly List<double> MagicNumbers = new List<double> { -0.091, 0.748, -46.934, -0.073, 0.825, -4.502, -1.239, 1.124, 2.47 };
+        //readonly List<double> MagicNumbers = new List<double> { -0.091, 0.748, -46.934, -0.073, 0.825, -4.502, -1.239, 1.124, 2.47 };
 
         readonly RuntimeTracker _RuntimeTracker;
         readonly SimpleTimerSM BlockManager;
@@ -170,23 +170,6 @@ namespace IngameScript
 
         readonly WhipsHorizon WH;
         Vector3D worldGrav = Vector3D.Zero;
-        /*public struct BA
-        {
-            public string button;
-            public float accel;
-
-            public BA(string button, float accel)
-            {
-                this.button = button;
-                this.accel = accel;
-            }
-        }*/
-
-        /*const bool useBoosts = true;
-        public BA[] boosts = {
-            new BA("c.sprint", 3f),
-            new BA("ctrl", 0.3f)
-        };*/
 
         public Program()
         {
@@ -538,9 +521,9 @@ namespace IngameScript
                         //0.09 - 229 - 218
 
                         /*if (!thrustOn) */totaleffectivethrust += vt.totalEffectiveThrust;
-                        totalVTThrprecision += vt.LastAngleCos;
+                        totalVTThrprecision += vt.rotor.LastAngleCos;
                         total += req.Length();
-                        vtprecision += vt.LastAngleCos;
+                        vtprecision += vt.rotor.LastAngleCos;
                         j++;
                     }
                 }

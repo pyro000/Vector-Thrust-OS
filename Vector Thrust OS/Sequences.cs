@@ -277,7 +277,7 @@ namespace IngameScript
 
                                 added = true;
                                 abandonedthrusters.Remove(thrusters_input[j]);
-                                this.vectorthrusters[i].thrusters.Add(new Thruster(thrusters_input[j]));
+                                this.vectorthrusters[i].thrusters.Add(new Thruster(thrusters_input[j], this));
                                 vtthrusters.Add(thrusters_input[j]);
                                 VTMaxThrust += thrusters_input[j].MaxThrust;
                                 thrusters_input.RemoveAt(j);// shorten the list we have to check (It discards thrusters for next nacelle)
@@ -780,7 +780,7 @@ namespace IngameScript
                         if (b is IMyShipController)
                         {
                             controllerblocks.Add((IMyShipController)b);
-                            controllers_input.Add(new ShipController((IMyShipController)b));
+                            controllers_input.Add(new ShipController((IMyShipController)b, this));
                         }
                         /*else if (b is IMyMotorStator)
                         {

@@ -29,8 +29,10 @@ namespace IngameScript
             return res + title + res;
         }
 
+        double force = 0;
+
         void ThrustOnHandler() {
-            double force = gravCutoff * myshipmass.PhysicalMass;
+            force = gravCutoff * myshipmass.PhysicalMass;
             double cutoffcruise = lowThrustCutCruiseOff * force;
             double cutoncruise = lowThrustCutCruiseOn * force;
 
@@ -38,7 +40,6 @@ namespace IngameScript
             {//this not longer causes problems if there are many small nacelles (SOLVED)
                 thrustOn = true;
                 trulyparked = false;
-                //accelExponent_A = Accelerations[gear];
             }
 
 
@@ -291,8 +292,8 @@ namespace IngameScript
             //vtthrusters.ForEach(x => { x.Enabled = !rotorlock; if (rotorlock) x.ThrustOverridePercentage = 0; });
             foreach (IMyMotorStator r in vtrotors) {
                 if (rotorlock) r.TargetVelocityRPM = 0;
-                if ((rotorlock && r.TargetVelocityRPM == 0) || !rotorlock) r.Enabled = !rotorlock;
-                r.RotorLock = rotorlock;
+                //if ((rotorlock && r.TargetVelocityRPM == 0) || !rotorlock) r.Enabled = !rotorlock;
+                //r.RotorLock = rotorlock;
             }
 
             //vtrotors.ForEach(x => { if ((rotorlock && x.TargetVelocityRPM == 0) || !rotorlock) x.Enabled = !rotorlock; if (rotorlock) x.TargetVelocityRPM = 0; x.RotorLock = rotorlock; });
@@ -418,7 +419,7 @@ namespace IngameScript
             foreach (IMyShipController imy in blocks)
             {
                 controllerblocks.Add(imy);
-                conts.Add(new ShipController(imy));
+                conts.Add(new ShipController(imy, this));
             }
 
             controllers = conts;
@@ -538,39 +539,38 @@ namespace IngameScript
                 if (CanPrint()) echosb.AppendLine("\nEverything stopped, performance mode.\n");
 
                 //bool cond1 = vtthrusters.All(x => x.Enabled == false && x.ThrustOverridePercentage == 0);
-                bool cond2 = vtrotors.All(x => !x.Enabled && x.RotorLock) && vtthrusters.All(x => !x.Enabled && x.ThrustOverridePercentage == 0);
-
+                rotorsstopped = rotorsstopped || vtrotors.All(x => /*!x.Enabled && x.RotorLock*/x.TargetVelocityRPM == 0) && vtthrusters.All(x => !x.Enabled && x.ThrustOverridePercentage == 0);
+                doneunstop = true;
                 //if (CanPrint()) screensb.AppendLine($"cond2: {cond2}");
 
-                rotorsstopped = rotorsstopped || /*cond1 && */cond2;
+                //rotorsstopped = rotorsstopped || /*cond1 && */cond2;
 
                 if (!rotorsstopped/* && temp1 > 0*/)
                 {
                     StabilizeRotors();
                     ShutOffThrusters();
-                    doneunstop = false;
                     ////_RuntimeTracker.RegisterAction("VTHandlerTrue1");
                 }
-                else if (cond2 && totalVTThrprecision.Round(1) == 100) {
+                /*else if (cond2 && totalVTThrprecision.Round(1) == 100) {
                     StabilizeRotors(false);
                     
                     ////_RuntimeTracker.RegisterAction("VTHandlerTrue2");
-                } //Unlocking rotors for free use
+                }*/ //Unlocking rotors for free use
 
                 //temp1++;
                 return true;
             }
-            else if (((rotorsstopped && setTOV) || unparking) && !doneunstop)  /*|| preventer*/ // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
+            else if (((rotorsstopped && setTOV) || unparking) && doneunstop)  /*|| preventer*/ // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
             {
                 //temp2++;
                 setTOV = rotorsstopped/* = trulyparked */= false;
                 ShutOffThrusters(false);
-                StabilizeRotors(false); //Just in case
+                //StabilizeRotors(false); //Just in case
                 //if (preventer) thrustontimer = 0;
 
                 foreach (VectorThrust n in vectorthrusters)
                     n.ActiveList(Override: true);
-                doneunstop = vtthrusters.All(x => x.Enabled);
+                doneunstop = !vtthrusters.All(x => x.Enabled);
                 //_RuntimeTracker.RegisterAction("VTHandlerFalse");
             }
             return rotorsstopped;

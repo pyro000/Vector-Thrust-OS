@@ -8,10 +8,11 @@ namespace IngameScript
 {
     partial class Program
     {
+        //bool usepid = true;
 
         class VectorThrust
         {
-            public Program program;
+            readonly Program p;
 
             // physical parts
             public Rotor rotor;
@@ -29,91 +30,115 @@ namespace IngameScript
             public int detectThrustCounter = 0;
             public Vector3D currDir = Vector3D.Zero;
 
-            public double LastAngleCos = 0;
-            float CorrectionRPM = 0;
+            //public double LastAngleCos = 0;
+            //float CorrectionRPM = 0;
             //int AngleCosCount = 0;
+
+            //readonly PID pid;
+            //float result = 0;
 
             public VectorThrust(Rotor rotor, Program program)
             {
-                this.program = program;
+                this.p = program;
                 this.rotor = rotor;
                 this.thrusters = new List<Thruster>();
                 this.availableThrusters = new List<Thruster>();
                 this.activeThrusters = new List<Thruster>();
                 Role = GetVTThrRole(program);
+
+                //pid = new PID(4, 0, 0, 1.0 / 60.0);
             }
 
             // final calculations and setting physical components
             public void Go()
             {
+                /*double angleCos;
+                double angleCosPercent;*/
 
-                // 0.06 135.9
-                //CalcTotalEffectiveThrust();
 
-                //double maxlength = MathHelper.Clamp(requiredVec.Length(), 0, 15000);
-                //double multiplier = totalEffectiveThrust * 29.167 / program.myshipmass.PhysicalMass;
-                //double accel_beta = program.VTMaxThrust * 2;
-                //double accel = program.maxaccel * program.myshipmass.PhysicalMass;
-                //double temp = program.VTMaxThrust * 4;
-                //program.Echo($"{accel_beta}/{accel}/{temp}");
-                double additional = program.sv > 100 ? program.sv / 10 : 1;
-                double correction = /*4714.285714*/1178 * requiredVec.Length() / program.VTMaxThrust/* accel*/;
-                // 0.07  148
-
-                double angleCos = rotor.SetFromVec(requiredVec);
-                double angleCosPercent = angleCos * 100;
-                float iarpm = AI(angleCosPercent, correction / (program.RotorStMultiplier * additional)).NNaN();
-
-                // 0.077  180 / 0.073 180
-
-                /*if (program.dampeners && !program.cruise && program.thrustOn && Math.Abs(angleCosPercent - old_angleCos) <= 10 && angleCosPercent < 95 && iarpm < 5) AngleCosCount++;
-                else AngleCosCount = 0;
-                if (AngleCosCount % 60 == 0 && angleCosPercent < 95) CorrectionRPM += 5;
-                else if (angleCosPercent > 98 || iarpm <= 2.5 || AngleCosCount == 0) CorrectionRPM = 0;*/
-
-                //if (program.CanPrint()) program.screensb.AppendLine($"R: {Math.Abs(angleCosPercent - LastAngleCos).Round(2)}");
-                // if (!usepid)
-                //{
-                if (((program.wgv == 0 && program.dampeners) || (program.wgv != 0)) /*&& ((program.wgv == 0 && !program.cruise) ||
-                    (program.wgv != 0)) /*&& program.mvin == 0*/ && program.thrustOn && Math.Abs(angleCosPercent - LastAngleCos) <= program.RPMLimit && angleCosPercent < 90)
+                /*if (!p.usepid)
                 {
-                    //AngleCosCount++;
-                    //if (program.CanPrint()) program.screensb.AppendLine($"TURNING");
-                    CorrectionRPM += program.RPMIncrement;
+                    // 0.06 135.9
+                    double additional = p.sv > 100 ? p.sv / 10 : 1;
+                    double correction = 1178 * requiredVec.Length() / p.VTMaxThrust;
+                    // 0.07  148
+
+                    angleCos = rotor.SetFromVec(requiredVec);
+                    angleCosPercent = angleCos * 100;
+                    float iarpm = AI(angleCosPercent, correction / (p.RotorStMultiplier * additional)).NNaN();
+
+                    // 0.077  180 / 0.073 180
+
+                    if (((p.wgv == 0 && p.dampeners) || (p.wgv != 0)) && p.thrustOn && Math.Abs(angleCosPercent - LastAngleCos) <= p.RPMLimit && angleCosPercent < 90)
+                    {
+                        //if (program.CanPrint()) program.screensb.AppendLine($"TURNING");
+                        CorrectionRPM += p.RPMIncrement;
+                    }
+                    else if (angleCosPercent > 98 || (p.wgv == 0 && iarpm <= 2.5) || Math.Abs(angleCosPercent - LastAngleCos) > p.RPMLimit) //6
+                    {
+                        CorrectionRPM = 0;
+                    }
+
+                    LastAngleCos = angleCosPercent;
+                    float finalrpm = CorrectionRPM + iarpm;
+                    // 0.08  184
+
+                    if (!p.thrustOn || p.parked)
+                    { //This handles rotor speed when parked, in 0G if it's too fast it will turn thrusters back on.
+                        double anglecosfixed = angleCosPercent <= 0 ? 1 : angleCosPercent;
+                        finalrpm = (float)(0.1 * 17000 / anglecosfixed); // TODO: Find a more precise way to solve this.
+                        if (!p.parked) finalrpm = MathHelper.Clamp(finalrpm, 1, (float)p.MaxThrustOffRPM);
+                    }
+
+                    rotor.maxRPM = finalrpm;
                 }
-                else if (angleCosPercent > 98 || (program.wgv == 0 && iarpm <= 2.5) || Math.Abs(angleCosPercent - LastAngleCos) > program.RPMLimit) //6
-                { 
-                    //AngleCosCount = 0;
-                    CorrectionRPM = 0;
-                }
+                else {
+                    Vector3D desiredVec = requiredVec.Normalized();
+                    Vector3D currentDir = Vector3D.TransformNormal(rotor.direction, rotor.TheBlock.Top.CubeGrid.WorldMatrix);
 
-                //}
-                LastAngleCos = angleCosPercent;
-                //if (!usepid)
-                //
-                //float ac = (float)MathHelper.Clamp(angleCos + 1, 0.1, 2);
+                    double multipliern = 1;
+                    double cutoff = multipliern * p.force;
 
-                //if (AngleCosCount > 10 && angleCosPercent < 90) CorrectionRPM += program.RPMIncrement/* / ac*/;
-                //else if (angleCosPercent > 98 || (program.wgv == 0 && iarpm <= 2.5)) CorrectionRPM = 0;
-                // }
+                    bool reverse = rotor.GetPointOrientation(desiredVec, currentDir);
 
+                    angleCos = rotor.AngleBetweenCos(currentDir, desiredVec, desiredVec.Length());
+                    angleCosPercent = angleCos * 100;
 
-                // old_angleCos = angleCosPercent;
-                float finalrpm = CorrectionRPM + iarpm;
+                    double rtangle = rotor.TheBlock.Angle;
+                    //double angle = rtangle * 180 / Math.PI;
+                    double angleRad = Math.Acos(angleCos) * 2;
+                    double desiredRad = rtangle - angleRad;
+                    double error = (desiredRad - rtangle).NNaN();
 
-                // 0.08  184
+                    if (requiredVec.Length() < cutoff && p.thrustOn)
+                    {
+                        if (((p.wgv == 0 && p.dampeners) || (p.wgv != 0)) && p.thrustOn && Math.Abs(angleCosPercent - LastAngleCos) <= p.RPMLimit && angleCosPercent < 90)
+                        {
+                            pid.Kp += 0.1;
+                        }
+                        else if (angleCosPercent > 98 || Math.Abs(angleCosPercent - LastAngleCos) > p.RPMLimit) //6
+                        {
+                            pid.Kp = 0.1;
+                        }
+                    }
+                    else if (!p.thrustOn)
+                    {
+                        pid.Kp = 1;
+                    }
+                    else {
+                        pid.Kp = 4;
+                    }
 
+                    //if (p.CanPrint()) p.screensb.AppendLine($"A");
 
-                if (!program.thrustOn || program.parked)
-                { //This handles rotor speed when parked, in 0G if it's too fast it will turn thrusters back on.
-                    double anglecosfixed = angleCosPercent <= 0 ? 1 : angleCosPercent;
-                    finalrpm = (float)(0.1 * 17000 / anglecosfixed); // TODO: Find a more precise way to solve this.
-                    if (!program.parked) finalrpm = MathHelper.Clamp(finalrpm, 1, (float)program.MaxThrustOffRPM);
-                }
+                    result = (float)pid.Control(error);
+                    rotor.TheBlock.TargetVelocityRad = reverse ? (float)-result : (float)result;
+                //}*/
 
-                rotor.maxRPM = finalrpm;
-
+                //LastAngleCos = angleCosPercent;
                 // 0.08 189
+
+                double angleCos = rotor.Point(requiredVec);
 
                 // the clipping value 'thrustModifier' defines how far the rotor can be away from the desired direction of thrust, and have the power still at max
                 // if 'thrustModifier' is at 1, the thruster will be at full desired power when it is at 90 degrees from the direction of travel
@@ -137,25 +162,25 @@ namespace IngameScript
                     //program.Echo($"{vec.Length()}/{requiredVec.Length()}");
                     
 
-                    Vector3D thrust = (thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust) + program.residuethrust;
+                    Vector3D thrust = (thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust) + p.residuethrust;
                     /*if (thrust.Length() > 0.1)
                     {
                         program.Echo($"T: {thrust.Length()}");
                         program.Echo($"LEN: {requiredVec.Length()}");
                     }*/
-                    bool noThrust = thrust.LengthSquared() < 0.001f || (program.wgv == 0 && angleCosPercent < 85);
-                    program.tthrust += noThrust ? 0 : MathHelper.Clamp(thrust.Length(), 0, thruster.TheBlock.MaxEffectiveThrust);
+                    bool noThrust = thrust.LengthSquared() < 0.001f || (p.wgv == 0 && angleCos < 0.85);
+                    p.tthrust += noThrust ? 0 : MathHelper.Clamp(thrust.Length(), 0, thruster.TheBlock.MaxEffectiveThrust);
 
                     /*if (thrust.Length() > totalEffectiveThrust) program.residuethrust = thrust.Normalized() * (thrust.Length() - totalEffectiveThrust);
                     else program.residuethrust = Vector3D.Zero;*/
 
                     //if (program.residuethrust.Length() != 0) program.Echo($"res: {program.residuethrust}");
 
-                    if (!program.thrustOn || noThrust)
+                    if (!p.thrustOn || noThrust)
                     {
                         thruster.SetThrust(0);
                         thruster.TheBlock.Enabled = false;
-                        thruster.IsOffBecauseDampeners = !program.thrustOn || noThrust;
+                        thruster.IsOffBecauseDampeners = !p.thrustOn || noThrust;
                     }
                     else
                     {
@@ -170,7 +195,7 @@ namespace IngameScript
             {
                 bool foundGroup = false;
 
-                foreach (List<VectorThrust> g in program.VTThrGroups)
+                foreach (List<VectorThrust> g in p.VTThrGroups)
                 {
                     if (this.Role == g[0].Role)
                     {
@@ -181,8 +206,8 @@ namespace IngameScript
                 }
                 if (!foundGroup)
                 {// if it never found a group, add a group
-                    program.VTThrGroups.Add(new List<VectorThrust>());
-                    program.VTThrGroups[program.VTThrGroups.Count - 1].Add(this);
+                    p.VTThrGroups.Add(new List<VectorThrust>());
+                    p.VTThrGroups[p.VTThrGroups.Count - 1].Add(this);
                 }
             }
 
@@ -233,7 +258,7 @@ namespace IngameScript
                 foreach (Thruster curr in thrusters)
                 {
 
-                    bool shownAndFunctional = (curr.TheBlock.ShowInTerminal || !program.ignoreHiddenBlocks) && curr.TheBlock.IsFunctional;
+                    bool shownAndFunctional = (curr.TheBlock.ShowInTerminal || !p.ignoreHiddenBlocks) && curr.TheBlock.IsFunctional;
                     if (availableThrusters.Contains(curr))
                     {//is available
 
@@ -262,9 +287,9 @@ namespace IngameScript
                 return !needsUpdate;
             }
 
-            float AI(double Acos, double VecL)
+            /*float AI(double Acos, double VecL)
             {
-                List<double> d = program.MagicNumbers;
+                List<double> d = p.MagicNumbers;
                 double result1 = (Acos * d[0]) + (VecL * d[1]) + d[2];
                 double result2 = (Acos * d[3]) + (VecL * d[4]) + d[5];
 
@@ -273,7 +298,7 @@ namespace IngameScript
 
                 double sum = (mres1 * d[6]) + (mres2 * d[7]) + d[8];
                 return (float)Math.Max(0, sum);
-            }
+            }*/
 
             public void DetectThrustDirection()
             {
@@ -389,7 +414,7 @@ namespace IngameScript
                 {
                     Base6Directions.Direction thrustForward = t.TheBlock.Orientation.Forward; // Exhaust goes this way
 
-                    if ((thrDir == thrustForward || Override) && ((t.TheBlock.MaxEffectiveThrust != 0 && t.TheBlock.Enabled) || (!program.parked && !t.TheBlock.Enabled)))
+                    if ((thrDir == thrustForward || Override) && ((t.TheBlock.MaxEffectiveThrust != 0 && t.TheBlock.Enabled) || (!p.parked && !t.TheBlock.Enabled)))
                     {
                         t.TheBlock.Enabled = true;
                         t.IsOn = true;
@@ -408,7 +433,7 @@ namespace IngameScript
             // this indicate the thruster was turned off from the script, and should be kept in the active list
             public bool IsOffBecauseDampeners = true;
 
-            public Thruster(IMyThrust thruster) : base(thruster)
+            public Thruster(IMyThrust thruster, Program program) : base(thruster, program)
             {
                 // this.IsOn = theBlock.Enabled;
                 this.IsOn = false;
@@ -449,15 +474,19 @@ namespace IngameScript
             // Depreciated, this is for the old setFromVec
             public float offset = 0;// radians
 
-            public Program program;
+            
             public Vector3D direction = Vector3D.Zero;//offset relative to the head
 
             //public string errStr = "";
             public float maxRPM;
 
-            public Rotor(IMyMotorStator rotor, Program program) : base(rotor)
+            public double LastAngleCos = 0;
+
+            readonly PID pid;
+
+            public Rotor(IMyMotorStator rotor, Program program) : base(rotor, program)
             {
-                this.program = program;
+                p = program;
 
                 if (program.maxRotorRPM <= 0)
                 {
@@ -467,6 +496,51 @@ namespace IngameScript
                 {
                     maxRPM = program.maxRotorRPM;
                 }
+                pid = new PID(4, 0, 0, 1.0 / 60.0);
+            }
+
+            public double Point(Vector3D requiredVec)
+            {
+                Vector3D desiredVec = requiredVec.Normalized();
+                Vector3D currentDir = Vector3D.TransformNormal(direction, TheBlock.Top.CubeGrid.WorldMatrix);
+
+                double multipliern = 1;
+                double cutoff = multipliern * p.force;
+
+                bool reverse = GetPointOrientation(desiredVec, currentDir);
+
+                double angleCos = AngleBetweenCos(currentDir, desiredVec/*, desiredVec.Length()*/);
+                double angleCosPercent = angleCos * 100;
+
+                double rtangle = TheBlock.Angle;
+                double angleRad = Math.Acos(angleCos) * 2;
+                double desiredRad = rtangle - angleRad;
+                double error = (desiredRad - rtangle).NNaN();
+
+                if (requiredVec.Length() < cutoff && p.thrustOn)
+                {
+                    if (((p.wgv == 0 && p.dampeners) || (p.wgv != 0)) && p.thrustOn && Math.Abs(angleCosPercent - LastAngleCos) <= p.RPMLimit && angleCosPercent < 90)
+                    {
+                        pid.Kp += 0.1;
+                    }
+                    else if (angleCosPercent > 98 || Math.Abs(angleCosPercent - LastAngleCos) > p.RPMLimit)
+                    {
+                        pid.Kp = 0.1;
+                    }
+                }
+                else if (!p.thrustOn)
+                {
+                    pid.Kp = 1;
+                }
+                else
+                {
+                    pid.Kp = 4;
+                }
+
+                LastAngleCos = angleCosPercent;
+                float result = (float)pid.Control(error);
+                TheBlock.TargetVelocityRad = reverse ? -result : result;
+                return angleCos;
             }
 
             public void SetPointDir(Vector3D dir)
@@ -521,7 +595,7 @@ namespace IngameScript
                     result = (float)rpm;
                 }
 
-                result = MathHelper.Clamp(result, -program.maxRotorRPM, program.maxRotorRPM);
+                result = MathHelper.Clamp(result, -p.maxRotorRPM, p.maxRotorRPM);
                 result = MathHelper.Clamp(result, -maxRPM, maxRPM);
 
                 //bool cond = (Math.Abs(Vector3.Dot(rotor.WorldMatrix.Up, angle)) > 0.95);
@@ -546,7 +620,14 @@ namespace IngameScript
 
                 if (point) PointRotorAtVector(TheBlock, desiredVec, currentDir/*theBlock.Top.WorldMatrix.Forward*/, multiplier);
 
-                return AngleBetweenCos(currentDir, desiredVec, desiredVec.Length());
+                return AngleBetweenCos(currentDir, desiredVec/*, desiredVec.Length()*/);
+            }
+
+            public bool GetPointOrientation(Vector3D targetDirection, Vector3D currentDirection)
+            {
+                Vector3D angle = Vector3D.Cross(targetDirection, currentDirection);
+                double err = Vector3D.Dot(angle, TheBlock.WorldMatrix.Up);
+                return err >= 0;
             }
 
             public double SetFromVec(Vector3D desiredVec, bool point = true)
@@ -558,21 +639,21 @@ namespace IngameScript
             // cos returns a number between 0 and 1
             // use Acos to get the angle
             //THIS COULD BE NECESSARY IN SOME FUTURE.....
-            public double AngleBetweenCos(Vector3D a, Vector3D b)
+            /*public double AngleBetweenCos(Vector3D a, Vector3D b)
             {
                 double dot = Vector3D.Dot(a, b);
                 double Length = a.Length() * b.Length();
                 return dot / Length;
-            }
+            }*/
 
             // gets cos(angle between 2 vectors)
             // cos returns a number between 0 and 1
             // use Acos to get the angle
             // doesn't calculate length because thats expensive
-            public double AngleBetweenCos(Vector3D a, Vector3D b, double len_a_times_len_b)
+            public double AngleBetweenCos(Vector3D a, Vector3D b/*, double len_a_times_len_b*/)
             {
                 double dot = Vector3D.Dot(a, b);
-                return dot / len_a_times_len_b;
+                return dot / /*len_a_times_len_b*/b.Length();
             }
 
             // set the angle to be between 0 and 2pi radians (0 and 360 degrees)
@@ -595,7 +676,7 @@ namespace IngameScript
             public bool Dampener;
 
 
-            public ShipController(IMyShipController theBlock/*, Program program*/) : base(theBlock)
+            public ShipController(IMyShipController theBlock, Program program) : base(theBlock, program)
             {
                 Dampener = theBlock.DampenersOverride;
                 //program.controllerblocks.Add(theBlock);
@@ -624,11 +705,14 @@ namespace IngameScript
 
             public string CName { get; }
 
-            public BlockWrapper(T block)
+            public Program p;
+
+            public BlockWrapper(T block, Program p)
             {
+                this.p = p;
                 TheBlock = block;
                 Directions = GetDirections(block);
-                CName = block.CustomName;
+                //CName = block.CustomName;
             }
 
             // not allowed for some reason
