@@ -37,7 +37,7 @@ namespace IngameScript
             return str;
         }
 
-
+        public static bool FilterThis(this IMyTerminalBlock b, IMyTerminalBlock b1) => b.CubeGrid == b1.CubeGrid;
         public static void Brake(this IMyMotorStator rotor) => rotor.TargetVelocityRPM = 0;
         public static void Brake(this IMyThrust thruster) => thruster.ThrustOverridePercentage = 0;
 

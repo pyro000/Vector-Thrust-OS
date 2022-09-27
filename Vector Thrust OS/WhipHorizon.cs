@@ -16,7 +16,6 @@ namespace IngameScript
         {
             readonly Program p;
 
-            //readonly IMyShipController reference;
             public Color OrientationColor { get; set; } = new Color(150, 150, 150); // Lines in the sides color
             //Color progradeColor { get; set; } = new Color(150, 150, 0); //reticule old color
             public Color RetrogradeColor { get; set; } = new Color(150, 0, 0);  //Reverse Reticule Color
@@ -34,8 +33,6 @@ namespace IngameScript
             public List<IMyTextSurface> Surfaces { get; set; } // Surfaces, gets updated every time
 
             readonly Color AxisArrowBackColor = new Color(10, 10, 10);
-            //enum AxisEnum : byte { None = 0, X = 1, Y = 2, Z = 4 }
-
 
             const int updatespersecond = 6; //???
 
@@ -43,7 +40,6 @@ namespace IngameScript
             float loading_rotation1 = 0;
             float loading_rotation2 = 1; //To make turns not that parallel
 
-            //float accel = 0;
             float roll = 0;
             float pitch = 0;
             float rollcos = 0;
@@ -66,9 +62,6 @@ namespace IngameScript
             double bearing = 0;
             double collisiontimethreshold = 5;
 
-            //Vector3D gravity = Vector3D.Zero;
-            //Vector3D velocity = Vector3D.Zero;
-            //Vector3D lastvelocity = Vector3D.Zero;
             Vector3D _sunRotationAxis = new Vector3D(0, -1, 0);
             Vector3D _axisZCosVector;
 
@@ -114,7 +107,7 @@ namespace IngameScript
                 //lastvelocity = velocity;
                 //Vector3D mov = Vector3D.TransformNormal(reference.MoveIndicator, reference.WorldMatrix);
 
-                if ((p.mvin != 0 && !Vector3D.IsZero(p.shipVelocity, 1e-2) || p.almostbraked))
+                if ((p.mvin == 0 && (!p.almostbraked || !Vector3D.IsZero(p.shipVelocity, 1e-2))) || p.mvin != 0)
                 {
                     Vector3D velocityNorm = p.shipVelocity;
                     speed = (float)velocityNorm.Normalize();
@@ -282,7 +275,7 @@ namespace IngameScript
                             Loading(frame, LoadingPos, minScale * 2, 1.2f);
                         } //UNPARKING
 
-                        if (((p.parked && p.alreadyparked) || p.trulyparked) && p.setTOV && (p.totalVTThrprecision.Round(1) != 100 || p.temp1 <= 0.5))
+                        if (((p.parked && p.alreadyparked) || p.trulyparked) && p.setTOV && (p.totalVTThrprecision.Round(1) != 100 || p.tgotTOV <= 0.25))
                         {
                             Write("PARKING", frame, LTextPos, minScale * 2);
                             Loading(frame, LoadingPos, minScale * 2, 0.5f);

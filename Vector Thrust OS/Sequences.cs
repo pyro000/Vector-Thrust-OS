@@ -98,11 +98,6 @@ namespace IngameScript
                 {
                     bool canAdd = true;
                     StringBuilder currreason = new StringBuilder(s.TheBlock.CustomName + "\n");
-                    if (!s.TheBlock.ShowInTerminal && ignoreHiddenBlocks)
-                    {
-                        currreason.AppendLine("  ShowInTerminal not set\n");
-                        canAdd = false;
-                    }
                     if (!s.TheBlock.CanControlShip)
                     {
                         currreason.AppendLine("  CanControlShip not set\n");
@@ -122,7 +117,20 @@ namespace IngameScript
                     if (canAdd)
                     {
                         AddSurfaceProvider(s.TheBlock); // TODO, THIS ONLY DETECTS COCKPITS
-                        s.Dampener = s.TheBlock.DampenersOverride;
+                        List<IMyThrust> cthrs = new List<IMyThrust>();
+                        if (pauseseq) yield return timepause;
+                        GridTerminalSystem.GetBlocksOfType(cthrs, x => s.TheBlock.FilterThis(x) && !s.nThrusters.Contains(x));
+                        if (pauseseq) yield return timepause;
+                        s.nThrusters = s.nThrusters.Concat(cthrs).ToList();
+                        if (pauseseq) yield return timepause;
+                        cthrs.RemoveAll(x => x.Orientation.Forward != s.TheBlock.Orientation.Forward);    
+                        if (pauseseq) yield return timepause;
+                        s.cruiseThrusters = s.cruiseThrusters.Concat(cthrs).ToList();
+                        if (pauseseq) yield return timepause;
+                      
+
+                        s.Dampener = s.nThrusters.Count > 0 ? s.TheBlock.DampenersOverride : dampeners;
+
                         if (!controlledControllers.Contains(s))
                         {
                             controlledControllers.Add(s);
@@ -143,11 +151,11 @@ namespace IngameScript
                     else
                     {
                         RemoveSurfaceProvider(s.TheBlock);
-                        if (controlledControllers.Contains(s))
-                        {
+                        //if (controlledControllers.Contains(s))
+                        //{
                             controlledControllers.Remove(s);
                             ccontrollerblocks.Remove(s.TheBlock);
-                        }
+                        //}
                         reason.Append(currreason);
                     }
                 }
@@ -168,6 +176,7 @@ namespace IngameScript
                     {
                         if (s.TheBlock.IsUnderControl)
                         {
+                            //log.AppendNR($"Assigned cont: {s.CName}");
                             mainController = s;
                             break;
                         }
@@ -279,7 +288,7 @@ namespace IngameScript
                                 abandonedthrusters.Remove(thrusters_input[j]);
                                 this.vectorthrusters[i].thrusters.Add(new Thruster(thrusters_input[j], this));
                                 vtthrusters.Add(thrusters_input[j]);
-                                VTMaxThrust += thrusters_input[j].MaxThrust;
+                                //VTMaxThrust += thrusters_input[j].MaxThrust;
                                 thrusters_input.RemoveAt(j);// shorten the list we have to check (It discards thrusters for next nacelle)
                             }
                         }
@@ -506,17 +515,17 @@ namespace IngameScript
 
                 if (!justCompiled) log.AppendNR("  -Mass is different, checking everything\n");
 
-                bool quick = vtthrusters.Any(x => !GridTerminalSystem.CanAccess(x));
-                ;
+                bool quick = (wgv != 0 && vtthrusters.Any(x => !GridTerminalSystem.CanAccess(x))) || controlledControllers.Any(x => !GridTerminalSystem.CanAccess(x.TheBlock));
+                
                 if (pauseseq) yield return timepause;
-                quick = quick || vtrotors.Any(x => !GridTerminalSystem.CanAccess(x));
+                //quick = quick || vtrotors.Any(x => !GridTerminalSystem.CanAccess(x));
                 //_RuntimeTracker.RegisterAction("rtany");
-                if (pauseseq) yield return timepause;
-                quick = quick && wgv != 0;
+                //if (pauseseq) yield return timepause;
+                //quick = quick && wgv != 0;
 
                 List<IMyTerminalBlock> vtblocks = new List<IMyTerminalBlock>(vtthrusters).Concat(vtrotors).ToList();
                 //_RuntimeTracker.RegisterAction("vtblocksfilter");
-                if (pauseseq&& !quick) yield return timepause;
+                if (pauseseq && !quick) yield return timepause;
 
                 foreach (IMyTerminalBlock b in vtblocks)
                 {
@@ -524,7 +533,7 @@ namespace IngameScript
                     {
                         if (b is IMyThrust)
                         {
-                            VTMaxThrust -= (b as IMyThrust).MaxThrust;
+                            //VTMaxThrust -= (b as IMyThrust).MaxThrust;
                             vtthrusters.Remove((IMyThrust)b);
                         }
                         else { 
@@ -968,6 +977,7 @@ namespace IngameScript
             List<IMyBatteryBlock> backupbatteries = new List<IMyBatteryBlock>();
             bool setthr = false;
             bool donescan = false;
+            bool changedruntime = false;
 
             while (true)
             {
@@ -981,7 +991,7 @@ namespace IngameScript
 
                 if ((normalbats.Count + taggedbats.Count < 2) || !RechargeOnPark || !parkedwithcn)
                 {
-                    EndBM(true);
+                    changedruntime = EndBM(true, changedruntime);
                     yield return timepause;
                     continue;
                 }
@@ -1084,7 +1094,7 @@ namespace IngameScript
 
                 if (!((!parked && parkedwithcn) || notcharged || reassign))
                 {
-                    EndBM(donescan);
+                    changedruntime = EndBM(donescan, changedruntime);
                     yield return timepause;
                     continue;
                 }
@@ -1125,7 +1135,7 @@ namespace IngameScript
                 //batteries.ForEach(x => (x as IMyBatteryBlock).ChargeMode = parked ? ChargeMode.Recharge : ChargeMode.Auto);
                 //backupbatteries.ForEach(x => x.ChargeMode = parked ? ChargeMode.Auto : ChargeMode.Recharge);
 
-                EndBM(donescan);
+                changedruntime = EndBM(donescan, changedruntime);
                 yield return timepause;
             }
         }

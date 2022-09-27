@@ -11,7 +11,8 @@ namespace IngameScript
 {
     partial class Program
     {
-        void ParkVector(ref Vector3D requiredVec, float shipmass) {
+        void ParkVector(ref Vector3D requiredVec, float shipmass)
+        {
             ShipController c = mainController ?? controlledControllers[0];
             double[] tdm = thrdirmultiplier;
             Vector3D zero_G_accel;
@@ -31,7 +32,8 @@ namespace IngameScript
 
         double force = 0;
 
-        void ThrustOnHandler() {
+        void ThrustOnHandler()
+        {
             force = gravCutoff * myshipmass.PhysicalMass;
             double cutoffcruise = lowThrustCutCruiseOff * force;
             double cutoncruise = lowThrustCutCruiseOn * force;
@@ -63,7 +65,7 @@ namespace IngameScript
                 {
                     thrustOn = false;
                     if (trigger) trulyparked = true;
-                } 
+                }
             }
 
             //Echo($"{thrustOn}/{trulyparked}/{sv}/{cruise}/{thrustontimer}/{parked}");
@@ -82,7 +84,7 @@ namespace IngameScript
                     }
                 }
             }*/
-            
+
 
             //double accelexpaval = exp == 0 ? accelExponent_A : exp;
             double gravtdefac = gravLength * defaultAccel;
@@ -90,11 +92,11 @@ namespace IngameScript
 
             //getting max & gear accel
             gearaccel = efectiveaccel * Accelerations[gear] / 100;//Math.Pow(accelBase, accelExponent + Accelerations[gear]) * gravtdefac;
-            maxaccel = efectiveaccel * Accelerations[Accelerations.Length -1] / 100;
+            maxaccel = efectiveaccel * Accelerations[Accelerations.Length - 1] / 100;
 
             double gravaccel = accelBase/*.Pow(accelExponent) */* gravtdefac;
-            bool cond = mvin == 0 && !cruise && dampeners && sv > thrustcutaccel && gearaccel > gravaccel;
-            
+            bool cond = mvin == 0 && !cruise && dampeners && sv > /*thrustcutaccel*/velprecisionmode && gearaccel > gravaccel;
+
             //double applied =/* wgv == 0 && */ cond ? maxaccel : accelBase.Pow(accelExponent) * gravtdefac;
             //Echo($"{accelExponent} / {accelExponent_A}");
             //none found or boosts not enabled, go for normal accel
@@ -112,7 +114,7 @@ namespace IngameScript
 
         void Printer()
         {
-            
+
             //Write(screensb.ToString());
 
             if (CanPrint())
@@ -132,8 +134,8 @@ namespace IngameScript
 				screensb.Append("\n").Append($"{Spinner} {trueaccel} {Spinner}");
 				screensb.AppendLine($"\nCruise: {(cruise ? "On" : "Off")}{pstr}");
 				if (normalThrusters.Count == 0) screensb.AppendLine($"Dampeners: {(dampeners ? "On" : "Off")}");*/
-				if (ShowMetrics)
-				{
+                if (ShowMetrics)
+                {
                     StringBuilder metrics = new StringBuilder($"{Spinner} {Runtime.LastRunTimeMs.Round(2)}ms {Spinner}\n");
                     metrics.AppendLine($"AM: {(accel / gravLength).Round(2)}g");
                     metrics.AppendLine($"Active VectorThrusters: {vectorthrusters.Count}");
@@ -144,7 +146,8 @@ namespace IngameScript
                     screensb.Append(metrics);
 
 
-                } else echosb.Append($"{Spinner} VtOS {Spinner}");
+                }
+                else echosb.Append($"{Spinner} VtOS {Spinner}");
 
                 echosb.AppendLine($"\n\n--- Main ---");
                 echosb.AppendLine(" >Remaining: " + _RuntimeTracker.tremaining);
@@ -166,13 +169,39 @@ namespace IngameScript
             bool handlers = false;
             if (!isstation)
             {
+                //Print($"1: {check && parkedcompletely && BlockManager.Doneloop && Runtime.UpdateFrequency != UpdateFrequency.Update1}");
+                
+                //Print($"2: {Runtime.UpdateFrequency}");
+
                 MainChecker.Run();//RUNS VARIOUS PROCESSES SEPARATED BY A TIMER
+                //Print($"A {Runtime.UpdateFrequency}");
+
+                //FOR SOME STUPID REASON PARKHANDLER IS SETTING UPDATE10 ALL THE TIME
+
                 bool notrun = argument.Equals("") /*&& !cruise*/ && !dampchanged;
                 if (notrun)
                 {
+                    //Print($"1 {Runtime.UpdateFrequency}");
                     handlers = PerformanceHandler();
+                    //Print($"2 {Runtime.UpdateFrequency}");
                     handlers = ParkHandler() || handlers;
+                    //Print($"3 {Runtime.UpdateFrequency}");
                     if (!cruise) handlers = VTThrHandler() || handlers;
+
+                    if (check && parkedcompletely && BlockManager.Doneloop && Runtime.UpdateFrequency != UpdateFrequency.Update1)
+                    {
+                        ChangeRuntime();
+                        //Print($"O {Runtime.UpdateFrequency}");
+                    }
+                    else if (!check && parkedcompletely && BlockManager.Doneloop && Runtime.UpdateFrequency == UpdateFrequency.Update1)
+                    {
+                        ChangeRuntime(PerformanceWhilePark && wgv == 0 ? 2 : 1);
+                        //Print($"E {Runtime.UpdateFrequency}");
+
+                    }
+
+                    //Print($"4 {Runtime.UpdateFrequency}");
+
                 }
                 else if (tagArg) MainTag(argument);
             }
@@ -189,8 +218,14 @@ namespace IngameScript
                     echosb.AppendLine("Required Force: ---N");
                     echosb.AppendLine("Total Force: ---N\n");
                     echosb = _RuntimeTracker.Append(echosb);
-                    echosb.AppendLine("--- Log ---");
-                    echosb.Append(log);
+
+                    /*echosb.AppendLine("--- Log ---");
+                    echosb.Append(log);*/
+
+                    if (ShowMetrics) {
+                      echosb.AppendLine("--- Log ---");
+                      echosb.Append(log);
+                    }
                 }
                 _RuntimeTracker.AddInstructions();
             }
@@ -226,23 +261,12 @@ namespace IngameScript
             return rt != null /*&& !rt.Closed && rt.IsWorking && rt.IsAlive()*/ && rt.Top != null && GridTerminalSystem.CanAccess(rt);
         }
 
-        public void Print(params object[] args)
+        public void Print(string sp, bool e = true, params object[] args)
         {
-            string separator = args[0].ToString();
-            bool writes = false;
-            if (separator.Contains("%sep%")) separator = separator.Replace("%sep%", "");
-            else separator = " - ";
-            StringBuilder result = new StringBuilder();
-
-            foreach (object arg in args)
-            {
-                string arg_s = arg.ToString();
-                if (arg_s.Contains("%scr%")) writes = true;
-                else if (!arg_s.Contains("%sep%")) result.Append(arg_s).Append(separator);
-            }
-
-            log.AppendNR(result.ToString());
-            if (writes) screensb.Append(result);
+            if (!CanPrint()) return;
+            StringBuilder result = args.Length != 0 ? new StringBuilder().Append(string.Join(sp, args)) : new StringBuilder(sp);
+            screensb.Append(result + "\n");
+            if (e) echosb.Append(result + "\n");
         }
 
         /*void Write(params object[] obj)
@@ -290,7 +314,8 @@ namespace IngameScript
         {
             //if (vtthrusters.Empty() && vtrotors.Empty()) return;
             //vtthrusters.ForEach(x => { x.Enabled = !rotorlock; if (rotorlock) x.ThrustOverridePercentage = 0; });
-            foreach (IMyMotorStator r in vtrotors) {
+            foreach (IMyMotorStator r in vtrotors)
+            {
                 if (rotorlock) r.TargetVelocityRPM = 0;
                 //if ((rotorlock && r.TargetVelocityRPM == 0) || !rotorlock) r.Enabled = !rotorlock;
                 //r.RotorLock = rotorlock;
@@ -429,11 +454,6 @@ namespace IngameScript
             {
                 bool canAdd = true;
                 StringBuilder currreason = new StringBuilder(s.TheBlock.CustomName + "\n");
-                if (!s.TheBlock.ShowInTerminal && ignoreHiddenBlocks)
-                {
-                    currreason.AppendLine("  ShowInTerminal not set\n");
-                    canAdd = false;
-                }
                 if (!s.TheBlock.CanControlShip)
                 {
                     currreason.AppendLine("  CanControlShip not set\n");
@@ -508,14 +528,12 @@ namespace IngameScript
         // no main cockpit: any cockpits can be used
         bool OnlyMain()
         {
-            return mainController != null && (mainController.TheBlock.IsUnderControl || onlyMainCockpit);
+            return onlyMainCockpit && mainController != null && mainController.TheBlock.IsUnderControl;
         }
 
         bool doneunstop = false;
         //bool triedtostop = false;
-        double temp1 = 0;
-        //int temp2 = 0;
-
+        double tgotTOV = 0;
 
 
         bool VTThrHandler()
@@ -525,14 +543,14 @@ namespace IngameScript
 
             bool unparking = !parked && alreadyparked;
             bool partiallyparked = parked && alreadyparked;
-            bool standby = (nograv || partiallyparked) && /*totalVTThrprecision.Round(1) == 100*/temp1 > 0.5 && setTOV && !thrustOn && mvin == 0;
+            bool standby = (nograv || partiallyparked) && /*totalVTThrprecision.Round(1) == 100*/tgotTOV > 0.25 && setTOV && !thrustOn && mvin == 0;
 
-            if (!thrustOn && totalVTThrprecision.Round(1) == 100 && temp1 <= 0.5) temp1 += Runtime.TimeSinceLastRun.TotalSeconds;
-            else if (thrustOn) temp1 = 0;
+            if (!thrustOn && totalVTThrprecision.Round(1) == 100 && tgotTOV <= 0.25) tgotTOV += Runtime.TimeSinceLastRun.TotalSeconds;
+            else if (thrustOn) tgotTOV = 0;
 
             //bool triedtostop = vtrotors.Any(x => !x.Enabled || x.RotorLock);
-            //if (CanPrint()) screensb.AppendLine($"du:{doneunstop} pc:{parkedcompletely} st:{standby}\ntov:{setTOV} thron:{thrustOn} p:{totalVTThrprecision.Round(1) == 100}\nt1:{temp1} t2:{temp2}");
-            //if (CanPrint()) screensb.AppendLine($"t: {temp1}");
+            //if (CanPrint()) screensb.AppendLine($"du:{doneunstop} pc:{parkedcompletely} st:{standby}\ntov:{setTOV} thron:{thrustOn} p:{totalVTThrprecision.Round(1) == 100}\nt1:{tgotTOV} t2:{temp2}");
+            //if (CanPrint()) screensb.AppendLine($"t: {tgotTOV}");
 
             if (standby || parkedcompletely)
             {
@@ -545,7 +563,7 @@ namespace IngameScript
 
                 //rotorsstopped = rotorsstopped || /*cond1 && */cond2;
 
-                if (!rotorsstopped/* && temp1 > 0*/)
+                if (!rotorsstopped/* && tgotTOV > 0*/)
                 {
                     StabilizeRotors();
                     ShutOffThrusters();
@@ -557,12 +575,10 @@ namespace IngameScript
                     ////_RuntimeTracker.RegisterAction("VTHandlerTrue2");
                 }*/ //Unlocking rotors for free use
 
-                //temp1++;
                 return true;
             }
             else if (((rotorsstopped && setTOV) || unparking) && doneunstop)  /*|| preventer*/ // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
             {
-                //temp2++;
                 setTOV = rotorsstopped/* = trulyparked */= false;
                 ShutOffThrusters(false);
                 //StabilizeRotors(false); //Just in case
@@ -621,7 +637,7 @@ namespace IngameScript
             if (unparkedcompletely) return false;
 
             bool setvector = parked && alreadyparked && setTOV;
-            bool gotvector = totalVTThrprecision.Round(1) == 100 && temp1 > 0.5;
+            bool gotvector = totalVTThrprecision.Round(1) == 100 && tgotTOV > 0.25;
             parkedcompletely = setvector && gotvector;
             //bool rarepark = !parked && alreadyparked && setTOV && gotvector;
             //if (changedpark) screensb.AppendLine($"AAAAAAAAAAAAAAAAAAAA");
@@ -635,13 +651,15 @@ namespace IngameScript
                 screensb.AppendLine($"E: {alreadyparked}{BlockManager.Doneloop}"); 
             }*/
 
-            if (parking || (unparking && BlockManager.Doneloop) || changedpark) { 
+            if (parking || (unparking && BlockManager.Doneloop) || changedpark)
+            {
+                //Print("Resetparkingseq");
                 ResetParkingSeq();
-                //temp1 = 0;
                 ////_RuntimeTracker.RegisterAction("ResetParkingSeq");
             }
             if (parkedcompletely || (unparking && !BlockManager.Doneloop))
             {
+                //Print("Loop");
                 //string l = parkedcompletely ? "ParkLoop" : "ParkParking";
 
                 ////_RuntimeTracker.RegisterAction(l);
@@ -939,12 +957,21 @@ namespace IngameScript
                     }
                     else
                     {
-
                         // check if any are different to us
-                        bool any_different = false;
+
+                        dampeners = FilterThis(mainController.TheBlock) ? mainController.TheBlock.DampenersOverride : dampeners;
+
                         foreach (ShipController cont in controlledControllers)
                         {
-                            if (cont.TheBlock.DampenersOverride != dampeners)
+                            cont.TheBlock.DampenersOverride = dampeners;
+                            cont.SetDampener(dampeners);
+                        }
+
+                        /*bool any_different = false;
+                        foreach (ShipController cont in controlledControllers)
+                        {
+                            
+                            if (cont.TheBlock.DampenersOverride != dampeners && cont != mainController)
                             {
                                 any_different = true;
                                 dampeners = cont.TheBlock.DampenersOverride;
@@ -959,7 +986,7 @@ namespace IngameScript
                             {
                                 cont.SetDampener(dampeners);
                             }
-                        }
+                        }*/
                     }
                 }
             }
@@ -1040,18 +1067,20 @@ namespace IngameScript
             //if (!justCompiled) GenerateProgressBar(true);
         }
 
-        void EndBM(bool scanned)
+        bool EndBM(bool scanned, bool changedruntime)
         {
             if (scanned && parked)
             {
+                //Print("??");
                 BlockManager.Doneloop = true;
-                if (PerformanceWhilePark && wgv == 0 && Runtime.UpdateFrequency != UpdateFrequency.Update100) ChangeRuntime(2);
-                else if ((!PerformanceWhilePark || wgv > 0) && Runtime.UpdateFrequency != UpdateFrequency.Update10) ChangeRuntime(1);
+                /*if (PerformanceWhilePark && wgv == 0 && Runtime.UpdateFrequency != UpdateFrequency.Update100)*/ ChangeRuntime(PerformanceWhilePark && wgv == 0 && !changedruntime ? 2 : 1);
+                //else if ((!PerformanceWhilePark || wgv > 0) && Runtime.UpdateFrequency != UpdateFrequency.Update10) ChangeRuntime(1);
             }
             else if (!parked)
             {
                 parkedwithcn = alreadyparked = false;
             }
+            return true;
         }
 
         void ChangeRuntime(int n = 0)

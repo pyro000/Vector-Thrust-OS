@@ -21,7 +21,7 @@ namespace IngameScript
         const string removeTagsArg = "removetags";
 
         // wether or not cruise mode is on when you start the script
-        readonly float maxRotorRPM = 60f; // set to -1 for the fastest speed in the game (changes with mods)
+        //readonly float maxRotorRPM = 60f; // set to -1 for the fastest speed in the game (changes with mods)
         //readonly List<double> MagicNumbers = new List<double> { -0.091, 0.748, -46.934, -0.073, 0.825, -4.502, -1.239, 1.124, 2.47 };
 
         readonly RuntimeTracker _RuntimeTracker;
@@ -29,7 +29,7 @@ namespace IngameScript
         readonly SimpleTimerSM BatteryStats;
 
         //double thrustontimer = 0;
-        bool scriptslower = false; //I am pretty sure that this script will never work on Update100
+        //bool scriptslower = false; //I am pretty sure that this script will never work on Update100
         readonly double timeperframe = 1.0 / 60.0;
         Vector3D desiredVec = new Vector3D();
         bool dampchanged = false;
@@ -61,11 +61,6 @@ namespace IngameScript
         readonly SimpleTimerSM CheckParkBlocks;
 
         double maxaccel = 0;
-        //readonly StringBuilder progressbar = new StringBuilder();
-        //string trueaccel = "";
-        readonly bool ignoreHiddenBlocks = false; //OBSOLETE
-                                                  // DEPRECATED: use the tags instead
-                                                  // only use blocks that have 'show in terminal' set to true
 
         bool cruise = false;
         bool dampeners = true;
@@ -78,11 +73,9 @@ namespace IngameScript
         const float dampenersModifier = 0.1f; // multiplier for dampeners, higher is stronger dampeners		 
         const float zeroGAcceleration = 9.81f; // default acceleration in situations with 0 (or low) gravity				 
         const float gravCutoff = 0.1f * zeroGAcceleration;  // if gravity becomes less than this, zeroGAcceleration will kick in (I think it's deprecated)
-        const bool onlyMainCockpit = true; // Almost deprecated, it assigns main cockpit to the first that it's being controlled
+        
         readonly UpdateFrequency update_frequency = UpdateFrequency.Update1;
-        //readonly int dupdatespersecond = 6;
-        //readonly double dtimeperframe = 1.0/60.0;
-        // choose weather you want the script to											 
+        // choose wether you want the script to											 
         // update once every frame, once every 10 frames, or once every 100 frames (Recommended not modifying it)
 
         // Control Module params... this can always be true, but it's deprecated
@@ -149,8 +142,8 @@ namespace IngameScript
 
         Vector3D shipVelocity = Vector3D.Zero;
         double sv = 0;
-        double thrustModifierAbove = 0.1;// how close the rotor has to be to target position before the thruster gets to full power
-        double thrustModifierBelow = 0.1;// how close the rotor has to be to opposite of target position before the thruster gets to 0 power
+        /*double thrustModifierAbove = 0.1;// how close the rotor has to be to target position before the thruster gets to full power
+        double thrustModifierBelow = 0.1;// how close the rotor has to be to opposite of target position before the thruster gets to 0 power*/
         bool justCompiled = true;
         string tag = "|VT|";
 
@@ -175,8 +168,39 @@ namespace IngameScript
         {
             log.AppendLine("Program() Start");
 
+            Load();
+            _RuntimeTracker = new RuntimeTracker(this, 60, 0.005);
+            BlockManager = new SimpleTimerSM(this, BlockManagerSeq(), true);
+            BatteryStats = new SimpleTimerSM(this, GetBatStatsSeq(), true);
+            MainChecker = new SimpleTimerSM(this, CheckVectorThrustersSeq(), true);
+            GetScreen = new SimpleTimerSM(this, GetScreensSeq(), true);
+            GetControllers = new SimpleTimerSM(this, GetControllersSeq(), true);
+            GetVectorThrusters = new SimpleTimerSM(this, GetVectorThrustersSeq(), true);
+            CheckParkBlocks = new SimpleTimerSM(this, CheckParkBlocksSeq(), true);
+            WH = new WhipsHorizon(surfaces, this/*, mainController.TheBlock*/);
+            Init();
+
+            //if (scriptslower)
+            //{
+            //timeperframe = dtimeperframe = 1.0 / 6.0;
+            //dupdatespersecond = 6;
+            //update_frequency = UpdateFrequency.Update10;
+            //}
+            
+            if (!error) Runtime.UpdateFrequency = update_frequency;
+            Echo(log.ToString());
+            log.AppendLine("--VTOS Started--");
+        }
+
+        public void Save()
+        {
+            string save = string.Join(";", string.Join(":", tag, greedy), allowpark, gear);
+            Storage = save; //saving the old tag and greedy to prevent recompile or script update confusion
+        }
+
+        public void Load() {
             string[] saved = Storage.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries);
-            if (saved.Length == 2)
+            if (saved.Length >= 2)
             {
                 allowpark = bool.Parse(saved[1]); //Gets if the user set in park mode when recompile or reload, prevents accidents
 
@@ -186,35 +210,14 @@ namespace IngameScript
                     oldTag = stg[0]; //loading tag
                     greedy = bool.Parse(stg[1]); //loading greedy
                 }
+
+                if (saved.Length == 3)
+                {
+                    int g = int.Parse(saved[2]);
+                    if (Accelerations.Length - 1 >= g)
+                        gear = g;
+                }
             }
-
-            _RuntimeTracker = new RuntimeTracker(this, 60, 0.005);
-            BlockManager = new SimpleTimerSM(this, BlockManagerSeq(), true);
-            BatteryStats = new SimpleTimerSM(this, GetBatStatsSeq(), true);
-            MainChecker = new SimpleTimerSM(this, CheckVectorThrustersSeq(), true);
-            GetScreen = new SimpleTimerSM(this, GetScreensSeq(), true);
-            GetControllers = new SimpleTimerSM(this, GetControllersSeq(), true);
-            GetVectorThrusters = new SimpleTimerSM(this, GetVectorThrustersSeq(), true);
-            CheckParkBlocks = new SimpleTimerSM(this, CheckParkBlocksSeq(), true);
-
-            WH = new WhipsHorizon(surfaces, this/*, mainController.TheBlock*/);
-            Init();
-            if (scriptslower)
-            {
-                //timeperframe = dtimeperframe = 1.0 / 6.0;
-                //dupdatespersecond = 6;
-                update_frequency = UpdateFrequency.Update10;
-            }
-            if (!error) Runtime.UpdateFrequency = update_frequency;
-            Echo(log.ToString());
-
-            log.AppendLine("--VTOS Started--");
-        }
-
-        public void Save()
-        {
-            string save = string.Join(";", string.Join(":", tag, greedy), allowpark);
-            Storage = save; //saving the old tag and greedy to prevent recompile or script update confusion
         }
 
         bool trulyparked = false;
@@ -226,6 +229,8 @@ namespace IngameScript
 
         public void Main(string argument/*, UpdateType runType*/)
         {
+            //Print($"{pc}: {Runtime.UpdateFrequency} / {parkedcompletely && BlockManager.Doneloop} / {check} / {parkedwithcn}");
+
             // ========== STARTUP ==========
             _RuntimeTracker.AddRuntime();
 
@@ -244,19 +249,19 @@ namespace IngameScript
             if (!parkedcompletely || argument.Length > 0 || trulyparked)
             {
 
-                MyShipVelocities shipVelocities = controlledControllers[0].TheBlock.GetShipVelocities();
+                MyShipVelocities shipVelocities = /*controlledControllers[0]*/mainController.TheBlock.GetShipVelocities();
                 shipVelocity = shipVelocities.LinearVelocity;
                 sv = shipVelocity.Length();
 
                 if (!parkedcompletely || argument.Length > 0) { 
-                    bool damp = controlledControllers[0].TheBlock.DampenersOverride;
+                    bool damp = /*controlledControllers[0]*/mainController.TheBlock.DampenersOverride;
                     dampchanged = damp != oldDampeners;
-                    oldDampeners = controlledControllers[0].TheBlock.DampenersOverride;
+                    oldDampeners = /*controlledControllers[0]*/mainController.TheBlock.DampenersOverride;
 
                     desiredVec = GetMovementInput(argument, parked);
                     mvin = desiredVec.Length();
 
-                    almostbraked = mvin == 0 && sv > 1;
+                    almostbraked = mvin == 0 && sv < velprecisionmode;
                     ThrustOnHandler();
                     ////_RuntimeTracker.RegisterAction("MvinSv");
                 }
@@ -279,18 +284,18 @@ namespace IngameScript
             //if (check) //_RuntimeTracker.RegisterAction("CheckingBlocks");
 
             if (SkipFrameHandler(argument)) return;
-
+            
             ////_RuntimeTracker.RegisterAction("Passed");
             // END SKIPFRAME
 
-                // AVG RUNTIME: 0.04 AVG INSTRUCTIONS: 50 - min: 47
-                // TEST: 0.116 216
-                // TEST1 sin printer y routine: 0.09 179
+            // AVG RUNTIME: 0.04 AVG INSTRUCTIONS: 50 - min: 47
+            // TEST: 0.116 216
+            // TEST1 sin printer y routine: 0.09 179
 
-                // ========== PHYSICS ==========
-                //TODO: SEE IF I CAN SPLIT AT LEAST SOME OF THE STEPS BY SEQUENCES
+            // ========== PHYSICS ==========
+            //TODO: SEE IF I CAN SPLIT AT LEAST SOME OF THE STEPS BY SEQUENCES
             float shipMass = myshipmass.PhysicalMass;
-            worldGrav = controlledControllers[0].TheBlock.GetNaturalGravity();
+            worldGrav = /*controlledControllers[0]*/mainController.TheBlock.GetNaturalGravity();
             gravLength = (float)worldGrav.Length();
 
             bool gravChanged = Math.Abs(lastGrav - gravLength) > 0.05f;
@@ -305,8 +310,8 @@ namespace IngameScript
             wgv = lastGrav = gravLength;
 
             // setup gravity
-            if (gravLength < gravCutoff)
-            {
+            if (gravLength < gravCutoff) gravLength = zeroGAcceleration;
+            /*{
                 gravLength = zeroGAcceleration;
                 thrustModifierAbove = thrustModifierAboveSpace;
                 thrustModifierBelow = thrustModifierBelowSpace;
@@ -315,7 +320,7 @@ namespace IngameScript
             {
                 thrustModifierAbove = thrustModifierAboveGrav;
                 thrustModifierBelow = thrustModifierBelowGrav;
-            }
+            }*/
 
             // f=ma
             Vector3D shipWeight = shipMass * worldGrav;
@@ -376,7 +381,7 @@ namespace IngameScript
             }
             // f=ma
             /*accel = */GetAcceleration(/*gravLength*/);
-            accel_aux = !thrustOn || almostbraked ? (float)(gearaccel / maxaccel * totalaccel).Round(2) : (float)((shipVelocity - lastvelocity) * updatespersecond).Length();
+            accel_aux = !thrustOn || almostbraked ? (float)gearaccel.Round(2) : (float)((shipVelocity - lastvelocity) * updatespersecond).Length();
             lastvelocity = shipVelocity;
 
             desiredVec *= shipMass * (float)accel;
@@ -482,8 +487,8 @@ namespace IngameScript
                 if (ShowMetrics)
                 {
                     info.Append($"\n| {g[0].Role} |=>")
-                    .Append($" | {(req.Length() / RotorStMultiplier).Round(1)}")
-                    .Append($" |  {g[0].rotor.maxRPM.Round(0)} ")
+                    //.Append($" | {(req.Length() / RotorStMultiplier).Round(1)}")
+                    //.Append($" |  {g[0].rotor.maxRPM.Round(0)} ")
                     .Append($" |  {adjustmode} ");
                     vtprecision = 0;
                 }
@@ -512,8 +517,8 @@ namespace IngameScript
 
                         if (adjustmode && req.Length() > vt.totalEffectiveThrust) req = req.Normalized() * (req.Length() - vt.totalEffectiveThrust);
 
-                        vt.thrustModifierAbove = thrustModifierAbove;
-                        vt.thrustModifierBelow = thrustModifierBelow;
+                        /*vt.thrustModifierAbove = thrustModifierAbove;
+                        vt.thrustModifierBelow = thrustModifierBelow;*/
 
                         //AVG R: 0.073 AVG I: 136
 
@@ -565,12 +570,14 @@ namespace IngameScript
             {
                 echosb.AppendLine($"Total Force: {total.Round(0)}N\n");
                 echosb = _RuntimeTracker.Append(echosb);
-                echosb.AppendLine("--- Log ---");
-                echosb.Append(log);
+                //echosb.AppendLine("--- Log ---");
+                //echosb.Append(log);
 
                 if (ShowMetrics)
                 {
                     //echosb.Append(info);
+                    echosb.AppendLine("--- Log ---");
+                    echosb.Append(log);
                     screensb.Append(info);
                 }
 
@@ -592,7 +599,7 @@ namespace IngameScript
         string edge;
         double vtprecision;
         double len = 0;
-        double VTMaxThrust = 0; 
+        //double VTMaxThrust = 0; 
         //double soundtime = 0;
     }
 }

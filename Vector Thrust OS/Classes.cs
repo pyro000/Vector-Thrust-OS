@@ -46,7 +46,10 @@ namespace IngameScript
 
                 //_program.globalAppend = false;
 
-                if (_program.pc >= 1000) _program.pc = 0;
+                if (_program.pc >= 1000) { 
+                    _program.pc = 0;
+                    _program.log.Clear();
+                }
                 if (_program.Runtime.UpdateFrequency == _program.update_frequency) _program.pc++;
                 else if (_program.Runtime.UpdateFrequency == UpdateFrequency.Update10) _program.pc += 10;
                 else _program.pc += 100;
@@ -350,40 +353,7 @@ namespace IngameScript
                 _integralBuffer.Clear();
             }
         }
-
         #endregion
 
-
-        // LAG CLASS BY D1R4G0N, THANK YOU!
-        public class Lag
-        {
-            public double Value { get; private set; }
-            public double Current { get; private set; }
-
-            bool accurate;
-            readonly double[] times;
-            double sum = 0;
-            int pos = 0;
-
-            public Lag(int samples)
-            {
-                times = new double[samples];
-            }
-
-            public void Update(double time)
-            {
-                Current = time;
-                sum -= times[pos];
-                times[pos] = time;
-                sum += time;
-                pos++;
-                if (pos == times.Length)
-                {
-                    pos = 0;
-                    accurate = true;
-                }
-                Value = accurate ? sum / times.Length : sum / pos;
-            }
-        }
     }
 }
