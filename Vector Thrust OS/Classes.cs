@@ -44,8 +44,6 @@ namespace IngameScript
                 double tfr = _program.TimeForRefresh;
                 bool config = sumlastrun < tfr;
 
-                //_program.globalAppend = false;
-
                 if (_program.pc >= 1000) { 
                     _program.pc = 0;
                     _program.log.Clear();

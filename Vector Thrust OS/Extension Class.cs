@@ -87,34 +87,6 @@ namespace IngameScript
             return (desired * isval) / ifval;
         }
 
-        /*public static StringBuilder GetSpinner(this StringBuilder spinner, ref long pc, string before = "", string after = "")
-		{
-			long splitter = pc / 10 % 4;
-
-			spinner.Append(before);
-
-			switch (splitter)
-			{
-				case 0:
-					spinner.Append("|");
-					break;
-				case 1:
-					spinner.Append("\\");
-					break;
-				case 2:
-					spinner.Append("-");
-					break;
-				case 3:
-					spinner.Append("/");
-					break;
-			}
-			
-
-			spinner.Append(after);
-
-			return spinner;
-		}*/
-
         public static int Count<T>(this List<T> el, List<T>[] args)
         {
             return el.Count + args.Sum(x => x.Count);

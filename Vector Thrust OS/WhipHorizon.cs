@@ -47,7 +47,6 @@ namespace IngameScript
             float speed = 0;
             float collisiontimeproportion = 0;
 
-
             const float STATUS_TEXT_SIZE = 1.3f;
             const float AXIS_LINE_WIDTH = 8f;
             const float AXIS_TEXT_OFFSET = 24f;
@@ -86,11 +85,10 @@ namespace IngameScript
 
             readonly string[] _axisIcon = new string[3];
             readonly CircularBuffer<double> velbuffer = new CircularBuffer<double>(5);
-            public WhipsHorizon(List<IMyTextSurface> sfs, Program p/*, IMyShipController c*/)
+            public WhipsHorizon(List<IMyTextSurface> sfs, Program p)
             {
                 Surfaces = sfs;
                 this.p = p;
-                //reference = c;
             }
 
             public void Process()
@@ -101,11 +99,6 @@ namespace IngameScript
 
             void Calculate()
             {
-                //gravity = reference.GetNaturalGravity();
-                //velocity = reference.GetShipVelocities().LinearVelocity;
-                //accel = (float)((velocity - lastvelocity) * updatespersecond).Length();
-                //lastvelocity = velocity;
-                //Vector3D mov = Vector3D.TransformNormal(reference.MoveIndicator, reference.WorldMatrix);
 
                 if ((p.mvin == 0 && (!p.almostbraked || !Vector3D.IsZero(p.shipVelocity, 1e-2))) || p.mvin != 0)
                 {
@@ -911,7 +904,7 @@ namespace IngameScript
                 vertspeed = ScalarProjection(p.shipVelocity, -p.worldGrav);
             }
 
-            void DrawElevationLadder(MySpriteDrawFrame frame, Vector2 midPoint, Vector2 size, float basePitchProportion, float elevationAngleDeg, float scale/*, Color color*/, bool drawText)
+            void DrawElevationLadder(MySpriteDrawFrame frame, Vector2 midPoint, Vector2 size, float basePitchProportion, float elevationAngleDeg, float scale, bool drawText)
             {
                 float pitchProportion = MathHelper.ToRadians(-elevationAngleDeg) / MathHelper.PiOver2;
                 string textureName = pitchProportion <= 0 ? "AH_GravityHudPositiveDegrees" : "AH_GravityHudNegativeDegrees";
