@@ -13,6 +13,7 @@ namespace IngameScript
     {
         void ParkVector(ref Vector3D requiredVec, float shipmass)
         {
+            if (thrustOn) return;
             ShipController c = mainController ?? controlledControllers[0];
             double[] tdm = thrdirmultiplier;
             Vector3D zero_G_accel;
@@ -20,15 +21,16 @@ namespace IngameScript
             Vector3D v2 = thrdiroverride ? Vector3D.Zero : requiredVec - shipVelocity;
             zero_G_accel = (c.TheBlock.WorldMatrix.Forward * tdm[0] + c.TheBlock.WorldMatrix.Up * tdm[1] + c.TheBlock.WorldMatrix.Right * tdm[2]) * zeroGAcceleration/* / 1.414f*/;
             requiredVec = dampeners ? zero_G_accel * shipmass + v1 : v2 + zero_G_accel;
+            setTOV = true;
         }
 
-        string Separator(string title = "", int len = 58)
+        /*string Separator(string title = "", int len = 58)
         {
             int tl = title.Length;
             len = (len - tl) / 2;
             string res = new string('-', len);
             return res + title + res;
-        }
+        }*/
 
         double force = 0;
 
@@ -58,11 +60,15 @@ namespace IngameScript
 
         void GetAcceleration()
         {
+            //TODO MAKE MULTIPLIER BY NUMBER OF THRUSTERS
+
             double gravtdefac = gravLength * defaultAccel;
-            double efectiveaccel = totaleffectivethrust / myshipmass.PhysicalMass * 1.4675;
+            double efectiveaccel = totaleffectivethrust/ myshipmass.BaseMass; //1.4675
+            rawgearaccel /= myshipmass.PhysicalMass;
 
             //getting max & gear accel
             gearaccel = efectiveaccel * Accelerations[gear] / 100;
+            rawgearaccel *= Accelerations[gear] / 100;
             maxaccel = efectiveaccel * Accelerations[Accelerations.Length - 1] / 100;
 
             double gravaccel = accelBase * gravtdefac;
@@ -70,10 +76,7 @@ namespace IngameScript
             accel = mvin != 0 || cond ? gearaccel : gravaccel;
         }
 
-        bool CanPrint()
-        {
-            return pc % framesperprint == 0 || Runtime.UpdateFrequency != UpdateFrequency.Update1 || justCompiled;
-        }
+        bool CanPrint() => pc % framesperprint == 0 || Runtime.UpdateFrequency != UpdateFrequency.Update1 || justCompiled;
 
         void Printer()
         {
@@ -127,7 +130,7 @@ namespace IngameScript
 
                 //FOR SOME STUPID REASON PARKHANDLER IS SETTING UPDATE10 ALL THE TIME
 
-                bool notrun = argument.Equals("") /*&& !cruise*/ && !dampchanged;
+                bool notrun = argument.Equals("") /*&& !cruise && !dampchanged*/;
                 if (notrun)
                 {
                     //Print($"1 {Runtime.UpdateFrequency}");
@@ -157,7 +160,11 @@ namespace IngameScript
                 ShutDown();
                 return true;
             }
-            else if (isstation) return true;
+            else if (isstation) {
+                rotorsstopped = rotorsstopped || vtrotors.All(x => x.TargetVelocityRPM == 0) && vtthrusters.All(x => !x.Enabled && x.ThrustOverridePercentage == 0);
+                ShutOffVTS();
+                return true;
+            }
             else if (handlers)
             {
                 if (CanPrint())
@@ -166,9 +173,10 @@ namespace IngameScript
                     echosb.AppendLine("Total Force: ---N\n");
                     echosb = _RuntimeTracker.Append(echosb);
 
-                    if (ShowMetrics) {
-                      echosb.AppendLine("--- Log ---");
-                      echosb.Append(log);
+                    if (ShowMetrics)
+                    {
+                        echosb.AppendLine("--- Log ---");
+                        echosb.Append(log);
                     }
                 }
                 _RuntimeTracker.AddInstructions();
@@ -421,7 +429,7 @@ namespace IngameScript
             return onlyMainCockpit && mainController != null && mainController.TheBlock.IsUnderControl;
         }
 
-        bool doneunstop = false;
+        //bool doneunstop = false;
         double tgotTOV = 0;
 
 
@@ -430,7 +438,7 @@ namespace IngameScript
             bool nograv = wgv == 0;
             bool unparking = !parked && alreadyparked;
             bool partiallyparked = parked && alreadyparked;
-            bool standby = (nograv || partiallyparked) && tgotTOV > 0.25 && setTOV && !thrustOn && mvin == 0;
+            bool standby = (nograv || partiallyparked) && tgotTOV > 0.25 && setTOV && !thrustOn && mvin == 0 && !dampchanged;
 
             if (!thrustOn && totalVTThrprecision.Round(1) == 100 && tgotTOV <= 0.25) tgotTOV += Runtime.TimeSinceLastRun.TotalSeconds;
             else if (thrustOn) tgotTOV = 0;
@@ -439,18 +447,18 @@ namespace IngameScript
             {
                 if (CanPrint()) echosb.AppendLine("\nEverything stopped, performance mode.\n");
                 rotorsstopped = rotorsstopped || vtrotors.All(x => x.TargetVelocityRPM == 0) && vtthrusters.All(x => !x.Enabled && x.ThrustOverridePercentage == 0);
-                doneunstop = true;
+                //doneunstop = true;
 
                 if (!rotorsstopped) ShutOffVTS();
                 return true;
             }
-            else if (((rotorsstopped && setTOV) || unparking) && doneunstop) // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
+            else if (((rotorsstopped && setTOV) || unparking/* || dampchanged*/)/* && doneunstop*/) // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
             {
                 setTOV = rotorsstopped = false;
 
                 foreach (VectorThrust n in vectorthrusters)
                     n.ActiveList(Override: true);
-                doneunstop = !vtthrusters.All(x => x.Enabled);
+                //doneunstop = !vtthrusters.All(x => x.Enabled);
             }
             return rotorsstopped;
         }
@@ -487,7 +495,7 @@ namespace IngameScript
             }
             else
             { //Modifying
-                bool newpark = (landinggears.Any(x => x.IsLocked) || connectors.Any(x => x.Status == MyShipConnectorStatus.Connected)) && (allowpark || (trulyparked && forceparkifstatic && sv == 0));
+                bool newpark = (landinggears.Any(x => x.IsLocked) || connectors.Any(x => x.Status == MyShipConnectorStatus.Connected)) && (allowpark || (trulyparked && forceparkifstatic && sv == 0)) && !dampchanged;
                 changedpark = newpark != parked;
                 parked = newpark;
             }
@@ -734,7 +742,7 @@ namespace IngameScript
                     dampeners = !dampeners;
                     changeDampeners = true;
                 }
-                else if (arg.Contains(cruiseArg))
+                else if (arg.Contains(cruiseArg) && !parked)
                 {
                     cruise = !cruise;
                     cruisebyarg = cruise;
@@ -856,8 +864,12 @@ namespace IngameScript
                 }
                 else if (isstation)
                 {
-                    isstation = false;
-                    ChangeRuntime(5);
+                    isstation = rotorsstopped = false;
+
+                    foreach (VectorThrust n in vectorthrusters)
+                        n.ActiveList(Override: true);
+
+                    ChangeRuntime(0);
                 }
 
                 if (this.oldMass == bm) return; //modifying variables here may cause to the handler to restart every single time
@@ -890,7 +902,7 @@ namespace IngameScript
                 case 2: Runtime.UpdateFrequency = UpdateFrequency.Update100; break;
                 case 3: Runtime.UpdateFrequency = UpdateFrequency.Once; break;
                 case 4: Runtime.UpdateFrequency = UpdateFrequency.None; break;
-                case 5: Runtime.UpdateFrequency = update_frequency;  break;
+                //case 5: Runtime.UpdateFrequency = update_frequency;  break;
             };
         }
     }

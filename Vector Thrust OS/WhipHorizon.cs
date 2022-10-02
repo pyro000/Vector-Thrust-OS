@@ -100,8 +100,9 @@ namespace IngameScript
             void Calculate()
             {
 
-                if ((p.mvin == 0 && (!p.almostbraked || !Vector3D.IsZero(p.shipVelocity, 1e-2))) || p.mvin != 0)
+                if ((p.mvin == 0 && (!p.almostbraked/* || !Vector3D.IsZero(p.shipVelocity, 1e-2)*/)) || p.mvin != 0)
                 {
+                    //p.Print($"HUH? {p.almostbraked} {!Vector3D.IsZero(p.shipVelocity, 1e-2)}");
                     Vector3D velocityNorm = p.shipVelocity;
                     speed = (float)velocityNorm.Normalize();
                     Vector3D localVelocity = Vector3D.Rotate(velocityNorm, MatrixD.Transpose(p.mainController.TheBlock.WorldMatrix));
@@ -111,6 +112,7 @@ namespace IngameScript
                 }
                 else
                 {
+                    //p.Print("FALSE");
                     speed = 0;
                     flatennedvelocity = Vector2.Zero;
                     movingbackwards = false;
@@ -151,7 +153,6 @@ namespace IngameScript
 
                         if (!p.parked && !p.trulyparked)
                         {
-
                             float sign = movingbackwards ? -1 : 1;
 
                             Vector2 velwh = squareViewportSize * flatennedvelocity * sign * ReticuleSens;
@@ -160,7 +161,7 @@ namespace IngameScript
                             float minscreenCenter = Math.Min(screenCenter.X, screenCenter.Y);
                             float mindampSens = minSideLength / 2 * DampreticuleSens;
 
-                            outofscreen = farfromcenter > minSideLength / 2 || !p.mainController.TheBlock.DampenersOverride && farfromcenter > mindampSens ||
+                            outofscreen = farfromcenter > minSideLength / 2 || !p.dampeners && farfromcenter > mindampSens ||
                                 ((velpos - screenCenter).Y > 0 && velpos.Y > positionbar2);
 
                             if (ingravity) DrawArtificialHorizon(frame, screenCenter, minScale, minSideLength);
@@ -270,8 +271,14 @@ namespace IngameScript
 
                         if (((p.parked && p.alreadyparked) || p.trulyparked) && p.setTOV && (p.totalVTThrprecision.Round(1) != 100 || p.tgotTOV <= 0.25))
                         {
-                            Write("PARKING", frame, LTextPos, minScale * 2);
-                            Loading(frame, LoadingPos, minScale * 2, 0.5f);
+                            if (p.isstation)
+                            {
+                                Write("STATION MODE", frame, BTextBox, minScale * 3.5f);
+                            }
+                            else { 
+                                Write("PARKING", frame, LTextPos, minScale * 2);
+                                Loading(frame, LoadingPos, minScale * 2, 0.5f);
+                            }
                         } //PARKING
                         else if (p.trulyparked && !p.parked)
                         {

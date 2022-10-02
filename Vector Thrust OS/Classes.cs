@@ -48,7 +48,7 @@ namespace IngameScript
                     _program.pc = 0;
                     _program.log.Clear();
                 }
-                if (_program.Runtime.UpdateFrequency == _program.update_frequency) _program.pc++;
+                if (_program.Runtime.UpdateFrequency == UpdateFrequency.Update1) _program.pc++;
                 else if (_program.Runtime.UpdateFrequency == UpdateFrequency.Update10) _program.pc += 10;
                 else _program.pc += 100;
 

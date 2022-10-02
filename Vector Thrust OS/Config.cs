@@ -65,13 +65,13 @@ namespace IngameScript
         const string myNameStr = "Name Tag";
         const string TagSurroundStr = "Tag Surround Char(s)";
 
-        const string AggressivityStr = "Min/Off/Max Rotor Correction Aggresivity Level";
+        const string AggressivityStr = "(Min/Thrust_Off/Max) Rotor Correction Aggressivity Level";
         const string ErrorMarginStr = "Margin No. For Error Correction";
-        const string lowThrustCutStr = "Calculated Velocity To Turn On/Off VectorThrusters";
-        const string lowThrustCutCruiseStr = "Calculated Velocity To Turn On/Off VectorThrusters In Cruise";
-        const string velprecisionmodestr = "Velocity To Triger Presision Mode";
+        const string lowThrustCutStr = "Velocity To Turn On/Off VectorThrusters";
+        const string lowThrustCutCruiseStr = "Velocity To Turn On/Off VectorThrusters In Cruise";
+        const string velprecisionmodestr = "Velocity To Trigger Presision Mode";
 
-        const string AccelerationsStr = "Accelerations (V2.0) (Thrust %)";
+        const string AccelerationsStr = "Accelerations (Total Thrust %)";
 
         const string TurnOffThrustersOnParkStr = "Turn Off Thrusters On Park";
         const string RechargeOnParkStr = "Set Batteries/Tanks to Recharge/Stockpile On Park";
@@ -90,7 +90,7 @@ namespace IngameScript
         const string TimeForRefreshStr = "Time For Each Refresh";
         const string SkipFramesStr = "Skip Frames";
         const string framesperprintStr = "Frames Where The Script Won't Print";
-        const string stockvaluesStr = "Set Park Blocks and Normal Thrusters to Default Modes";
+        const string stockvaluesStr = "Set Park Blocks/Normal Thrusters to Default (Recompile)";
 
         const string OrientationColorStr = "Lines In The Sides"; // Lines in the sides color
         const string RetrogradeColorStr = "Reverse Velocity and Backward Arrow Indicator";  //Reverse Reticule Color And Arrow
@@ -251,6 +251,7 @@ namespace IngameScript
         void SetConfig()
         {
             config.Set(inistr, myNameStr, myName);
+            config.SetSectionComment(inistr, " For more info, check Advanced I & II sections in the guide:\n https://steamcommunity.com/sharedfiles/filedetails/?id=2861711651\n ");
             string sstr = tagSurround[0].Equals(tagSurround[1]) ? tagSurround[0] : tagSurround[0] + tagSurround[1];
             config.Set(inistr, TagSurroundStr, sstr);
 

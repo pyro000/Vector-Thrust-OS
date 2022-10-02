@@ -92,16 +92,13 @@ namespace IngameScript
             return el.Count + args.Sum(x => x.Count);
         }
 
-        public static bool Empty<T>(this List<T> list)
-        {
-            return list.Count == 0;
-        }
+        public static bool Empty<T>(this List<T> list) => list.Count == 0;
 
-        public static bool Empty<T>(this T[] array)
-        {
-            return array.Length == 0;
-        }
+        public static bool Empty<T>(this T[] array) => array.Length == 0;
 
+        public static bool Empty(this string st) => st.Length == 0;
+            
+        
         public static double Abs(this double d)
         {
             return Math.Abs(d);

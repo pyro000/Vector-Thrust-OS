@@ -16,7 +16,7 @@ namespace IngameScript
             BlockManager.Start();
             BlockManager.Doneloop = false;
             if (parked && !alreadyparked) alreadyparked = true;
-            else if (!parked && alreadyparked) Runtime.UpdateFrequency = update_frequency;
+            else if (!parked && alreadyparked) ChangeRuntime();//Runtime.UpdateFrequency = update_frequency;
             thrustOn = !parked;
             if (!parked) trulyparked = false; //Careful in setting this to anything than false
         }
