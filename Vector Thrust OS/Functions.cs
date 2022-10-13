@@ -15,7 +15,7 @@ namespace IngameScript
         {
             if (thrustOn) return;
             ShipController c = mainController ?? controlledControllers[0];
-            double[] tdm = thrdirmultiplier;
+            List<double> tdm = thrdirmultiplier;
             Vector3D zero_G_accel;
             Vector3D v1 = thrdiroverride ? Vector3D.Zero : requiredVec;
             Vector3D v2 = thrdiroverride ? Vector3D.Zero : requiredVec - shipVelocity;
@@ -23,16 +23,6 @@ namespace IngameScript
             requiredVec = dampeners ? zero_G_accel * shipmass + v1 : v2 + zero_G_accel;
             setTOV = true;
         }
-
-        /*string Separator(string title = "", int len = 58)
-        {
-            int tl = title.Length;
-            len = (len - tl) / 2;
-            string res = new string('-', len);
-            return res + title + res;
-        }*/
-
-        double force = 0;
 
         void ThrustOnHandler()
         {
@@ -69,7 +59,7 @@ namespace IngameScript
             //getting max & gear accel
             gearaccel = efectiveaccel * Accelerations[gear] / 100;
             rawgearaccel *= Accelerations[gear] / 100;
-            maxaccel = efectiveaccel * Accelerations[Accelerations.Length - 1] / 100;
+            maxaccel = efectiveaccel * Accelerations[Accelerations.Count - 1] / 100;
 
             double gravaccel = accelBase * gravtdefac;
             bool cond = mvin == 0 && !cruise && dampeners && sv > velprecisionmode && gearaccel > gravaccel;
@@ -291,7 +281,6 @@ namespace IngameScript
             oldTag = tag;
         }
 
-
         bool HasTag(IMyTerminalBlock block)
         {
             return block.CustomName.Contains(tag);
@@ -429,10 +418,6 @@ namespace IngameScript
             return onlyMainCockpit && mainController != null && mainController.TheBlock.IsUnderControl;
         }
 
-        //bool doneunstop = false;
-        double tgotTOV = 0;
-
-
         bool VTThrHandler()
         {
             bool nograv = wgv == 0;
@@ -447,18 +432,15 @@ namespace IngameScript
             {
                 if (CanPrint()) echosb.AppendLine("\nEverything stopped, performance mode.\n");
                 rotorsstopped = rotorsstopped || vtrotors.All(x => x.TargetVelocityRPM == 0) && vtthrusters.All(x => !x.Enabled && x.ThrustOverridePercentage == 0);
-                //doneunstop = true;
-
                 if (!rotorsstopped) ShutOffVTS();
                 return true;
             }
-            else if (((rotorsstopped && setTOV) || unparking/* || dampchanged*/)/* && doneunstop*/) // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
+            else if ((rotorsstopped && setTOV) || unparking) // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
             {
                 setTOV = rotorsstopped = false;
 
                 foreach (VectorThrust n in vectorthrusters)
                     n.ActiveList(Override: true);
-                //doneunstop = !vtthrusters.All(x => x.Enabled);
             }
             return rotorsstopped;
         }
@@ -665,7 +647,6 @@ namespace IngameScript
             }
         }
 
-        bool cruisebyarg = false;
         Vector3D GetMovementInput(string arg, bool perf = false)
         {
             Vector3D moveVec = Vector3D.Zero;
@@ -677,7 +658,12 @@ namespace IngameScript
                 try
                 {
                     this.CMinputs = Me.GetValue<Dictionary<string, object>>("ControlModule.Inputs");
-                    Me.SetValue<string>("ControlModule.AddInput", "all");
+
+                    Me.SetValue<string>("ControlModule.AddInput", dampenersButton); //Z
+                    Me.SetValue<string>("ControlModule.AddInput", cruiseButton); //R
+                    Me.SetValue<string>("ControlModule.AddInput", gearButton); //Shift
+                    Me.SetValue<string>("ControlModule.AddInput", allowparkButton); //X
+
                     Me.SetValue<bool>("ControlModule.RunOnInput", true);
                     Me.SetValue<int>("ControlModule.InputState", 1);
                     Me.SetValue<float>("ControlModule.RepeatDelay", 0.016f);
@@ -713,7 +699,7 @@ namespace IngameScript
 
                 if (!gearIsPressed && this.CMinputs.ContainsKey(gearButton))
                 {//throttle up
-                    if (gear == Accelerations.Length - 1) gear = 0;
+                    if (gear == Accelerations.Count - 1) gear = 0;
                     else gear++;
                     gearIsPressed = true;
                 }
@@ -749,7 +735,7 @@ namespace IngameScript
                 }
                 else if (arg.Contains(gearArg))
                 {
-                    if (gear == Accelerations.Length - 1) gear = 0;
+                    if (gear == Accelerations.Count - 1) gear = 0;
                     else gear++;
                 }
                 else if (arg.Contains("park"))
@@ -902,7 +888,6 @@ namespace IngameScript
                 case 2: Runtime.UpdateFrequency = UpdateFrequency.Update100; break;
                 case 3: Runtime.UpdateFrequency = UpdateFrequency.Once; break;
                 case 4: Runtime.UpdateFrequency = UpdateFrequency.None; break;
-                //case 5: Runtime.UpdateFrequency = update_frequency;  break;
             };
         }
     }

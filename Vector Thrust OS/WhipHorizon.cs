@@ -17,7 +17,6 @@ namespace IngameScript
             readonly Program p;
 
             public Color OrientationColor { get; set; } = new Color(150, 150, 150); // Lines in the sides color
-            //Color progradeColor { get; set; } = new Color(150, 150, 0); //reticule old color
             public Color RetrogradeColor { get; set; } = new Color(150, 0, 0);  //Reverse Reticule Color
             public Color SkyColor { get; set; } = new Color(10, 30, 50); // Color of sky over the horizon line
             public Color HorizonLineColor { get; set; } = new Color(0, 0, 0); // Horizon line, defaults to transparent
@@ -100,9 +99,8 @@ namespace IngameScript
             void Calculate()
             {
 
-                if ((p.mvin == 0 && (!p.almostbraked/* || !Vector3D.IsZero(p.shipVelocity, 1e-2)*/)) || p.mvin != 0)
+                if ((p.mvin == 0 && (!p.almostbraked)) || p.mvin != 0)
                 {
-                    //p.Print($"HUH? {p.almostbraked} {!Vector3D.IsZero(p.shipVelocity, 1e-2)}");
                     Vector3D velocityNorm = p.shipVelocity;
                     speed = (float)velocityNorm.Normalize();
                     Vector3D localVelocity = Vector3D.Rotate(velocityNorm, MatrixD.Transpose(p.mainController.TheBlock.WorldMatrix));
@@ -112,7 +110,6 @@ namespace IngameScript
                 }
                 else
                 {
-                    //p.Print("FALSE");
                     speed = 0;
                     flatennedvelocity = Vector2.Zero;
                     movingbackwards = false;
@@ -286,7 +283,7 @@ namespace IngameScript
                         }
 
 
-                        Write(p.screensb.ToString(), frame, PrinterPos, minScale);
+                        if (p.screensb.Length > 0) Write(p.screensb.ToString(), frame, PrinterPos, minScale);
 
                         frame.Dispose();
                     }
@@ -742,7 +739,7 @@ namespace IngameScript
                 float stockdiv = 61f;
                 int stocknumber = 3;
 
-                int dnum = p.Accelerations.Length;
+                int dnum = p.Accelerations.Count;
                 int cnum = p.gear + 1;
 
                 int dif = dnum - cnum;

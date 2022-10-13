@@ -16,7 +16,7 @@ namespace IngameScript
             BlockManager.Start();
             BlockManager.Doneloop = false;
             if (parked && !alreadyparked) alreadyparked = true;
-            else if (!parked && alreadyparked) ChangeRuntime();//Runtime.UpdateFrequency = update_frequency;
+            else if (!parked && alreadyparked) ChangeRuntime();
             thrustOn = !parked;
             if (!parked) trulyparked = false; //Careful in setting this to anything than false
         }
@@ -38,7 +38,7 @@ namespace IngameScript
                 if (check) log.AppendNR($"  Getting Screens => new:{input_screens.Count}\n");
                 if (input_screens.Any())
                 {
-                    this.screens.AddRange(input_screens);
+                    /*this.*/screens.AddRange(input_screens);
                     LND(ref screens); // TODO: Check if this is worth dealing with (It can be)
                     input_screens.Clear();
                     if (pauseseq) yield return timepause;
@@ -50,7 +50,7 @@ namespace IngameScript
                     // this isn't really the right place to put this, but doing it right would be a lot more code (moved here temporarily)
                 }
 
-                foreach (IMyTextPanel screen in this.screens)
+                foreach (IMyTextPanel screen in /*this.*/screens)
                 {
                     bool cond1 = surfaces.Contains(screen);
                     bool cond2 = screen.IsWorking;
@@ -79,18 +79,18 @@ namespace IngameScript
         {
             while (true)
             {
-                bool greedy = this.greedy || this.applyTags;
+                bool greedy = this.greedy || /*this.*/applyTags;
 
-                if (this.controllers_input.Count > 0)
+                if (/*this.*/controllers_input.Count > 0)
                 {
-                    this.controllers.AddRange(controllers_input);
+                    /*this.*/controllers.AddRange(controllers_input);
                     LND(ref controllers);
                     controllers_input.Clear();
                     if (pauseseq) yield return timepause;
                 }
 
                 StringBuilder reason = new StringBuilder();
-                foreach (ShipController s in this.controllers)
+                foreach (ShipController s in /*this.*/controllers)
                 {
                     bool canAdd = true;
                     StringBuilder currreason = new StringBuilder(s.TheBlock.CustomName + "\n");
@@ -138,7 +138,7 @@ namespace IngameScript
 							controlledControllers.Add(s);
 						}*/
 
-                        if (this.applyTags)
+                        if (/*this.*/applyTags)
                         {
                             AddTag(s.TheBlock);
                         }
@@ -190,14 +190,14 @@ namespace IngameScript
             {
                 
 
-                bool greedy = this.applyTags || this.greedy;
+                bool greedy = /*this.*/applyTags || this.greedy;
 
                 log.AppendNR("  >Getting Rotors\n");
 
                 // makes this.nacelles out of all valid rotors
                 foreach (IMyTerminalBlock r in vtrotors)
                 {
-                    if (this.applyTags)
+                    if (/*this.*/applyTags)
                     {
                         AddTag(r);
                     }
@@ -206,7 +206,7 @@ namespace IngameScript
 
                 foreach (IMyTerminalBlock tr in vtthrusters)
                 {
-                    if (this.applyTags)
+                    if (/*this.*/applyTags)
                     {
                         AddTag(tr);
                     }
@@ -224,7 +224,7 @@ namespace IngameScript
 
                 foreach (IMyMotorStator current in rotors_input)
                 {
-                    if (this.applyTags)
+                    if (/*this.*/applyTags)
                     {
                         AddTag(current);
                     }
@@ -232,7 +232,7 @@ namespace IngameScript
                     if (current.Top != null && (greedy || HasTag(current)) && current.TopGrid != Me.CubeGrid)
                     {
                         Rotor rotor = new Rotor(current, this);
-                        this.vectorthrusters.Add(new VectorThrust(rotor, this));
+                        /*this.*/vectorthrusters.Add(new VectorThrust(rotor, this));
                         vtrotors.Add(current);
                     }
                     else
@@ -244,9 +244,9 @@ namespace IngameScript
 
                 log.AppendNR("  >Getting Thrusters\n");
                 // add all thrusters to their corrisponding nacelle and remove this.nacelles that have none
-                for (int i = this.vectorthrusters.Count - 1; i >= 0; i--)
+                for (int i = /*this.*/vectorthrusters.Count - 1; i >= 0; i--)
                 {
-                    IMyMotorStator temprotor = this.vectorthrusters[i].rotor.TheBlock;
+                    IMyMotorStator temprotor = /*this.*/vectorthrusters[i].rotor.TheBlock;
                     for (int j = thrusters_input.Count - 1; j >= 0; j--)
                     {
                         bool added = false;
@@ -255,11 +255,11 @@ namespace IngameScript
                         if (greedy || HasTag(thrusters_input[j]))
                         {
 
-                            bool cond = thrusters_input[j].CubeGrid == this.vectorthrusters[i].rotor.TheBlock.TopGrid;
+                            bool cond = thrusters_input[j].CubeGrid == /*this.*/vectorthrusters[i].rotor.TheBlock.TopGrid;
                             bool cond2 = vectorthrusters[i].thrusters.Any(x => x.TheBlock == thrusters_input[j]);
 
                             // thruster is not for the current nacelle
-                            if (cond && this.applyTags)
+                            if (cond && /*this.*/applyTags)
                             {
                                 AddTag(thrusters_input[j]);
                             }
@@ -275,7 +275,7 @@ namespace IngameScript
 
                                 added = true;
                                 abandonedthrusters.Remove(thrusters_input[j]);
-                                this.vectorthrusters[i].thrusters.Add(new Thruster(thrusters_input[j], this));
+                                /*this.*/vectorthrusters[i].thrusters.Add(new Thruster(thrusters_input[j], this));
                                 vtthrusters.Add(thrusters_input[j]);
                                 thrusters_input.RemoveAt(j);// shorten the list we have to check (It discards thrusters for next nacelle)
                             }
@@ -287,12 +287,12 @@ namespace IngameScript
                     }
 
                     // remove this.nacelles (rotors) without thrusters
-                    if (this.vectorthrusters[i].thrusters.Count == 0)
+                    if (/*this.*/vectorthrusters[i].thrusters.Count == 0)
                     {
                         if (!abandonedrotors.Contains(temprotor)) abandonedrotors.Add(temprotor);
                         vtrotors.Remove(temprotor);
                         RemoveTag(temprotor);
-                        this.vectorthrusters.RemoveAt(i);// there is no more reference to the rotor, should be garbage collected (NOT ANYMORE, Added to abandoned rotors)
+                        /*this.*/vectorthrusters.RemoveAt(i);// there is no more reference to the rotor, should be garbage collected (NOT ANYMORE, Added to abandoned rotors)
                     }
                     else
                     {
@@ -305,16 +305,18 @@ namespace IngameScript
                         }
 
                         abandonedrotors.Remove(temprotor);
-                        this.vectorthrusters[i].ValidateThrusters();
-                        this.vectorthrusters[i].DetectThrustDirection();
-                        this.vectorthrusters[i].AssignGroup();
+                        /*this.*/vectorthrusters[i].ValidateThrusters();
+                        /*this.*/vectorthrusters[i].DetectThrustDirection();
+
+                        /*this.*/vectorthrusters[i].AssignGroup();
+                        //vectorthrusters[i].AssignRole();
                     }
                     if (pauseseq) yield return timepause;
                 }
 
                 log.AppendNR("  >Grouping VTThrs\n");
 
-                if (VTThrGroups.Count == 0)
+                if (/*VTThrGroups.Count*/vectorthrusters.Count <= 0)
                 {
                     log.AppendNR("  > [ERROR] => Any Vector Thrusters Found!\n");
                     error = true;
@@ -322,8 +324,10 @@ namespace IngameScript
                     if (pauseseq) yield return timepause;
                 }
 
+                //vectorthrusters = vectorthrusters.OrderBy(t => t.totalEffectiveThrust).ToList();
+                
                 for (int i = 0; i < VTThrGroups.Count; i++) {
-                    VTThrGroups[i] = VTThrGroups[i].OrderBy(o => o.totalEffectiveThrust).ToList();
+                    VTThrGroups[i] = VTThrGroups[i].OrderByDescending(o => o.totalEffectiveThrust).ToList();
                     if (pauseseq) yield return timepause;
                 }
                
@@ -459,12 +463,6 @@ namespace IngameScript
 
         }
 
-        readonly List<IMySoundBlock> soundblocks = new List<IMySoundBlock>();
-        readonly List<IMyShipConnector> connectorblocks = new List<IMyShipConnector>();
-        readonly List<IMyLandingGear> landinggearblocks = new List<IMyLandingGear>();
-        readonly List<IMyBatteryBlock> batteriesblocks = new List<IMyBatteryBlock>();
-
-
         public IEnumerable<double> CheckVectorThrustersSeq()
         {
             while (true)
@@ -517,6 +515,7 @@ namespace IngameScript
                         if (b is IMyThrust)
                         {
                             vtthrusters.Remove((IMyThrust)b);
+                            
                         }
                         else { 
                             vtrotors.Remove((IMyMotorStator)b);
@@ -527,23 +526,23 @@ namespace IngameScript
                 }
 
                 vectorthrusters.RemoveAll(x => !vtrotors.Contains(x.rotor.TheBlock));
-                if (pauseseq && !quick) yield return timepause;
+                if (pauseseq/* && !quick*/) yield return timepause;
 
                 foreach (VectorThrust vt in vectorthrusters)
                 {
                     vt.thrusters.RemoveAll(x => !vtthrusters.Contains(x.TheBlock));
                     vt.activeThrusters.RemoveAll(x => !vt.thrusters.Contains(x));
                     vt.availableThrusters.RemoveAll(x => !vt.thrusters.Contains(x));
-                    if (pauseseq) yield return timepause;
+                    if (pauseseq/* && !quick*/) yield return timepause;
                 }
 
                 foreach (List<VectorThrust> group in VTThrGroups)
                 {
                     group.RemoveAll(x => !vectorthrusters.Contains(x) || x.thrusters.Count < 1);
-                    if (pauseseq) yield return timepause;
+                    if (pauseseq/* && !quick*/) yield return timepause;
                 }
 
-                VTThrGroups.RemoveAll(x => x.Count < 1);
+                VTThrGroups.RemoveAll(x => x.Empty());
                 if (pauseseq) yield return timepause;
                 rotors_input.Clear();
                 if (pauseseq) yield return timepause;
@@ -823,7 +822,6 @@ namespace IngameScript
             }
         }
 
-
         public IEnumerable<double> GetBatStatsSeq()
         {
             while (true)
@@ -858,8 +856,6 @@ namespace IngameScript
                 yield return timepause;
             }
         }
-
-
 
         public IEnumerable<double> BlockManagerSeq()
         {

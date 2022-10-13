@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using VRage.Game.ModAPI.Ingame.Utilities;
 using VRageMath;
 
 namespace IngameScript
@@ -12,6 +13,29 @@ namespace IngameScript
         public static bool IsAlive(this IMyTerminalBlock block)
         {
             return block.CubeGrid.GetCubeBlock(block.Position)?.FatBlock == block;
+        }
+
+        public static void GetList<T>(this MyIni config, ref List<T> inp, string section, string key, Func<bool> cond)
+        {
+            List<T> prev = new List<T>(inp);
+            inp = new List<T>();
+
+            try
+            {
+                string temp = config.Get(section, key).ToString();
+                string[] temp1 = temp.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (string t in temp1)
+                {
+                    inp.Add((T)Convert.ChangeType(t, typeof(T)));
+                }
+
+                if (!cond()) inp = prev;
+            }
+            catch
+            {
+                inp = prev;
+            }
         }
 
         public static List<string> Between(this string STR, string STR1, string STR2 = "")
@@ -25,6 +49,14 @@ namespace IngameScript
             double aDotB = Vector3D.Dot(a, b);
             double bDotB = Vector3D.Dot(b, b);
             return b * aDotB / bDotB;
+        }
+
+        public static double Clamp(this double val, double min, double max) {
+            return MathHelper.Clamp(val, min, max);
+        }
+
+        public static Vector3D NewLength(this Vector3D inp, double val = 1) {
+            return inp.Normalized() * val;
         }
 
         public static StringBuilder AppendNR(this StringBuilder str, string value)
