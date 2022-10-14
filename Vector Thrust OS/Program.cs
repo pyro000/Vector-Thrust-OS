@@ -293,10 +293,10 @@ namespace IngameScript
                     if (Extensions.Dot(desiredVec, shipVelocity) < 0)
                     {
                         //if you want to go oppisite to velocity
-                        dampVec += shipVelocity.Project(desiredVec.Normalized());
+                        dampVec += VectorMath.Projection( shipVelocity,/*.Project(*/desiredVec.Normalized());
                     }
                     // cancel sideways movement
-                    dampVec += shipVelocity.Reject(desiredVec.Normalized());
+                    dampVec += VectorMath.Rejection(shipVelocity, desiredVec.Normalized());//shipVelocity.Reject(desiredVec.Normalized());
                 }
                 else
                 {
@@ -318,12 +318,12 @@ namespace IngameScript
 
                         if (Extensions.Dot(dampVec, cont.TheBlock.WorldMatrix.Forward) > 0 || cruisePlane)
                         { // only front, or front+back if cruisePlane is activated
-                            dampVec -= dampVec.Project(cont.TheBlock.WorldMatrix.Forward);
+                            dampVec -= VectorMath.Projection( dampVec,/*.Project(*/cont.TheBlock.WorldMatrix.Forward);
                         }
 
                         if (cruisePlane)
                         {
-                            shipWeight -= shipWeight.Project(cont.TheBlock.WorldMatrix.Forward);
+                            shipWeight -= VectorMath.Projection( shipWeight, /*.Project(*/cont.TheBlock.WorldMatrix.Forward);
                         }
                     }
                 }
@@ -387,8 +387,11 @@ namespace IngameScript
                 List<VectorThrust> g = VTThrGroups[i];
                 int tc = g.Count;
                 if (tc <= 0) continue;
+                int ni = i + 1;
 
-                double temp = (requiredVec.Reject(g[0].rotor.TheBlock.WorldMatrix.Up) / g.Count).Length();
+                double temp = (VectorMath.Rejection(requiredVec, g[0].rotor.TheBlock.WorldMatrix.Up)/*requiredVec.Reject(g[0].rotor.TheBlock.WorldMatrix.Up)*/ / g.Count).Length();
+
+                //Print($"Group {ni}");
 
                 for (int j = 0; j < g.Count; j++)
                 {
@@ -396,16 +399,17 @@ namespace IngameScript
                     if (!CheckRotor(vt.rotor.TheBlock)) continue;
                     if ((thrustOn && !parked) || (!thrustOn && !vt.activeThrusters.Empty())) vt.CalcTotalEffectiveThrust();
                     double tet = vt.totalEffectiveThrust;
-                    
-                    bool isPointedLeft = Vector3D.Dot(requiredVec, vt.rotor.TheBlock.WorldMatrix.Left) > 0; //this lets me use hinges, TODO: determine correct hinge direction
-                    vt.requiredVec = vt.rotor.isHinge ? isPointedLeft ? requiredVec : requiredVec.Reject(vt.rotor.TheBlock.WorldMatrix.Right) : requiredVec;
 
-                    vt.requiredVec = vt.requiredVec.Reject(vt.rotor.TheBlock.WorldMatrix.Up).Normalized() * temp.Clamp(0.01, tet);
+                    //Print($"{vt.rotor.CName}");
+
+                    bool isPointedLeft = Vector3D.Dot(requiredVec, vt.rotor.TheBlock.WorldMatrix.Left) > 0; //this lets me use hinges, TODO: determine correct hinge direction
+                    vt.requiredVec = vt.rotor.isHinge ? isPointedLeft ? requiredVec : VectorMath.Rejection(requiredVec, vt.rotor.TheBlock.WorldMatrix.Right)/*.Reject(vt.rotor.TheBlock.WorldMatrix.Right)*/ : requiredVec;
+
+                    vt.requiredVec = VectorMath.Rejection(vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Up)/*.Reject(vt.rotor.TheBlock.WorldMatrix.Up)*/.Normalized() * temp.Clamp(0.01, tet);
 
                     int nj = j + 1;
                     bool lastthr = nj >= tc;
                     if (lastthr) nj = 0;
-                    int ni = i + 1;
                     bool lastgrp = ni >= gc;
 
                     if (lastthr && !lastgrp && tet > temp)
@@ -413,7 +417,7 @@ namespace IngameScript
                         if (VTThrGroups[ni].Count > 0)
                         {
                             IMyMotorStator nrt = VTThrGroups[ni][nj].rotor.TheBlock;
-                            vt.requiredVec -= vt.requiredVec.Reject(nrt.WorldMatrix.Up) * 5 / 100;
+                            vt.requiredVec -= VectorMath.Rejection(vt.requiredVec, nrt.WorldMatrix.Up)/*.Reject(nrt.WorldMatrix.Up)*/ * 5 / 100;
                         }
                     }
 

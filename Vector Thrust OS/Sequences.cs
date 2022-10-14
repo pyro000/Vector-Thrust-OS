@@ -327,7 +327,7 @@ namespace IngameScript
                 //vectorthrusters = vectorthrusters.OrderBy(t => t.totalEffectiveThrust).ToList();
                 
                 for (int i = 0; i < VTThrGroups.Count; i++) {
-                    VTThrGroups[i] = VTThrGroups[i].OrderByDescending(o => o.totalEffectiveThrust).ToList();
+                   VTThrGroups[i] = VTThrGroups[i].OrderByDescending(o => o.thrusters.Sum(x => x.TheBlock.MaxEffectiveThrust)).ToList();
                     if (pauseseq) yield return timepause;
                 }
                
