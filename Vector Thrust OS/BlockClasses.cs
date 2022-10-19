@@ -12,7 +12,7 @@ namespace IngameScript
         //int colorid = 0;
         //List<Color> colors = new List<Color> { Color.White, Color.Cyan, Color.Green, Color.Yellow, Color.Red, Color.Blue, Color.Pink };
 
-        public static Vector3D Projection(Vector3D a, Vector3D b)
+        /*public static Vector3D Projection(Vector3D a, Vector3D b)
         {
             if (Vector3D.IsZero(a) || Vector3D.IsZero(b))
                 return Vector3D.Zero;
@@ -21,7 +21,7 @@ namespace IngameScript
                 return a.Dot(b) * b;
 
             return a.Dot(b) / b.LengthSquared() * b;
-        }
+        }*/
 
         class VectorThrust
         {
@@ -418,39 +418,38 @@ namespace IngameScript
 
             public bool isHinge;
 
-            //public bool inPrecision = false;
+            public bool reachededge = false;
 
             public Rotor(IMyMotorStator rotor, Program program) : base(rotor, program)
             {
                 p = program;
                 pid = new PID(4, 0, 0, 1.0 / 60.0);
-                isHinge = TheBlock.BlockDefinition.ToString().Contains("Hinge");
+                isHinge = TheBlock.BlockDefinition.SubtypeId.Contains("Hinge");
             }
 
             public double Point(Vector3D requiredVec/*, double efthr*/)
             {
                 Vector3D desiredVec = requiredVec.Normalized();
                 Vector3D currentDir = Vector3D.TransformNormal(direction, TheBlock.Top.CubeGrid.WorldMatrix);
-
                 double cutoff = p.velprecisionmode * p.force;
-                bool reverse = GetPointOrientation(desiredVec, currentDir);
-                double angleCos = AngleBetweenCos(currentDir, desiredVec);
 
+                //Better vector pointing system by Whiplash141
+                //Vector3D currentDirectionFlat = VectorMath.Rejection(currentDir, TheBlock.WorldMatrix.Up);
+                double angleCos = VectorMath.CosBetween(desiredVec, /*currentDirectionFlat*/currentDir);
                 double angleCosPercent = angleCos * 100;
-                double rtangle = TheBlock.Angle;
-                double angleRad = Math.Acos(angleCos) * 2;
-                double desiredRad = rtangle - angleRad;
-                double error = (desiredRad - rtangle).NNaN();
+                double angle = Math.Acos(angleCos) * 2; //previous version was like that (* 2)
+                Vector3D axis = Vector3D.Cross(desiredVec, /*currentDirectionFlat*/currentDir);
+                //p.Echo($"3 {axis}");
+                angle *= Math.Sign(Vector3D.Dot(axis, TheBlock.WorldMatrix.Up)); // angle is the error (facepalm, thanks Whip)
+                //p.Echo($"4 {angle}");
 
-                //double percent = efthr * 2.5 / 100;
-                //inPrecision = (requiredVec.Length() < percent) && p.thrustOn;
+                //if (p.EnDebugAPI) {
+                    p.Debug.DrawLine(TheBlock.Top.GetPosition(), TheBlock.Top.GetPosition() + currentDir * 2, Color.Cyan, thickness: 0.015f, onTop: true);
+                    p.Debug.DrawLine(TheBlock.Top.GetPosition(), TheBlock.Top.GetPosition() + (requiredVec.Normalized() * cutoff) / p.force, Color.Yellow, onTop: true);
+                    //p.Debug.DrawLine(TheBlock.Top.GetPosition(), TheBlock.Top.GetPosition() + (requiredVec / p.force), Color.Green, onTop: true);
+                //} 
 
-                p.Debug.DrawLine(TheBlock.Top.GetPosition(), TheBlock.Top.GetPosition() + currentDir * 2, Color.Cyan, thickness: 0.015f, onTop: true);
-                //p.Debug.DrawLine(p.mainController.TheBlock.CenterOfMass, p.mainController.TheBlock.CenterOfMass + (requiredVec / p.force) * 10, Color.Orange, thickness: 0.03f, onTop: true);
-                p.Debug.DrawLine(TheBlock.Top.GetPosition(), TheBlock.Top.GetPosition() + (requiredVec.Normalized() * cutoff) / p.force, Color.Yellow, onTop: true);
-                p.Debug.DrawLine(TheBlock.Top.GetPosition(), TheBlock.Top.GetPosition() + (requiredVec / p.force), Color.Green, onTop: true);
-
-                if (/*inPrecision*/requiredVec.Length() < cutoff && p.thrustOn)
+                if (requiredVec.Length() < cutoff && p.thrustOn)
                 {
                     if (((p.wgv == 0 && p.dampeners) || (p.wgv != 0)) && p.thrustOn && Math.Abs(angleCosPercent - LastAngleCos) <= p.ErrorMargin && angleCosPercent < 90)
                     {
@@ -471,27 +470,49 @@ namespace IngameScript
                 }
 
                 LastAngleCos = angleCosPercent;
-                float result = (float)pid.Control(error);
-                TheBlock.TargetVelocityRad = reverse ? -result : result;
+                float result = (float)pid.Control(/*error*/angle);
+
+                //if (angleCosPercent.Round(2) == -100 && result)
+                double currentrpm = (TheBlock.TargetVelocityRad * 9.549297).Round(2).Abs();
+                double maxrpm = TheBlock.GetMaximum<float>("Velocity");
+                double tempp = angleCosPercent.Round(2);
+
+                p.Print($"- {tempp} - {currentrpm} {maxrpm}");
+
+                ///If it's a hinge, and the RPM is the maximum possible, and the cos of angle is -1 (the most far distance), 
+                ///it'll asume that hinge is stuck in one of the limits
+                if (isHinge && tempp == -100 && currentrpm == maxrpm) { 
+                    //result *= -1;
+                    if (!reachededge)
+                    {
+                        reachededge = true;
+                    }
+                    else {
+                        //p.Print("I'M STUCK STEPROTOR");
+                        result = -result;
+                    }
+                } else if (isHinge && reachededge && tempp > -98.5) {
+                    reachededge = false;
+                }
+
+                p.Print($"2 {(result * 9.549297).Round(2)}");
+                TheBlock.TargetVelocityRad = result;//!reverse ? -result : result;
                 return angleCos;
             }
 
-            public bool GetPointOrientation(Vector3D targetDirection, Vector3D currentDirection)
+            /*public bool GetPointOrientation(Vector3D targetDirection, Vector3D currentDirection)
             {
                 Vector3D angle = Vector3D.Cross(targetDirection, currentDirection);
-                double err = Vector3D.Dot(angle, TheBlock.WorldMatrix.Up + TheBlock.WorldMatrix.Left);
-                //p.Debug.DrawLine(TheBlock.GetPosition(), TheBlock.GetPosition() + angle, Color.Yellow);
-                bool cond = (TheBlock.Angle == TheBlock.LowerLimitRad || TheBlock.Angle == TheBlock.UpperLimitRad);
-                //p.Print($"{CName}-> {TheBlock.Angle}\n {TheBlock.LowerLimitRad}\n {TheBlock.UpperLimitRad}\n {LastAngleCos}");
-                return err >= 0 /*&& cond*/;
-            }
+                double err = Vector3D.Dot(angle.Normalized(), (TheBlock.WorldMatrix.Up + TheBlock.WorldMatrix.Left).Normalized());
+                return err >= 0 /*&& cond;
+            }*/
 
             // doesn't calculate length because thats expensive
-            public double AngleBetweenCos(Vector3D a, Vector3D b)
+            /*public double AngleBetweenCos(Vector3D a, Vector3D b)
             {
-                double dot = Vector3D.Dot(a, b);
-                return dot / b.Length();
-            }
+                //double dot = Vector3D.Dot(a, b);
+                return MathHelper.Clamp(a.Dot(b) / Math.Sqrt(a.LengthSquared() * b.LengthSquared()), -1, 1);//dot / b.Length();
+            }*/
 
         }
         class ShipController : BlockWrapper<IMyShipController>
@@ -517,7 +538,6 @@ namespace IngameScript
             IMyTerminalBlock TheBlock { get; set; }
             //List<Base6Directions.Axis> Axis { get; }
             //List<Vector3D> SpDirections { get; }
-
             string CName { get; }
         }
 

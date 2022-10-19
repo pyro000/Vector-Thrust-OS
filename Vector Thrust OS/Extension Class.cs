@@ -77,12 +77,21 @@ namespace IngameScript
         {
             return VectorMath;//Vector3D.Reject(a, b);
         }*/
-        
 
         public static Vector3D Normalized(this Vector3D vec)
         {
+            if (Vector3D.IsZero(vec))
+                return Vector3D.Zero;
+
+            if (Vector3D.IsUnit(ref vec))
+                return vec;
+
             return Vector3D.Normalize(vec);
         }
+
+
+        public static Vector3D Clamp(this Vector3D v, double min, double max) => v.Normalized() * v.Length().Clamp(min, max);
+        
 
         public static double Dot(this Vector3D a, Vector3D b)
         {
@@ -104,10 +113,8 @@ namespace IngameScript
             return (float)Math.Pow(p, n);
         }
 
-        public static double Pow(this double p, double n)
-        {
-            return Math.Pow(p, n);
-        }
+        public static double Pow(this double p, double n) => Math.Pow(p, n);
+        
 
         public static float NNaN(this float inp)
         {

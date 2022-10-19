@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using VRageMath;
 
 namespace IngameScript
 {
@@ -29,6 +30,42 @@ namespace IngameScript
             GetVectorThrusters.Start();
             CheckParkBlocks.Start();
             MainChecker.Start();
+        }
+
+
+        public IEnumerable<double> GetEffectiveThrustSeq() {
+            while (true) {
+
+                int gc = VTThrGroups.Count;
+
+                for (int i = 0; i < gc; i++)
+                {
+                    List<VectorThrust> g = VTThrGroups[i];
+                    int tc = g.Count;
+                    double min = 0;
+                    double max = 0;
+                    for (int j = 0; j < tc; j++)
+                    {
+                        VectorThrust vt = g[j];
+                        if (!CheckRotor(vt.rotor.TheBlock)) continue;
+                        vt.CalcTotalEffectiveThrust();
+
+                        if (vt.totalEffectiveThrust < min) {
+                            min = vt.totalEffectiveThrust;
+                        }
+                        if (vt.totalEffectiveThrust > max) {
+                            max = vt.totalEffectiveThrust;
+                        }
+                        
+                        if (pauseseq) yield return timepause;
+                    }
+                    //minthrusts[i] = min;
+                    //maxthrusts[i] = max;
+                    if (pauseseq) yield return timepause;
+                }
+
+                yield return timepause;
+            }
         }
 
         public IEnumerable<double> GetScreensSeq()
@@ -187,8 +224,7 @@ namespace IngameScript
         public IEnumerable<double> GetVectorThrustersSeq()
         {
             while (true)
-            {
-                
+            { 
 
                 bool greedy = /*this.*/applyTags || this.greedy;
 
@@ -456,6 +492,16 @@ namespace IngameScript
                     }
                     yield return timepause;
                 }
+
+                for (int i = 0; i < VTThrGroups.Count; i++)
+                {
+                    VTThrGroups[i] = VTThrGroups[i].OrderByDescending(o => o.totalEffectiveThrust).ToList();
+                    yield return timepause;
+                }
+
+                //VTThrGroups.OrderByDescending(x => x.Sum(y => Vector3D.Distance(y.rotor.TheBlock.GetPosition(), mainController.TheBlock.CenterOfMass)));
+
+                yield return timepause;
 
                 CheckParkBlocks.Doneloop = true;
                 yield return timepause;

@@ -46,6 +46,8 @@ namespace IngameScript
         bool stockvalues = true;
         bool onlyMainCockpit = false;
 
+        //bool EnDebugAPI = false;
+
         // ------- End default configs ---------
 
         // START CONFIG STRINGS AND VARS
@@ -105,6 +107,7 @@ namespace IngameScript
         const string DampreticuleSensStr = "Dampeners Arrow Trigger Multiplier"; // How far it needs to be from the center to trigger arrow mode while in dampeners
 
         const string controlModuleStr = "Allow Control Module Mod";
+        //const string EnDebugAPIStr = "Enable DebugAPI Mod";
         // END STRINGS AND VARS
 
 
@@ -267,6 +270,7 @@ namespace IngameScript
                 framesperprint = config.Get(configstr, framesperprintStr).ToInt32(framesperprint);
                 ShowMetrics = config.Get(configstr, ShowMetricsStr).ToBoolean(ShowMetrics);
                 controlModule = config.Get(configstr, controlModuleStr).ToBoolean(controlModule);
+                //EnDebugAPI = config.Get(configstr, EnDebugAPIStr).ToBoolean(EnDebugAPI);
             }
 
             SetConfig();
@@ -332,6 +336,7 @@ namespace IngameScript
             config.Set(configstr, framesperprintStr, framesperprint);
             config.Set(configstr, ShowMetricsStr, ShowMetrics);
             config.Set(configstr, controlModuleStr, controlModule);
+            //config.Set(configstr, EnDebugAPIStr, EnDebugAPI);
         }
 
         void RConfig(string output/*, bool force = false*/)
