@@ -210,7 +210,102 @@ namespace IngameScript
         }
 
         // RUNTIME TRACKER BY WHIPLASH, THANK YOU!!! :)
-        class RuntimeTracker
+
+        public class EMA
+        {
+            private bool _isInitialized;
+            private readonly double _weightingMultiplier;
+            private double _previousAverage;
+
+            public double Average { get; private set; }
+            public double Slope { get; private set; }
+
+            public EMA(int lookback)
+            {
+                _weightingMultiplier = 2.0 / (lookback + 1);
+            }
+
+            public void AddDataPoint(double dataPoint)
+            {
+                if (!_isInitialized)
+                {
+                    Average = dataPoint;
+                    Slope = 0;
+                    _previousAverage = Average;
+                    _isInitialized = true;
+                    return;
+                }
+
+                Average = ((dataPoint - _previousAverage) * _weightingMultiplier) + _previousAverage;
+                Slope = Average - _previousAverage;
+
+                //update previous average
+                _previousAverage = Average;
+            }
+        }
+
+        class Tracker {
+            
+            public double MaxRuntime { get; private set; }
+            public double AverageRuntime { get; private set; }
+            public double LastRuntime { get; private set; }
+            public bool CanPrint { get; private set; }
+
+            public EMA ema;
+
+            int FrameCount = 0;
+            int FramePrintCount = 0;
+            readonly int MaxCapacity;
+
+            readonly Program p;
+
+            public Tracker(Program p, int avgcap, int maxcap) {
+                this.p = p;
+               
+                MaxCapacity = maxcap;
+                ema = new EMA(avgcap);
+            }
+
+            public void ChangeAvgCapacity(int i) {
+                ema = new EMA(i);
+            }
+
+            public void Process() {
+                LastRuntime = p.Runtime.LastRunTimeMs;
+
+                ema.AddDataPoint(LastRuntime);
+                AverageRuntime = ema.Average;
+
+                if (FrameCount % MaxCapacity == 0) MaxRuntime = AverageRuntime;
+                else if (p.Runtime.LastRunTimeMs > MaxRuntime) MaxRuntime = LastRuntime;
+
+                if (FrameCount >= MaxCapacity)
+                {
+                    FrameCount = 0;
+                    p.log.Clear();
+                }
+                if (p.Runtime.UpdateFrequency == UpdateFrequency.Update1)
+                {
+                    FrameCount++;
+                    FramePrintCount++;
+                }
+                else if (p.Runtime.UpdateFrequency == UpdateFrequency.Update10)
+                {
+                    FrameCount += 10;
+                    FramePrintCount += 10;
+                }
+                else
+                {
+                    FrameCount += 100;
+                    FramePrintCount += 100;
+                }
+
+                CanPrint = FramePrintCount >= p.framesperprint;
+                if (CanPrint) FramePrintCount = 0;
+            }
+        }
+
+        /*class RuntimeTracker
         {
             public int Capacity { get; set; }
             public double Sensitivity { get; set; }
@@ -245,14 +340,6 @@ namespace IngameScript
                 double tfr = _program.TimeForRefresh;
                 bool config = sumlastrun < tfr;
 
-                if (_program.pc >= 1000) { 
-                    _program.pc = 0;
-                    _program.log.Clear();
-                }
-                if (_program.Runtime.UpdateFrequency == UpdateFrequency.Update1) _program.pc++;
-                else if (_program.Runtime.UpdateFrequency == UpdateFrequency.Update10) _program.pc += 10;
-                else _program.pc += 100;
-
                 if (!configtrigger && !config)
                 {
                     sumlastrun = 0;
@@ -273,7 +360,7 @@ namespace IngameScript
                 double runtime = _program.Runtime.LastRunTimeMs;
 
                 LastRuntime = runtime;
-                AverageRuntime += (Sensitivity * runtime);
+                
                 int roundedTicksSinceLastRuntime = (int)Math.Round(_program.Runtime.TimeSinceLastRun.TotalMilliseconds / MS_PER_TICK);
                 if (roundedTicksSinceLastRuntime == 1)
                 {
@@ -347,7 +434,7 @@ namespace IngameScript
             public void RegisterAction(string s) {
                 actionsused.Append(s + "/");
             }
-        }
+        }*/
 
         // Thanks to Digi for creating this example class
         class SimpleTimerSM

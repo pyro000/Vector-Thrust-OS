@@ -11,7 +11,7 @@ namespace IngameScript
         // ------- Default configs --------
 
         string myName = "VT";
-        double TimeForRefresh = 10;
+        //double TimeForRefresh = 10;
         List<double> Aggressivity = new List<double> { 0.1, 1, 4 };
         float ErrorMargin = 6f;
         double lowThrustCutOn = 0.5;
@@ -46,7 +46,7 @@ namespace IngameScript
         bool stockvalues = true;
         bool onlyMainCockpit = false;
 
-        //bool EnDebugAPI = false;
+        bool EnDebugAPI = false;
 
         // ------- End default configs ---------
 
@@ -71,7 +71,7 @@ namespace IngameScript
         const string lowThrustCutStr = "Velocity To Turn On/Off VectorThrusters";
         const string lowThrustCutCruiseStr = "Velocity To Turn On/Off VectorThrusters In Cruise";
         const string velprecisionmodestr = "Velocity To Trigger Presision Mode";
-        const string divisoridstr = "Divisor ID";
+        //const string divisoridstr = "Divisor ID";
 
         const string AccelerationsStr = "Accelerations (Total Thrust %)";
 
@@ -89,7 +89,7 @@ namespace IngameScript
         const string cruisePlaneStr = "Cruise Mode Act Like Plane";
         const string FramesBetweenActionsStr = "Frames Per Operation: Task Splitter";
         const string ShowMetricsStr = "Show Metrics";
-        const string TimeForRefreshStr = "Time For Each Refresh";
+        //const string TimeForRefreshStr = "Time For Each Refresh";
         const string SkipFramesStr = "Skip Frames";
         const string framesperprintStr = "Frames Where The Script Won't Print";
         const string stockvaluesStr = "Set Park Blocks/Normal Thrusters to Default (Recompile)";
@@ -107,14 +107,15 @@ namespace IngameScript
         const string DampreticuleSensStr = "Dampeners Arrow Trigger Multiplier"; // How far it needs to be from the center to trigger arrow mode while in dampeners
 
         const string controlModuleStr = "Allow Control Module Mod";
-        //const string EnDebugAPIStr = "Enable DebugAPI Mod";
+        const string EnDebugAPIStr = "Enable DebugAPI Mod";
         // END STRINGS AND VARS
-
-
 
 
         void Config()
         {
+            if (Me.CustomData.Equals(savedconfig) && savedconfig.Length > 0) return;
+            if (!justCompiled) log.AppendNR("\n  >Configuration Edit Detected\n");
+
             config.Clear();
             /*double[] defaultltc = new double[] { 0.5, 0.01 };
             double[] defaultltcc = new double[] { 1, 0.15 };
@@ -156,6 +157,8 @@ namespace IngameScript
                     //force = true;
                     tagSurround = new string[] { "|", "|" };
                 }
+
+                ManageTag(); // Just after checking
 
                 config.GetList<double>(ref Aggressivity, detectstr, AggressivityStr, () => Aggressivity.Count == 3);
 
@@ -266,11 +269,13 @@ namespace IngameScript
                 SkipFrames = config.Get(advancedstr, SkipFramesStr).ToInt32(SkipFrames);
                 stockvalues = config.Get(advancedstr, stockvaluesStr).ToBoolean(stockvalues);
 
-                TimeForRefresh = config.Get(configstr, TimeForRefreshStr).ToDouble(TimeForRefresh);
+                //TimeForRefresh = config.Get(configstr, TimeForRefreshStr).ToDouble(TimeForRefresh);
                 framesperprint = config.Get(configstr, framesperprintStr).ToInt32(framesperprint);
                 ShowMetrics = config.Get(configstr, ShowMetricsStr).ToBoolean(ShowMetrics);
                 controlModule = config.Get(configstr, controlModuleStr).ToBoolean(controlModule);
-                //EnDebugAPI = config.Get(configstr, EnDebugAPIStr).ToBoolean(EnDebugAPI);
+                bool newedapi = config.Get(configstr, EnDebugAPIStr).ToBoolean(EnDebugAPI);
+                if (!newedapi && !newedapi.Equals(EnDebugAPI)) Debug.RemoveDraw();
+                EnDebugAPI = newedapi;
             }
 
             SetConfig();
@@ -332,12 +337,14 @@ namespace IngameScript
             config.Set(advancedstr, SkipFramesStr, SkipFrames);
             config.Set(advancedstr, stockvaluesStr, stockvalues);
 
-            config.Set(configstr, TimeForRefreshStr, TimeForRefresh);
+            //config.Set(configstr, TimeForRefreshStr, TimeForRefresh);
             config.Set(configstr, framesperprintStr, framesperprint);
             config.Set(configstr, ShowMetricsStr, ShowMetrics);
             config.Set(configstr, controlModuleStr, controlModule);
-            //config.Set(configstr, EnDebugAPIStr, EnDebugAPI);
+            config.Set(configstr, EnDebugAPIStr, EnDebugAPI);
         }
+
+        string savedconfig = "";
 
         void RConfig(string output/*, bool force = false*/)
         {
@@ -345,6 +352,8 @@ namespace IngameScript
             try { if (/*!force && */!Me.CustomData.Contains($"\n---\n{textSurfaceKeyword}0")) Me.CustomData = Me.CustomData.Replace(Me.CustomData.Between("\n---\n", "0")[0], textSurfaceKeyword); }
             catch { if (!justCompiled) log.AppendNR("No tag found textSufaceKeyword\n"); }
             if (/*!force && */!Me.CustomData.Contains($"\n---\n{textSurfaceKeyword}0")) Me.CustomData += $"\n---\n{textSurfaceKeyword}0";
+
+            savedconfig = Me.CustomData;
         }
 
         void KeepConfig()

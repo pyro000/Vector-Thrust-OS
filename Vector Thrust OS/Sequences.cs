@@ -366,8 +366,11 @@ namespace IngameScript
                    VTThrGroups[i] = VTThrGroups[i].OrderByDescending(o => o.thrusters.Sum(x => x.TheBlock.MaxEffectiveThrust)).ToList();
                     if (pauseseq) yield return timepause;
                 }
-               
+
+                tets = new List<double>(VTThrGroups.Count);
+                tets.AddRange(Enumerable.Repeat(0.0, VTThrGroups.Count));
                 if (pauseseq) yield return timepause;
+                
                 thrusters_input.Clear();
                 rotors_input.Clear();
                 GetVectorThrusters.Doneloop = true;

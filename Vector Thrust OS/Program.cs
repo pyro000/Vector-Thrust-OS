@@ -17,7 +17,7 @@ namespace IngameScript
         const string applyTagsAllArg = "applytagsall";
         const string removeTagsArg = "removetags";
 
-        readonly RuntimeTracker _RuntimeTracker;
+        //readonly RuntimeTracker _RuntimeTracker;
         readonly SimpleTimerSM BlockManager;
         readonly SimpleTimerSM BatteryStats;
 
@@ -39,10 +39,10 @@ namespace IngameScript
         double maxaccel = 0;
         float gravLength = 0;
         string oldTag = "";
-        StringBuilder echosb = new StringBuilder();
+        readonly StringBuilder echosb = new StringBuilder();
         readonly StringBuilder screensb = new StringBuilder();
         readonly StringBuilder log = new StringBuilder();
-        long pc = 0;
+        //long pc = 0;
         MyShipMass myshipmass;
 
         bool cruise = false;
@@ -150,24 +150,26 @@ namespace IngameScript
 
         readonly WhipsHorizon WH;
         Vector3D worldGrav = Vector3D.Zero;
-
-        DebugAPI Debug;
+        readonly Tracker tracker;
 
         readonly SimpleTimerSM MainChecker;
         readonly SimpleTimerSM GetScreen;
         readonly SimpleTimerSM GetControllers;
         readonly SimpleTimerSM GetVectorThrusters;
         readonly SimpleTimerSM CheckParkBlocks;
-        readonly SimpleTimerSM GetEffectiveThrust;
+        //readonly SimpleTimerSM GetEffectiveThrust;
 
+        DebugAPI Debug;
         public Program()
         {
-            /*if (EnDebugAPI) */Debug = new DebugAPI(this);
+            Debug = new DebugAPI(this);
 
             log.AppendLine("Program() Start");
 
             Load();
-            _RuntimeTracker = new RuntimeTracker(this, 60, 0.005);
+            //_RuntimeTracker = new RuntimeTracker(this, 60, 0.005);
+            tracker = new Tracker(this, 100, 500);
+
             BlockManager = new SimpleTimerSM(this, BlockManagerSeq(), true);
             BatteryStats = new SimpleTimerSM(this, GetBatStatsSeq(), true);
             MainChecker = new SimpleTimerSM(this, CheckVectorThrustersSeq(), true);
@@ -175,10 +177,10 @@ namespace IngameScript
             GetControllers = new SimpleTimerSM(this, GetControllersSeq(), true);
             GetVectorThrusters = new SimpleTimerSM(this, GetVectorThrustersSeq(), true);
             CheckParkBlocks = new SimpleTimerSM(this, CheckParkBlocksSeq(), true);
-            GetEffectiveThrust = new SimpleTimerSM(this, GetEffectiveThrustSeq(), true);
+            //GetEffectiveThrust = new SimpleTimerSM(this, GetEffectiveThrustSeq(), true);
             WH = new WhipsHorizon(surfaces, this);
             Init();
-            
+
             if (!error) Runtime.UpdateFrequency = UpdateFrequency.Update1;
             Echo(log.ToString());
             log.AppendLine("--VTOS Started--");
@@ -212,20 +214,36 @@ namespace IngameScript
             }
         }
 
+        //double avg = 0;
+        //readonly EMA avgruntime = new EMA(5000);
+        //double maxruntime = 0;
+        //bool canprint = false;
+        
+
         public void Main(string argument)
         {
-            /*if (EnDebugAPI)*/ Debug.RemoveDraw();
+            argument = argument.ToLower();
+            tracker.Process();
+            Printer();
+
+            //0.005 0.008
+
+            Config();
+
+            //0.006 0.011
+            
+
+            if (EnDebugAPI) Debug.RemoveDraw();
 
             // ========== STARTUP ==========
-            _RuntimeTracker.AddRuntime();
-            argument = argument.ToLower();
+            //_RuntimeTracker.AddRuntime();
 
-            if (_RuntimeTracker.configtrigger)
+            /*if (_RuntimeTracker.configtrigger)
             {
                 _RuntimeTracker.configtrigger = false;
                 Config();
                 ManageTag();
-            }
+            }*/
 
             // GETTING ONLY NECESARY INFORMATION TO THE SCRIPT
             if (!parkedcompletely || argument.Length > 0 || trulyparked)
@@ -246,26 +264,22 @@ namespace IngameScript
                     ThrustOnHandler();
                 }
             }
+
+            //0.01 0.016
+
             // END NECESARY INFORMATION
 
-            //_RuntimeTracker.RegisterAction("Action");
-
-            // AVG RUNTIME: 0.02 AVG INSTRUCTIONS: 24
-
-            //START OUTPUT PRINTING
-            Printer();
-            //END PRINTER PART 1
-
-            // AVG RUNTIME: 0.032 AVG INSTRUCTIONS: 34
-
             // SKIPFRAME AND PERFORMANCE HANDLER: handler to skip frames, it passes out if the player doesn't parse any command or do something relevant.
-            if (!justCompiled) CheckWeight(); //Block Updater must-have
-            if (SkipFrameHandler(argument)) return;
-            // END SKIPFRAME
+            /*if (!justCompiled)*/ CheckWeight(); //Block Updater must-have
 
-            // AVG RUNTIME: 0.04 AVG INSTRUCTIONS: 50 - min: 47
-            // TEST: 0.116 216
-            // TEST1 sin printer y routine: 0.09 179
+            
+            //0.011 0.016
+
+            if (SkipFrameHandler(argument)) return;
+
+            //0.016 0.019-0.025 Unparked
+
+            // END SKIPFRAME
 
             // ========== PHYSICS ==========
             //TODO: SEE IF I CAN SPLIT AT LEAST SOME OF THE STEPS BY SEQUENCES
@@ -274,11 +288,11 @@ namespace IngameScript
             gravLength = (float)worldGrav.Length();
 
             bool gravChanged = Math.Abs(lastGrav - gravLength) > 0.05f;
-            foreach (VectorThrust n in vectorthrusters) {
+            /*foreach (VectorThrust n in vectorthrusters) {
                 if (n != null && CheckRotor(n.rotor.TheBlock) && !n.thrusters.Empty() && (gravChanged || !n.ValidateThrusters())) { 
                     n.DetectThrustDirection(); 
                 }
-            }
+            }*/
             wgv = lastGrav = gravLength;
 
             // setup gravity
@@ -343,8 +357,9 @@ namespace IngameScript
             }
             // f=ma
 
+            //0.015 0.023
             GetAcceleration();
-            accel_aux = !thrustOn || almostbraked ? (float)rawgearaccel.Round(2) : (float)((shipVelocity - lastvelocity) * updatespersecond).Length();
+            
             lastvelocity = shipVelocity;
             desiredVec *= shipMass * (float)accel;
 
@@ -363,26 +378,23 @@ namespace IngameScript
             requiredVec += nthrthrust;
 
             len = requiredVec.Length();
-            if (CanPrint()) { echosb.AppendLine($"Required Force: {len.Round(0)}N"); }
+            //if (CanPrint()) { echosb.AppendLine($"Required Force: {len.Round(0)}N"); }
             // ========== END OF PHYSICS ==========
 
+            //0.019-0.021 0.026-0.036
 
             // ========== DISTRIBUTE THE FORCE EVENLY BETWEEN NACELLES ==========
 
-
             ParkVector(ref requiredVec, shipMass);
-            // AVG RUNTIME: 0.051- AVG INSTRUCTIONS: 109 - min: 106
 
-            // Correct for misaligned VTS
-            // apply first VT settings to rest in each group
-            double total = 0;
+            //double total = 0;
             totalVTThrprecision = 0;
             totaleffectivethrust = 0;
             tthrust = 0;
             rawgearaccel = 0;
+            //same
 
-            // NEW THRUSTER ALIGNMENT AND VECTOR ASSIGNMENT SYSTEM
-
+            // NEW THRUSTER ALIGNMENT AND VECTOR ASSIGNMENTº SYSTEM
             int gc = VTThrGroups.Count;
             for (int i = 0; i < gc; i++)
             {
@@ -393,79 +405,121 @@ namespace IngameScript
 
                 //Print($"Group {ni}/{gc}");
 
-                int c = g.Count(x => x.totalEffectiveThrust > 0);
+                int c = g.Count(x => x.totalEffectiveThrust > 0).Clamp(1, tc);
+                // This for some reason fixes a crash on station grids on compile, also from parking
 
                 Vector3D vectemp = VectorMath.Rejection(requiredVec, g[0].rotor.TheBlock.WorldMatrix.Up);
                 Vector3D nextvectemp = Vector3D.Zero;
 
+                if (g[0].rotor.isHinge && Vector3D.Dot(vectemp, g[0].rotor.TheBlock.WorldMatrix.Left) <= 0)
+                { //is pointed left
+                    vectemp = VectorMath.Rejection(vectemp, g[0].rotor.TheBlock.WorldMatrix.Right);
+                }
+
+                //0.018-0.023.0.076 0.026-0.032-0.06
+
                 if (ni < gc && tets[ni] > 0)
                 {
                     VectorThrust nextvt = VTThrGroups[ni][0];
-                    
-                    nextvectemp = VectorMath.Rejection(vectemp, nextvt.rotor.TheBlock.WorldMatrix.Up) * /*5 / 100*/0.15; //Gifting 15% of the vector to the next group
-                    nextvectemp = nextvectemp.Clamp(0.01, tets[ni]);
+
+                    nextvectemp = VectorMath.Rejection(vectemp, nextvt.rotor.TheBlock.WorldMatrix.Up)/* * 0.15*/;
+
+                    if (nextvt.rotor.isHinge) {
+                        bool nisPointedLeft = Vector3D.Dot(nextvt.requiredVec, nextvt.rotor.TheBlock.WorldMatrix.Left) > 0;
+                        if (!nisPointedLeft) nextvectemp = VectorMath.Rejection(nextvt.requiredVec, nextvt.rotor.TheBlock.WorldMatrix.Right);
+                    }
+
+                    nextvectemp *= 0.15; //Gifting 15% of the vector to the next group
+                    nextvectemp = nextvectemp.Clamp(0.01, tets[ni]); //limiting the vector's with the previous totaleffectivethrust
+
                     //Print($"n: {nextvectemp.Length().Round(2)}");
                     vectemp -= nextvectemp;
                 }
 
                 double temp = (vectemp / c).Length();
                 tets[i] = 0;
-
                 Vector3D assignedvec = (vectemp - nextvectemp).Normalized();
+
+                
+                //0.018.0.024.0.033 0.029-0.031-0.111
 
                 for (int j = 0; j < tc; j++)
                 {
                     VectorThrust vt = g[j];
+
+                    //Print($"{vt.rotor.CName}");
+
                     if (!CheckRotor(vt.rotor.TheBlock)) continue;
-                    if ((thrustOn && !parked) || (!thrustOn && !vt.activeThrusters.Empty())) vt.CalcTotalEffectiveThrust();
-                    double tet = vt.totalEffectiveThrust;
 
+                    if (!vt.thrusters.Empty() && (gravChanged || !vt.ValidateThrusters()))
+                    {
+                        vt.DetectThrustDirection();
+                    }
+
+                    //0.028-0.038 0.033-0.045
+                    
+
+                    /*if ((thrustOn && !parked) || (!thrustOn && !vt.activeThrusters.Empty()))*/
+                    double tet = vt.CalcTotalEffectiveThrust();
+                    //double tet = vt.totalEffectiveThrust;
                     tets[i] += tet;
-                    //Print($"{tet}");
 
-                    vt.requiredVec = assignedvec * temp.Clamp(0.01, tet);
-
-                    bool isPointedLeft = Vector3D.Dot(/*requiredVec*/vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Left) > 0; //this lets me use hinges, TODO: determine correct hinge direction
+                    //0.029-0.033 0.038-0.045
+                    //Print($"{vt.rotorz}");
                     //vt.requiredVec = vt.rotor.isHinge ? isPointedLeft ? /*requiredVec*/vt.requiredVec : VectorMath.Rejection(/*requiredVec*/vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Right) : /*requiredVec*/vt.requiredVec;
-
-                    vt.requiredVec = vt.rotor.isHinge && !isPointedLeft ? VectorMath.Rejection(vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Right) : vt.requiredVec;
-
                     //vt.requiredVec = (VectorMath.Rejection(vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Up)-nextvectemp).Normalized() * temp.Clamp(0.01, tet);
+                    //if (tet == 0) vt.requiredVec = vectemp.Normalized();
+                    //Debug.DrawLine(vt.rotor.TheBlock.GetPosition(), vt.rotor.TheBlock.GetPosition() + vt.requiredVec, Color.LightGreen, onTop: true);
 
-                    if (tet == 0) vt.requiredVec = vectemp.Normalized();
+                    vt.requiredVec = assignedvec;
 
-                    requiredVec -= vt.requiredVec;
+                    /*if (vt.rotor.isHinge && Vector3D.Dot(vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Left) <= 0) { //is pointed left
+                        vt.requiredVec = VectorMath.Rejection(vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Right);
+                    }*/
+                    //bool isPointedLeft = Vector3D.Dot(/*requiredVec*/vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Left) > 0; //this lets me use hinges, TODO (Completed): Determine correct hinge direction
+                    //vt.requiredVec = vt.rotor.isHinge && !isPointedLeft ? VectorMath.Rejection(vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Right) : vt.requiredVec;
+
+                    vt.requiredVec *= tet > 0 ? temp.Clamp(1, tet) : 1;
+
+                    //0.029-0.033-0.042 0.038-0.042
 
                     vt.Go();
+
+                    //0.095-0.193 0.094-0.117
+
+                    requiredVec -= vt.requiredVec;
                     totaleffectivethrust += tet * 1.595;
                     rawgearaccel += tet;
                     totalVTThrprecision += vt.rotor.LastAngleCos;
+                    //total += vt.requiredVec.Length();
                 }
             }
 
-            // AVG RUNTIME: 0.078 - 0.095 AVG INSTRUCTIONS: 219 - min 215
+            //0.097-0.124 0.095-0.125
+
             //WO : 0.071 - 121
             totalVTThrprecision /= /*j*/vectorthrusters.Count;
             
-             tthrust += thrustbynthr;
-             tthrust /= myshipmass.TotalMass;
+            tthrust += thrustbynthr;
+            tthrust /= myshipmass.TotalMass;
+            totaleffectivethrust += thrustbynthr; //DON'T DELETE THIS, THIS SOLVES THE THRUST POINTING TO THE OPPOSITE
 
-            if (CanPrint())
-            {
-                echosb.AppendLine($"Total Force: {total.Round(0)}N\n");
-                echosb = _RuntimeTracker.Append(echosb);
+            //if (CanPrint())
+            //{
+                //echosb.AppendLine($"Total Force: {total.Round(0)}N\n");
+                //echosb = _RuntimeTracker.Append(echosb);
 
-                if (ShowMetrics)
+                /*if (ShowMetrics)
                 {
                     echosb.AppendLine("--- Log ---");
                     echosb.Append(log);
-                }
+                }*/
 
-                log.Append(surfaceProviderErrorStr);
-            }
+                //log.Append(surfaceProviderErrorStr);
+            //}
 
             justCompiled = false;
-            _RuntimeTracker.AddInstructions();
+            //_RuntimeTracker.AddInstructions();
             // AVG RUNTIME: 0.09 - 0.10 AVG INSTRUCTIONS: 228
             // WO : 0.079 213
 
@@ -474,6 +528,6 @@ namespace IngameScript
 
 
         //List<double> minthrusts = new List<double> { 0, 0, 0};
-        List<double> tets = new List<double> { 0, 0, 0};
+        List<double> tets = new List<double>();
     }
 }

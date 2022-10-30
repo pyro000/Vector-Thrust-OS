@@ -215,7 +215,9 @@ namespace IngameScript
 
                         position_s = new Vector2(position_s.X + lenghtpb, positionpbar);
 
-                        TextBox(frame, position_s, $"{Math.Round(p.accel_aux, 2)} m/s²", minScale * progressbarsize, background: TextBoxBackground);
+                        
+                        string acceltext = p.accel_aux > 0 ? $"{p.accel_aux.Round(2)} m/s²" : "--/--";
+                        TextBox(frame, position_s, acceltext, minScale * progressbarsize, background: TextBoxBackground);
 
                         position_s = new Vector2(_viewport_s.X + (_viewport_s.Width * 0.5f), positionbar2);
 
@@ -1035,7 +1037,7 @@ namespace IngameScript
         {
             public readonly int Capacity;
 
-            readonly T[] _array = null;
+            public readonly T[] _array = null;
             int _setIndex = 0;
             int _getIndex = 0;
 

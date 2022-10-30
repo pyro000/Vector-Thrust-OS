@@ -57,9 +57,11 @@ namespace IngameScript
             // final calculations and setting physical components
             public void Go()
             {
-                // 0.08 189
-                double angleCos = rotor.Point(requiredVec/*, totalEffectiveThrust*/);
                 
+                double angleCos = rotor.Point(requiredVec/*, totalEffectiveThrust*/);
+
+                //0.064-0.077 0.072-0.080-0.126 
+
                 // the clipping value 'thrustModifier' defines how far the rotor can be away from the desired direction of thrust, and have the power still at max
                 // if 'thrustModifier' is at 1, the thruster will be at full desired power when it is at 90 degrees from the direction of travel
                 // if 'thrustModifier' is at 0, the thruster will only be at full desired power when it is exactly at the direction of travel, (it's never exactly in-line)
@@ -91,38 +93,65 @@ namespace IngameScript
                         thruster.IsOffBecauseDampeners = false;
                     }
                 }
+
+                //0.09-0.13 0.950.132
             }
 
+            // New thruster group assigning system
             public void AssignGroup()
             {
+                //p.Echo($"-- {rotor.CName}");
                 bool foundGroup = false;
 
-                Base6Directions.Axis raxis = Base6Directions.GetAxis(this.rotor.TheBlock.Orientation.Up);
+                IMyMotorStator crt = rotor.TheBlock;
+                //Base6Directions.Axis raxis = Base6Directions.GetAxis(crt.Orientation.Up);
+                //Math.Abs(Vector3D.Dot(nacelles[i].rotor.theBlock.WorldMatrix.Up, g[0].rotor.theBlock.WorldMatrix.Up)) > 0.9f
+                MatrixD wm1 = crt.WorldMatrix;
+                Vector3D wmu1 = wm1.Up;
 
                 foreach (List<VectorThrust> g in p.VTThrGroups)
                 {
-                    Base6Directions.Axis gaxis = Base6Directions.GetAxis(g[0].rotor.TheBlock.Orientation.Up);
-                    if (gaxis.Equals(raxis)/*this.Role == g[0].Role*/)
+                    IMyMotorStator nrt = g[0].rotor.TheBlock;
+                    //Base6Directions.Axis gaxis = Base6Directions.GetAxis(nrt.Orientation.Up);
+                    MatrixD wm2 = nrt.WorldMatrix;
+                    Vector3D wmu2 = wm2.Up;
+
+                    //p.Echo($"1.-{g[0].rotor.CName}: {gaxis} {raxis}");
+
+                    if (Vector3D.Dot(wmu1, wmu2).Abs() > 0.9 /*gaxis.Equals(raxis) this.Role == g[0].Role*/)
                     {
-                        if (!g.Contains(this)) g.Add(this);
-                        foundGroup = true;
-                        break;
+                        //p.Echo($"2.- {rotor.isHinge} {g[0].rotor.isHinge}");
+                        if (rotor.isHinge.Equals(g[0].rotor.isHinge)) {
+
+                            //p.Echo($"3.- {rotor.TheBlock.Orientation.Left} {g[0].rotor.TheBlock.Orientation.Left}");
+                            if ((rotor.isHinge && Vector3D.Dot(wm1.Left, wm2.Left) > 0.9/*crt.Orientation.Left == nrt.Orientation.Left*/) || !rotor.isHinge) {
+                                if (!g.Contains(this)) g.Add(this);
+                                foundGroup = true;
+                                //p.Echo($"Found Group");
+                                break;
+                            }
+                        }
                     }
                 }
                 if (!foundGroup)
                 {// if it never found a group, add a group
+                    //p.Echo($"New Group");
                     p.VTThrGroups.Add(new List<VectorThrust>());
                     p.VTThrGroups[p.VTThrGroups.Count - 1].Add(this);
+                    p.tets.Add(0); //Add empty slot of TotalEffectiveThrust, just in case it crashes
                 }
             }
 
-            public void CalcTotalEffectiveThrust()
+
+
+            public double CalcTotalEffectiveThrust()
             {
                 totalEffectiveThrust = 0;
                 foreach (Thruster t in activeThrusters)
                 {
                     totalEffectiveThrust += t.TheBlock.MaxEffectiveThrust;
                 }
+                return totalEffectiveThrust;
             }
 
             //*string */ void GetVTThrRole(/*Program p*/)
@@ -358,7 +387,7 @@ namespace IngameScript
                 {
                     Base6Directions.Direction thrustForward = t.TheBlock.Orientation.Forward; // Exhaust goes this way
 
-                    if ((thrDir == thrustForward || Override) && ((t.TheBlock.MaxEffectiveThrust != 0 && t.TheBlock.Enabled) || (!p.parked && !t.TheBlock.Enabled)))
+                    if ((thrDir == thrustForward || Override) && ((t.TheBlock.MaxEffectiveThrust != 0 && t.TheBlock.Enabled) || (((!p.parked && p.wgv != 0) || (p.thrustOn && p.wgv == 0)) && !t.TheBlock.Enabled)))
                     {
                         t.TheBlock.Enabled = true;
                         t.IsOn = true;
@@ -393,17 +422,16 @@ namespace IngameScript
             // sets the thrust in newtons (N)
             public void SetThrust(double thrust)
             {
-
-                if (thrust > TheBlock.MaxThrust)
+                //thrust = thrust.Clamp(0, TheBlock.MaxThrust);
+                /*if (thrust > TheBlock.MaxThrust)
                 {
                     thrust = TheBlock.MaxThrust;
                 }
                 else if (thrust < 0)
                 {
                     thrust = 0;
-                }
-
-                TheBlock.ThrustOverride = (float)(thrust * TheBlock.MaxThrust / TheBlock.MaxEffectiveThrust);
+                }*/
+                TheBlock.ThrustOverride = (float)(thrust.Clamp(0, TheBlock.MaxThrust) * TheBlock.MaxThrust / TheBlock.MaxEffectiveThrust);
             }
         }
         class Rotor : BlockWrapper<IMyMotorStator>
@@ -420,10 +448,13 @@ namespace IngameScript
 
             public bool reachededge = false;
 
+            readonly double MaxRPM;
+
             public Rotor(IMyMotorStator rotor, Program program) : base(rotor, program)
             {
                 p = program;
                 pid = new PID(4, 0, 0, 1.0 / 60.0);
+                MaxRPM = TheBlock.GetMaximum<float>("Velocity");
                 isHinge = TheBlock.BlockDefinition.SubtypeId.Contains("Hinge");
             }
 
@@ -441,13 +472,13 @@ namespace IngameScript
                 Vector3D axis = Vector3D.Cross(desiredVec, /*currentDirectionFlat*/currentDir);
                 //p.Echo($"3 {axis}");
                 angle *= Math.Sign(Vector3D.Dot(axis, TheBlock.WorldMatrix.Up)); // angle is the error (facepalm, thanks Whip)
-                //p.Echo($"4 {angle}");
+                                                                                 //p.Echo($"4 {angle}");
 
-                //if (p.EnDebugAPI) {
+                if (p.EnDebugAPI) {
                     p.Debug.DrawLine(TheBlock.Top.GetPosition(), TheBlock.Top.GetPosition() + currentDir * 2, Color.Cyan, thickness: 0.015f, onTop: true);
                     p.Debug.DrawLine(TheBlock.Top.GetPosition(), TheBlock.Top.GetPosition() + (requiredVec.Normalized() * cutoff) / p.force, Color.Yellow, onTop: true);
-                    //p.Debug.DrawLine(TheBlock.Top.GetPosition(), TheBlock.Top.GetPosition() + (requiredVec / p.force), Color.Green, onTop: true);
-                //} 
+                    p.Debug.DrawLine(TheBlock.Top.GetPosition(), TheBlock.Top.GetPosition() + (requiredVec / p.force), Color.Green, onTop: true);
+                } 
 
                 if (requiredVec.Length() < cutoff && p.thrustOn)
                 {
@@ -473,29 +504,30 @@ namespace IngameScript
                 float result = (float)pid.Control(/*error*/angle);
 
                 //if (angleCosPercent.Round(2) == -100 && result)
-                double currentrpm = (TheBlock.TargetVelocityRad * 9.549297).Round(2).Abs();
-                double maxrpm = TheBlock.GetMaximum<float>("Velocity");
-                double tempp = angleCosPercent.Round(2);
-
-                p.Print($"- {tempp} - {currentrpm} {maxrpm}");
+                //double tempp = angleCosPercent.Round(2);
+                //p.Print($"- {tempp} - {currentrpm} {maxrpm}");
 
                 ///If it's a hinge, and the RPM is the maximum possible, and the cos of angle is -1 (the most far distance), 
                 ///it'll asume that hinge is stuck in one of the limits
-                if (isHinge && tempp == -100 && currentrpm == maxrpm) { 
-                    //result *= -1;
-                    if (!reachededge)
-                    {
-                        reachededge = true;
+                if (isHinge) {
+                    double currentrpm = (TheBlock.TargetVelocityRad * 9.549297).Abs();
+
+                    if (angleCosPercent <= -99.89 && currentrpm >= MaxRPM) { 
+                        //result *= -1;
+                        if (!reachededge)
+                        {
+                            reachededge = true;
+                        }
+                        else {
+                            //p.Print("I'M STUCK STEPROTOR");
+                            result = -result;
+                        }
+                    } else if (reachededge && angleCosPercent > -98.5) {
+                        reachededge = false;
                     }
-                    else {
-                        //p.Print("I'M STUCK STEPROTOR");
-                        result = -result;
-                    }
-                } else if (isHinge && reachededge && tempp > -98.5) {
-                    reachededge = false;
                 }
 
-                p.Print($"2 {(result * 9.549297).Round(2)}");
+                //p.Print($"2 {(result * 9.549297).Round(2)}");
                 TheBlock.TargetVelocityRad = result;//!reverse ? -result : result;
                 return angleCos;
             }
