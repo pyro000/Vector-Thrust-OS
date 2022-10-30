@@ -425,8 +425,8 @@ namespace IngameScript
                     nextvectemp = VectorMath.Rejection(vectemp, nextvt.rotor.TheBlock.WorldMatrix.Up)/* * 0.15*/;
 
                     if (nextvt.rotor.isHinge) {
-                        bool nisPointedLeft = Vector3D.Dot(nextvt.requiredVec, nextvt.rotor.TheBlock.WorldMatrix.Left) > 0;
-                        if (!nisPointedLeft) nextvectemp = VectorMath.Rejection(nextvt.requiredVec, nextvt.rotor.TheBlock.WorldMatrix.Right);
+                        bool nisPointedLeft = Vector3D.Dot(nextvectemp, nextvt.rotor.TheBlock.WorldMatrix.Left) > 0;
+                        if (!nisPointedLeft) nextvectemp = VectorMath.Rejection(nextvectemp, nextvt.rotor.TheBlock.WorldMatrix.Right);
                     }
 
                     nextvectemp *= 0.15; //Gifting 15% of the vector to the next group

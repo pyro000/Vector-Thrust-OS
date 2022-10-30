@@ -446,15 +446,13 @@ namespace IngameScript
 
             public bool isHinge;
 
-            public bool reachededge = false;
-
-            readonly double MaxRPM;
+            int ErrCount = 0;
 
             public Rotor(IMyMotorStator rotor, Program program) : base(rotor, program)
             {
                 p = program;
                 pid = new PID(4, 0, 0, 1.0 / 60.0);
-                MaxRPM = TheBlock.GetMaximum<float>("Velocity");
+                //MaxRPM = TheBlock.GetMaximum<float>("Velocity");
                 isHinge = TheBlock.BlockDefinition.SubtypeId.Contains("Hinge");
             }
 
@@ -505,25 +503,28 @@ namespace IngameScript
 
                 //if (angleCosPercent.Round(2) == -100 && result)
                 //double tempp = angleCosPercent.Round(2);
-                //p.Print($"- {tempp} - {currentrpm} {maxrpm}");
+                
 
                 ///If it's a hinge, and the RPM is the maximum possible, and the cos of angle is -1 (the most far distance), 
                 ///it'll asume that hinge is stuck in one of the limits
                 if (isHinge) {
-                    double currentrpm = (TheBlock.TargetVelocityRad * 9.549297).Abs();
+                    //double currentrpm = (TheBlock.TargetVelocityRad * 9.549297).Abs();
 
-                    if (angleCosPercent <= -99.89 && currentrpm >= MaxRPM) { 
-                        //result *= -1;
-                        if (!reachededge)
+                    if (p.ShowMetrics) p.Print($"- {angleCosPercent.Round(4)} - {ErrCount}");
+
+                    if (angleCosPercent <= -99.89 /*&& result == TheBlock.TargetVelocityRad*/) {
+                            //result *= -1;
+                            ErrCount++;
+                        /*if (!reachededge)
                         {
                             reachededge = true;
-                        }
-                        else {
-                            //p.Print("I'M STUCK STEPROTOR");
-                            result = -result;
-                        }
-                    } else if (reachededge && angleCosPercent > -98.5) {
-                        reachededge = false;
+                        }*/
+                        //else {
+                            if (ErrCount > 10) result = -result;
+                        //}
+                    } else if (ErrCount > 10 && angleCosPercent > -98.5) {
+                            //reachededge = false;
+                            ErrCount = 0;
                     }
                 }
 
