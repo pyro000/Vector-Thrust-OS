@@ -214,14 +214,10 @@ namespace IngameScript
             }
         }
 
-        //double avg = 0;
-        //readonly EMA avgruntime = new EMA(5000);
-        //double maxruntime = 0;
-        //bool canprint = false;
-        
-
         public void Main(string argument)
         {
+            // ========== STARTUP ==========
+
             argument = argument.ToLower();
             tracker.Process();
             Printer();
@@ -232,18 +228,7 @@ namespace IngameScript
 
             //0.006 0.011
             
-
             if (EnDebugAPI) Debug.RemoveDraw();
-
-            // ========== STARTUP ==========
-            //_RuntimeTracker.AddRuntime();
-
-            /*if (_RuntimeTracker.configtrigger)
-            {
-                _RuntimeTracker.configtrigger = false;
-                Config();
-                ManageTag();
-            }*/
 
             // GETTING ONLY NECESARY INFORMATION TO THE SCRIPT
             if (!parkedcompletely || argument.Length > 0 || trulyparked)
@@ -270,15 +255,10 @@ namespace IngameScript
             // END NECESARY INFORMATION
 
             // SKIPFRAME AND PERFORMANCE HANDLER: handler to skip frames, it passes out if the player doesn't parse any command or do something relevant.
-            /*if (!justCompiled)*/ CheckWeight(); //Block Updater must-have
-
-            
+            CheckWeight(); //Block Updater must-have
             //0.011 0.016
-
             if (SkipFrameHandler(argument)) return;
-
             //0.016 0.019-0.025 Unparked
-
             // END SKIPFRAME
 
             // ========== PHYSICS ==========
@@ -288,11 +268,6 @@ namespace IngameScript
             gravLength = (float)worldGrav.Length();
 
             bool gravChanged = Math.Abs(lastGrav - gravLength) > 0.05f;
-            /*foreach (VectorThrust n in vectorthrusters) {
-                if (n != null && CheckRotor(n.rotor.TheBlock) && !n.thrusters.Empty() && (gravChanged || !n.ValidateThrusters())) { 
-                    n.DetectThrustDirection(); 
-                }
-            }*/
             wgv = lastGrav = gravLength;
 
             // setup gravity
@@ -313,7 +288,7 @@ namespace IngameScript
                         dampVec += VectorMath.Projection(shipVelocity,/*.Project(*/desiredVec.Normalized());
                     }
                     // cancel sideways movement
-                    dampVec += VectorMath.Rejection(shipVelocity, desiredVec.Normalized());//shipVelocity.Reject(desiredVec.Normalized());
+                    dampVec += VectorMath.Rejection(shipVelocity, desiredVec.Normalized());
                 }
                 else
                 {
@@ -335,12 +310,12 @@ namespace IngameScript
 
                         if (Extensions.Dot(dampVec, cont.TheBlock.WorldMatrix.Forward) > 0 || cruisePlane)
                         { // only front, or front+back if cruisePlane is activated
-                            dampVec -= VectorMath.Projection( dampVec,/*.Project(*/cont.TheBlock.WorldMatrix.Forward);
+                            dampVec -= VectorMath.Projection( dampVec, cont.TheBlock.WorldMatrix.Forward);
                         }
 
                         if (cruisePlane)
                         {
-                            shipWeight -= VectorMath.Projection( shipWeight, /*.Project(*/cont.TheBlock.WorldMatrix.Forward);
+                            shipWeight -= VectorMath.Projection( shipWeight, cont.TheBlock.WorldMatrix.Forward);
                         }
                     }
                 }
@@ -378,16 +353,13 @@ namespace IngameScript
             requiredVec += nthrthrust;
 
             len = requiredVec.Length();
-            //if (CanPrint()) { echosb.AppendLine($"Required Force: {len.Round(0)}N"); }
             // ========== END OF PHYSICS ==========
 
             //0.019-0.021 0.026-0.036
 
             // ========== DISTRIBUTE THE FORCE EVENLY BETWEEN NACELLES ==========
-
             ParkVector(ref requiredVec, shipMass);
 
-            //double total = 0;
             totalVTThrprecision = 0;
             totaleffectivethrust = 0;
             tthrust = 0;
@@ -431,8 +403,6 @@ namespace IngameScript
 
                     nextvectemp *= 0.15; //Gifting 15% of the vector to the next group
                     nextvectemp = nextvectemp.Clamp(0.01, tets[ni]); //limiting the vector's with the previous totaleffectivethrust
-
-                    //Print($"n: {nextvectemp.Length().Round(2)}");
                     vectemp -= nextvectemp;
                 }
 
@@ -440,13 +410,11 @@ namespace IngameScript
                 tets[i] = 0;
                 Vector3D assignedvec = (vectemp - nextvectemp).Normalized();
 
-                
                 //0.018.0.024.0.033 0.029-0.031-0.111
 
                 for (int j = 0; j < tc; j++)
                 {
                     VectorThrust vt = g[j];
-
                     //Print($"{vt.rotor.CName}");
 
                     if (!CheckRotor(vt.rotor.TheBlock)) continue;
@@ -458,28 +426,12 @@ namespace IngameScript
 
                     //0.028-0.038 0.033-0.045
                     
-
-                    /*if ((thrustOn && !parked) || (!thrustOn && !vt.activeThrusters.Empty()))*/
                     double tet = vt.CalcTotalEffectiveThrust();
-                    //double tet = vt.totalEffectiveThrust;
                     tets[i] += tet;
 
                     //0.029-0.033 0.038-0.045
-                    //Print($"{vt.rotorz}");
-                    //vt.requiredVec = vt.rotor.isHinge ? isPointedLeft ? /*requiredVec*/vt.requiredVec : VectorMath.Rejection(/*requiredVec*/vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Right) : /*requiredVec*/vt.requiredVec;
-                    //vt.requiredVec = (VectorMath.Rejection(vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Up)-nextvectemp).Normalized() * temp.Clamp(0.01, tet);
-                    //if (tet == 0) vt.requiredVec = vectemp.Normalized();
-                    //Debug.DrawLine(vt.rotor.TheBlock.GetPosition(), vt.rotor.TheBlock.GetPosition() + vt.requiredVec, Color.LightGreen, onTop: true);
 
-                    vt.requiredVec = assignedvec;
-
-                    /*if (vt.rotor.isHinge && Vector3D.Dot(vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Left) <= 0) { //is pointed left
-                        vt.requiredVec = VectorMath.Rejection(vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Right);
-                    }*/
-                    //bool isPointedLeft = Vector3D.Dot(/*requiredVec*/vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Left) > 0; //this lets me use hinges, TODO (Completed): Determine correct hinge direction
-                    //vt.requiredVec = vt.rotor.isHinge && !isPointedLeft ? VectorMath.Rejection(vt.requiredVec, vt.rotor.TheBlock.WorldMatrix.Right) : vt.requiredVec;
-
-                    vt.requiredVec *= tet > 0 ? temp.Clamp(1, tet) : 1;
+                    vt.requiredVec = assignedvec * (tet > 0 ? temp.Clamp(1, tet) : 1);
 
                     //0.029-0.033-0.042 0.038-0.042
 
@@ -498,36 +450,19 @@ namespace IngameScript
             //0.097-0.124 0.095-0.125
 
             //WO : 0.071 - 121
-            totalVTThrprecision /= /*j*/vectorthrusters.Count;
+            totalVTThrprecision /= vectorthrusters.Count;
             
             tthrust += thrustbynthr;
             tthrust /= myshipmass.TotalMass;
             totaleffectivethrust += thrustbynthr; //DON'T DELETE THIS, THIS SOLVES THE THRUST POINTING TO THE OPPOSITE
 
-            //if (CanPrint())
-            //{
-                //echosb.AppendLine($"Total Force: {total.Round(0)}N\n");
-                //echosb = _RuntimeTracker.Append(echosb);
-
-                /*if (ShowMetrics)
-                {
-                    echosb.AppendLine("--- Log ---");
-                    echosb.Append(log);
-                }*/
-
-                //log.Append(surfaceProviderErrorStr);
-            //}
-
             justCompiled = false;
-            //_RuntimeTracker.AddInstructions();
             // AVG RUNTIME: 0.09 - 0.10 AVG INSTRUCTIONS: 228
             // WO : 0.079 213
 
             // ========== END OF MAIN ==========
         }
 
-
-        //List<double> minthrusts = new List<double> { 0, 0, 0};
         List<double> tets = new List<double>();
     }
 }

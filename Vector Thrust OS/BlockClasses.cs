@@ -9,19 +9,6 @@ namespace IngameScript
 {
     partial class Program
     {
-        //int colorid = 0;
-        //List<Color> colors = new List<Color> { Color.White, Color.Cyan, Color.Green, Color.Yellow, Color.Red, Color.Blue, Color.Pink };
-
-        /*public static Vector3D Projection(Vector3D a, Vector3D b)
-        {
-            if (Vector3D.IsZero(a) || Vector3D.IsZero(b))
-                return Vector3D.Zero;
-
-            if (Vector3D.IsUnit(ref b))
-                return a.Dot(b) * b;
-
-            return a.Dot(b) / b.LengthSquared() * b;
-        }*/
 
         class VectorThrust
         {
@@ -34,13 +21,11 @@ namespace IngameScript
             public List<Thruster> activeThrusters;// <= activeThrusters: the ones that are facing the direction that produces the most thrust (only recalculated if available thrusters changes)
 
             public Vector3D requiredVec = Vector3D.Zero;
-            //public string Role;
 
             public float totalEffectiveThrust = 0;
 
             public int detectThrustCounter = 0;
             public Vector3D currDir = Vector3D.Zero;
-            //bool isassigned = false;
 
             public VectorThrust(Rotor rotor, Program program)
             {
@@ -49,16 +34,13 @@ namespace IngameScript
                 this.thrusters = new List<Thruster>();
                 this.availableThrusters = new List<Thruster>();
                 this.activeThrusters = new List<Thruster>();
-
-                //Role = AssignRole(); //GetVTThrRole(/*program*/);
-                //p.temp1++;
             }
 
             // final calculations and setting physical components
             public void Go()
             {
                 
-                double angleCos = rotor.Point(requiredVec/*, totalEffectiveThrust*/);
+                double angleCos = rotor.Point(requiredVec);
 
                 //0.064-0.077 0.072-0.080-0.126 
 
@@ -66,17 +48,16 @@ namespace IngameScript
                 // if 'thrustModifier' is at 1, the thruster will be at full desired power when it is at 90 degrees from the direction of travel
                 // if 'thrustModifier' is at 0, the thruster will only be at full desired power when it is exactly at the direction of travel, (it's never exactly in-line)
 
-                double /*abo*/tmod = MathHelper.Clamp(p.thrustermodifier, 0, 1); //Temporal
-                //double bel = abo;
+                double tmod = MathHelper.Clamp(p.thrustermodifier, 0, 1); //Temporal
 
                 // put it in some graphing calculator software where 'angleCos' is cos(x) and adjust the thrustModifier values between 0 and 1, then you can visualise it
-                double thrustOffset = ((((angleCos + 1) * (1 + /*bel*/tmod)) / 2) - /*bel*/tmod) * (((angleCos + 1) * (1 + /*abo*/tmod)) / 2);// the other one is simpler, but this one performs better
+                double thrustOffset = ((((angleCos + 1) * (1 + tmod)) / 2) - tmod) * (((angleCos + 1) * (1 + tmod)) / 2);// the other one is simpler, but this one performs better
                 thrustOffset = MathHelper.Clamp(thrustOffset, 0, 1);
 
                 //set the thrust for each engine
                 foreach (Thruster thruster in activeThrusters)
                 {
-                    Vector3D thrust = (thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust);// + p.residuethrust;
+                    Vector3D thrust = (thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust);
                     bool noThrust = thrust.LengthSquared() < 0.001f || (p.wgv == 0 && angleCos < 0.85);
                     p.tthrust += noThrust ? 0 : MathHelper.Clamp(thrust.Length(), 0, thruster.TheBlock.MaxEffectiveThrust);
 
@@ -100,31 +81,22 @@ namespace IngameScript
             // New thruster group assigning system
             public void AssignGroup()
             {
-                //p.Echo($"-- {rotor.CName}");
                 bool foundGroup = false;
 
                 IMyMotorStator crt = rotor.TheBlock;
-                //Base6Directions.Axis raxis = Base6Directions.GetAxis(crt.Orientation.Up);
-                //Math.Abs(Vector3D.Dot(nacelles[i].rotor.theBlock.WorldMatrix.Up, g[0].rotor.theBlock.WorldMatrix.Up)) > 0.9f
                 MatrixD wm1 = crt.WorldMatrix;
                 Vector3D wmu1 = wm1.Up;
 
                 foreach (List<VectorThrust> g in p.VTThrGroups)
                 {
                     IMyMotorStator nrt = g[0].rotor.TheBlock;
-                    //Base6Directions.Axis gaxis = Base6Directions.GetAxis(nrt.Orientation.Up);
                     MatrixD wm2 = nrt.WorldMatrix;
                     Vector3D wmu2 = wm2.Up;
 
-                    //p.Echo($"1.-{g[0].rotor.CName}: {gaxis} {raxis}");
-
-                    if (Vector3D.Dot(wmu1, wmu2).Abs() > 0.9 /*gaxis.Equals(raxis) this.Role == g[0].Role*/)
+                    if (Vector3D.Dot(wmu1, wmu2).Abs() > 0.9)
                     {
-                        //p.Echo($"2.- {rotor.isHinge} {g[0].rotor.isHinge}");
                         if (rotor.isHinge.Equals(g[0].rotor.isHinge)) {
-
-                            //p.Echo($"3.- {rotor.TheBlock.Orientation.Left} {g[0].rotor.TheBlock.Orientation.Left}");
-                            if ((rotor.isHinge && Vector3D.Dot(wm1.Left, wm2.Left) > 0.9/*crt.Orientation.Left == nrt.Orientation.Left*/) || !rotor.isHinge) {
+                            if ((rotor.isHinge && Vector3D.Dot(wm1.Left, wm2.Left) > 0.9) || !rotor.isHinge) {
                                 if (!g.Contains(this)) g.Add(this);
                                 foundGroup = true;
                                 //p.Echo($"Found Group");
@@ -135,7 +107,6 @@ namespace IngameScript
                 }
                 if (!foundGroup)
                 {// if it never found a group, add a group
-                    //p.Echo($"New Group");
                     p.VTThrGroups.Add(new List<VectorThrust>());
                     p.VTThrGroups[p.VTThrGroups.Count - 1].Add(this);
                     p.tets.Add(0); //Add empty slot of TotalEffectiveThrust, just in case it crashes
@@ -153,106 +124,6 @@ namespace IngameScript
                 }
                 return totalEffectiveThrust;
             }
-
-            //*string */ void GetVTThrRole(/*Program p*/)
-            /*public /*voidstring AssignRole()
-            {
-                if (isassigned) return Role;
-                isassigned = true;
-
-                string result = "";
-                List<Base6Directions.Axis> cdirs = p.mainController.Axis;
-                List<Base6Directions.Axis> rdirs = rotor.Axis;
-
-                //if (!rotor.isHinge || true)
-                //{
-                    for (int i = 0; i < cdirs.Count; i++)
-                    {
-                        if (cdirs[i] == rdirs[1])
-                        {
-                            switch (i)
-                            {
-                                case 0:
-                                //Echo("front/back mounted, rotor covers cockpit's up/down/left/right");
-                                result = "UDLR";
-                                //p.rolecount[1]++; 
-                                //p.rolecount[2]++; 
-                                break;
-                            case 1:
-                                //Echo("top/bottom mounted, rotor covers cockpit's forward/back/left/right");
-                                result = "FBLR";
-                                //p.rolecount[0]++; 
-                                //p.rolecount[2]++; 
-                                break;
-                                case 2:
-                                //Echo("side mounted, rotor covers cockpit's forward/back/up/down");
-                                result = "FBUD";
-                                //p.rolecount[0]++; 
-                                //p.rolecount[1]++;  
-                                break;
-                            }
-                        }
-                    }
-                /*}
-                else
-                {
-                    List<Vector3D> csdirs = p.mainController.SpDirections;
-                    List<Vector3D> rsdirs = rotor.SpDirections;
-
-                    for (int i = 0; i < cdirs.Count; i++)
-                    
-                        if (cdirs[i] == rdirs[0])
-                        {
-                            switch (i)
-                            {
-                                case 0:
-                                    result = "FB"; break;
-                                case 1:
-                                    result = "UD"; break;
-                                case 2:
-                                    result = "LR"; break;
-                            }
-                        }
-
-                    for (int i = 0; i < csdirs.Count; i++)
-                        if (csdirs[i] == rsdirs[5])
-                    {
-                            
-
-                        switch (i)
-                        {
-                            case 0:
-                                result += "B"; break;
-                            case 1:
-                                result += "D"; break;
-                            case 2:
-                                result += "R"; break;
-                            case 3:
-                                result += "F"; break;
-                            case 4:
-                                result += "U"; break;
-                            case 5:
-                                result += "L"; break;
-                        }
-                    }
-
-
-                }*/
-                //return result;
-                /*p.rolemaxcount = new List<int>(p.rolecount);
-                p.rolemaxcount.Sort();
-
-                bool basic1 = p.rolemaxcount[2] <= 2;
-                bool basic2 = p.rolemaxcount[1] == 1;
-
-                bool inter1 = p.rolemaxcount[2] >= 3;
-                bool inter2 = p.rolemaxcount[1] >= 2;
-
-                return result;
-                //p.rolesum = basic1 ? 2 : inter1 && inter2 ? p.rolemaxcount[2] + p.rolemaxcount[1] : p.rolemaxcount[2];
-            }*/
-
-            
 
             //true if all thrusters are good
             public bool ValidateThrusters()
@@ -366,7 +237,6 @@ namespace IngameScript
 
                 // use thrustDir to set rotor offset (IF THRUSTERS ARE MANUALLY OFF, WON'T DO ANYTHING)
                 if (!allthrustersoff) rotor.direction = (Vector3D)thrustDir;
-                //if (thrusters.All(x => !x.TheBlock.Enabled)) p.temp1++;
 
                 // put thrusters into the active list
                 Base6Directions.Direction thrDir = Base6Directions.GetDirection(thrustDir);
@@ -382,7 +252,7 @@ namespace IngameScript
                     }
                     activeThrusters.Clear();
                 }
-                //if (program.thrustOn) { //IDK IF THIS DOES SOMETHING USEFUL
+
                 foreach (Thruster t in availableThrusters)
                 {
                     Base6Directions.Direction thrustForward = t.TheBlock.Orientation.Forward; // Exhaust goes this way
@@ -422,15 +292,6 @@ namespace IngameScript
             // sets the thrust in newtons (N)
             public void SetThrust(double thrust)
             {
-                //thrust = thrust.Clamp(0, TheBlock.MaxThrust);
-                /*if (thrust > TheBlock.MaxThrust)
-                {
-                    thrust = TheBlock.MaxThrust;
-                }
-                else if (thrust < 0)
-                {
-                    thrust = 0;
-                }*/
                 TheBlock.ThrustOverride = (float)(thrust.Clamp(0, TheBlock.MaxThrust) * TheBlock.MaxThrust / TheBlock.MaxEffectiveThrust);
             }
         }
@@ -452,25 +313,21 @@ namespace IngameScript
             {
                 p = program;
                 pid = new PID(4, 0, 0, 1.0 / 60.0);
-                //MaxRPM = TheBlock.GetMaximum<float>("Velocity");
                 isHinge = TheBlock.BlockDefinition.SubtypeId.Contains("Hinge");
             }
 
-            public double Point(Vector3D requiredVec/*, double efthr*/)
+            public double Point(Vector3D requiredVec)
             {
                 Vector3D desiredVec = requiredVec.Normalized();
                 Vector3D currentDir = Vector3D.TransformNormal(direction, TheBlock.Top.CubeGrid.WorldMatrix);
                 double cutoff = p.velprecisionmode * p.force;
 
                 //Better vector pointing system by Whiplash141
-                //Vector3D currentDirectionFlat = VectorMath.Rejection(currentDir, TheBlock.WorldMatrix.Up);
-                double angleCos = VectorMath.CosBetween(desiredVec, /*currentDirectionFlat*/currentDir);
+                double angleCos = VectorMath.CosBetween(desiredVec, currentDir);
                 double angleCosPercent = angleCos * 100;
                 double angle = Math.Acos(angleCos) * 2; //previous version was like that (* 2)
-                Vector3D axis = Vector3D.Cross(desiredVec, /*currentDirectionFlat*/currentDir);
-                //p.Echo($"3 {axis}");
+                Vector3D axis = Vector3D.Cross(desiredVec, currentDir);
                 angle *= Math.Sign(Vector3D.Dot(axis, TheBlock.WorldMatrix.Up)); // angle is the error (facepalm, thanks Whip)
-                                                                                 //p.Echo($"4 {angle}");
 
                 if (p.EnDebugAPI) {
                     p.Debug.DrawLine(TheBlock.Top.GetPosition(), TheBlock.Top.GetPosition() + currentDir * 2, Color.Cyan, thickness: 0.015f, onTop: true);
@@ -499,55 +356,28 @@ namespace IngameScript
                 }
 
                 LastAngleCos = angleCosPercent;
-                float result = (float)pid.Control(/*error*/angle);
-
-                //if (angleCosPercent.Round(2) == -100 && result)
-                //double tempp = angleCosPercent.Round(2);
+                float result = (float)pid.Control(angle);
                 
 
                 ///If it's a hinge, and the RPM is the maximum possible, and the cos of angle is -1 (the most far distance), 
                 ///it'll asume that hinge is stuck in one of the limits
                 if (isHinge) {
-                    //double currentrpm = (TheBlock.TargetVelocityRad * 9.549297).Abs();
 
                     if (p.ShowMetrics) p.Print($"- {angleCosPercent.Round(4)} - {ErrCount}");
 
-                    if (angleCosPercent <= -99.89 /*&& result == TheBlock.TargetVelocityRad*/) {
-                            //result *= -1;
-                            ErrCount++;
-                        /*if (!reachededge)
-                        {
-                            reachededge = true;
-                        }*/
-                        //else {
-                            if (ErrCount > 10) result = -result;
-                        //}
+                    if (angleCosPercent <= -99.89) {
+                        ErrCount++;
+                        if (ErrCount > 10) result = -result;
                     } else if (ErrCount > 10 && angleCosPercent > -98.5) {
-                            //reachededge = false;
-                            ErrCount = 0;
+                        ErrCount = 0;
                     }
                 }
 
-                //p.Print($"2 {(result * 9.549297).Round(2)}");
-                TheBlock.TargetVelocityRad = result;//!reverse ? -result : result;
+                TheBlock.TargetVelocityRad = result;
                 return angleCos;
             }
-
-            /*public bool GetPointOrientation(Vector3D targetDirection, Vector3D currentDirection)
-            {
-                Vector3D angle = Vector3D.Cross(targetDirection, currentDirection);
-                double err = Vector3D.Dot(angle.Normalized(), (TheBlock.WorldMatrix.Up + TheBlock.WorldMatrix.Left).Normalized());
-                return err >= 0 /*&& cond;
-            }*/
-
-            // doesn't calculate length because thats expensive
-            /*public double AngleBetweenCos(Vector3D a, Vector3D b)
-            {
-                //double dot = Vector3D.Dot(a, b);
-                return MathHelper.Clamp(a.Dot(b) / Math.Sqrt(a.LengthSquared() * b.LengthSquared()), -1, 1);//dot / b.Length();
-            }*/
-
         }
+
         class ShipController : BlockWrapper<IMyShipController>
         {
             public bool Dampener;
@@ -569,8 +399,6 @@ namespace IngameScript
         interface IBlockWrapper
         {
             IMyTerminalBlock TheBlock { get; set; }
-            //List<Base6Directions.Axis> Axis { get; }
-            //List<Vector3D> SpDirections { get; }
             string CName { get; }
         }
 
@@ -578,17 +406,12 @@ namespace IngameScript
         {
             public T TheBlock { get; set; }
 
-            //public List<Base6Directions.Axis> Axis { get; }
-            //public List<Vector3D> SpDirections { get; }
-
             public Program p;
 
             public BlockWrapper(T block, Program p)
             {
                 this.p = p;
                 TheBlock = block;
-                //Axis = GetAxis(block);
-                //SpDirections = GetSpecialDirections(block);
             }
 
             // not allowed for some reason
@@ -598,16 +421,6 @@ namespace IngameScript
                 set { TheBlock = (T)value; }
             }
 
-            /*public List<Base6Directions.Axis> GetAxis(IMyTerminalBlock block)
-            {
-                MyBlockOrientation o = block.Orientation;
-                return new List<Base6Directions.Axis> { Base6Directions.GetAxis(o.Forward), Base6Directions.GetAxis(o.Up), Base6Directions.GetAxis(o.Left) };
-            }*/
-
-            /*public List<Vector3D> GetSpecialDirections(IMyTerminalBlock block)
-            {
-                return new List<Vector3D> { block.WorldMatrix.Forward, block.WorldMatrix.Up, block.WorldMatrix.Left, block.WorldMatrix.Backward, block.WorldMatrix.Down, block.WorldMatrix.Right };
-            }*/
             public string CName => TheBlock.CustomName;
         }
     }

@@ -117,15 +117,6 @@ namespace IngameScript
             if (!justCompiled) log.AppendNR("\n  >Configuration Edit Detected\n");
 
             config.Clear();
-            /*double[] defaultltc = new double[] { 0.5, 0.01 };
-            double[] defaultltcc = new double[] { 1, 0.15 };
-            double[] defaultagg = new double[] { 0.1, 1, 4 };
-            double[] defaultacc = new double[] { 15, 50, 100 };
-            double[] defaulttdm = new double[] { -1, -1, 0 };
-            double[] defaulttms = new double[] { 0.1, 0.1 };
-            double[] defaulttmg = new double[] { 0.1, 0.1 };*/
-
-            //bool force = false;
             KeepConfig();
 
             if (config.TryParse(Me.CustomData))
@@ -162,15 +153,6 @@ namespace IngameScript
 
                 config.GetList<double>(ref Aggressivity, detectstr, AggressivityStr, () => Aggressivity.Count == 3);
 
-                //string temp;
-                /*string temp = config.Get(detectstr, AggressivityStr).ToString();
-                try
-                {
-                    Aggressivity = Array.ConvertAll(temp.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
-                    if (Aggressivity.Length != 3) { force = true; Aggressivity = defaultacc; }
-                }
-                catch { force = true; Aggressivity = defaultagg; }*/
-
                 ErrorMargin = config.Get(detectstr, ErrorMarginStr).ToSingle(ErrorMargin);
                 velprecisionmode = config.Get(detectstr, velprecisionmodestr).ToDouble(velprecisionmode);
 
@@ -179,52 +161,12 @@ namespace IngameScript
                 lowThrustCutOn = temp1[0];
                 lowThrustCutOff = temp1[1];
 
-                /*temp = config.Get(detectstr, lowThrustCutStr).ToString();
-                try
-                {
-                    double[] result = Array.ConvertAll(temp.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
-                    if (result.Length != 2) { force = true; result = defaultltc; }
-                    lowThrustCutOn = result[0];
-                    lowThrustCutOff = result[1];
-                }
-                catch
-                {
-                    force = true;
-                    lowThrustCutOn = defaultltc[0];
-                    lowThrustCutOff = defaultltc[1];
-                }*/
-
                 temp1 = new List<double>();
                 config.GetList<double>(ref temp1, detectstr, lowThrustCutCruiseStr, () => temp1.Count == 2);
                 lowThrustCutCruiseOn = temp1[0];
                 lowThrustCutCruiseOff = temp1[1];
 
-                //divisorid = config.Get(detectstr, divisoridstr).ToDouble(divisorid);
-
-                /*temp = config.Get(detectstr, lowThrustCutCruiseStr).ToString();
-                try
-                {
-                    double[] result = Array.ConvertAll(temp.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
-                    if (result.Length != 2) { force = true; result = defaultltcc; }
-                    lowThrustCutCruiseOn = result[0];
-                    lowThrustCutCruiseOff = result[1];
-                }
-                catch
-                {
-                    force = true;
-                    lowThrustCutCruiseOn = defaultltcc[0];
-                    lowThrustCutCruiseOff = defaultltcc[1];
-                }*/
-
                 config.GetList<double>(ref Accelerations, accelstr, AccelerationsStr, () => Accelerations.Count > 1 && Accelerations.All(x => x > 0));
-
-                /*temp = config.Get(accelstr, AccelerationsStr).ToString();
-                try
-                {
-                    Accelerations = Array.ConvertAll(temp.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
-                    if (Accelerations.Length < 2 || Accelerations.Any(x=> x <= 0)) { force = true; Accelerations = defaultacc; }
-                }
-                catch { force = true; Accelerations = defaultacc; }*/
 
                 TurnOffThrustersOnPark = config.Get(parkstr, TurnOffThrustersOnParkStr).ToBoolean(TurnOffThrustersOnPark);
                 RechargeOnPark = config.Get(parkstr, RechargeOnParkStr).ToBoolean(RechargeOnPark);
@@ -235,13 +177,6 @@ namespace IngameScript
                 PerformanceWhilePark = config.Get(parkstr, PerformanceWhileParkStr).ToBoolean(PerformanceWhilePark);
 
                 config.GetList<double>(ref thrdirmultiplier, parkstr, thrdirmultiplierStr, () => thrdirmultiplier.Count == 3);
-                /*temp = config.Get(parkstr, thrdirmultiplierStr).ToString();
-                try
-                {
-                    thrdirmultiplier = Array.ConvertAll(temp.Split(new string[] { ";" }, StringSplitOptions.RemoveEmptyEntries), s => double.Parse(s));
-                    if (thrdirmultiplier.Length != 3) { force = true; thrdirmultiplier = defaulttdm; }
-                }
-                catch { force = true; thrdirmultiplier = defaulttdm; }*/
 
                 thrdiroverride = config.Get(parkstr, thrdiroverrideStr).ToBoolean(thrdiroverride);
 
@@ -263,13 +198,11 @@ namespace IngameScript
                 if (FramesBetweenActions <= 0)
                 {
                     FramesBetweenActions = 1;
-                    //force = true;
                 }
                 timepause = FramesBetweenActions * timeperframe;
                 SkipFrames = config.Get(advancedstr, SkipFramesStr).ToInt32(SkipFrames);
                 stockvalues = config.Get(advancedstr, stockvaluesStr).ToBoolean(stockvalues);
 
-                //TimeForRefresh = config.Get(configstr, TimeForRefreshStr).ToDouble(TimeForRefresh);
                 framesperprint = config.Get(configstr, framesperprintStr).ToInt32(framesperprint);
                 ShowMetrics = config.Get(configstr, ShowMetricsStr).ToBoolean(ShowMetrics);
                 controlModule = config.Get(configstr, controlModuleStr).ToBoolean(controlModule);
@@ -279,7 +212,7 @@ namespace IngameScript
             }
 
             SetConfig();
-            RConfig(config.ToString()/*, force*/);
+            RConfig(config.ToString());
         }
 
         double timepause = 0;
@@ -298,8 +231,6 @@ namespace IngameScript
             config.Set(detectstr, lowThrustCutStr, ltcstr);
             string ltccstr = String.Join(" ; ", new double[] { lowThrustCutCruiseOn, lowThrustCutCruiseOff });
             config.Set(detectstr, lowThrustCutCruiseStr, ltccstr);
-
-            //config.Set(detectstr, divisoridstr, divisorid);
 
             string accstr = String.Join(" ; ", Accelerations);
             config.Set(accelstr, AccelerationsStr, accstr);
@@ -337,7 +268,6 @@ namespace IngameScript
             config.Set(advancedstr, SkipFramesStr, SkipFrames);
             config.Set(advancedstr, stockvaluesStr, stockvalues);
 
-            //config.Set(configstr, TimeForRefreshStr, TimeForRefresh);
             config.Set(configstr, framesperprintStr, framesperprint);
             config.Set(configstr, ShowMetricsStr, ShowMetrics);
             config.Set(configstr, controlModuleStr, controlModule);
@@ -346,12 +276,12 @@ namespace IngameScript
 
         string savedconfig = "";
 
-        void RConfig(string output/*, bool force = false*/)
+        void RConfig(string output)
         {
-            if (/*force || */output != Me.CustomData) Me.CustomData = output;
-            try { if (/*!force && */!Me.CustomData.Contains($"\n---\n{textSurfaceKeyword}0")) Me.CustomData = Me.CustomData.Replace(Me.CustomData.Between("\n---\n", "0")[0], textSurfaceKeyword); }
+            if (output != Me.CustomData) Me.CustomData = output;
+            try { if (!Me.CustomData.Contains($"\n---\n{textSurfaceKeyword}0")) Me.CustomData = Me.CustomData.Replace(Me.CustomData.Between("\n---\n", "0")[0], textSurfaceKeyword); }
             catch { if (!justCompiled) log.AppendNR("No tag found textSufaceKeyword\n"); }
-            if (/*!force && */!Me.CustomData.Contains($"\n---\n{textSurfaceKeyword}0")) Me.CustomData += $"\n---\n{textSurfaceKeyword}0";
+            if (!Me.CustomData.Contains($"\n---\n{textSurfaceKeyword}0")) Me.CustomData += $"\n---\n{textSurfaceKeyword}0";
 
             savedconfig = Me.CustomData;
         }
@@ -374,7 +304,7 @@ namespace IngameScript
                         if (cd.Equals(cfg)) config.Set(cfg, configCD.Get(cd).ToString());
                     }
                 }
-                RConfig(config.ToString()/*, true*/);
+                RConfig(config.ToString());
             }
             configCD.Clear();
         }

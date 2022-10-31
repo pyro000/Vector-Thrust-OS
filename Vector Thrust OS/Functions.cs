@@ -68,23 +68,9 @@ namespace IngameScript
             accel_aux = !thrustOn || almostbraked ? (float)rawgearaccel.Round(2) : (float)((shipVelocity - lastvelocity) * updatespersecond).Length();
         }
 
-        //int pr = 0;
-
-        /*bool CanPrint() {
-            bool trigger = pr <= 0;
-            if (trigger) { 
-                pr = framesperprint;
-                Echo($"{pr}");
-            }
-            return trigger;
-        } //=> pc % framesperprint == 0 || Runtime.UpdateFrequency != UpdateFrequency.Update1 || justCompiled;*/
-
         void Printer()
         {
             if (!tracker.CanPrint) return;
-
-            //if (tracker.CanPrint)//(CanPrint())
-            //{
                 Echo(echosb.ToString());
                 echosb.Clear();
                 WH.Process();
@@ -97,29 +83,20 @@ namespace IngameScript
                     echosb.AppendLine(rt);
                     screensb.AppendLine(rt);
                 }
-                echosb.AppendLine("VT OS\n22104\n");//($"{Spinner} VtOS {Spinner}");
+                echosb.AppendLine("VT OS\n22104\n");
 
-                //GenSpinner();
-                //echosb.AppendLine($"\n\n--- Main ---");
-                //echosb.AppendLine(" >Remaining: " + _RuntimeTracker.tremaining);
                 if (greedy) echosb.AppendLine("WARNING, TAGS ARE NOT APPLIED\nAPPLY THEM WITH \"applytags\"\n");
                 echosb.AppendLine($" > Thrusters Total Precision: {totalVTThrprecision.Round(1)}%");
                 echosb.AppendLine($" > Main/Ref Controller:\n  {cstr}");
-                //echosb.AppendLine($" >Parked: {parkedcompletely}/{unparkedcompletely}");
                 echosb.AppendLine($" > Runtime (MS):\n  {Runtime.LastRunTimeMs.Round(3)} / Avg: {tracker.AverageRuntime.Round(3)} / Max: {tracker.MaxRuntime.Round(3)}");
                 if (SkipFrames > 0) echosb.AppendLine($" > Skipping {SkipFrames} Frames");
                 echosb.Append(surfaceProviderErrorStr);
               
                 if (isstation) echosb.AppendLine("CAN'T FLY A STATION, RUNNING WITH LESS RUNTIME.");
                 
-
-                
                 if (ShowMetrics)
                 {
-                    //StringBuilder metrics = new StringBuilder($"{Spinner} {Runtime.LastRunTimeMs.Round(2)}ms {Spinner}\n");
-                    StringBuilder metrics = new StringBuilder($"\n > Metrics:\n  Total VectorThrusters: {vectorthrusters.Count}\n");//($" {Runtime.LastRunTimeMs.Round(3)}ms\n");
-                    //metrics.AppendLine($"AM: {(accel / gravLength).Round(2)}g");
-                    //metrics.AppendLine($"Active VectorThrusters: {vectorthrusters.Count}");
+                    StringBuilder metrics = new StringBuilder($"\n > Metrics:\n  Total VectorThrusters: {vectorthrusters.Count}\n");
                     metrics.AppendLine($"  Main/Ref Cont: {cstr}");
                     metrics.AppendLine($"  Parked: {parkedcompletely}/{unparkedcompletely}");
                     metrics.AppendLine($"  ThrustOn: {thrustOn}");
@@ -129,10 +106,6 @@ namespace IngameScript
 
                     echosb.Append("\n > Log:\n").Append(log);
                 }
-                
-
-                
-            //}
         }
 
         bool SkipFrameHandler(string argument)
@@ -186,22 +159,6 @@ namespace IngameScript
                 ShutOffVTS();
                 return true;
             }
-            //else if (handlers)
-            //{
-                //if (CanPrint())
-                //{
-                    //echosb.AppendLine("Required Force: ---N");
-                    //echosb.AppendLine("Total Force: ---N\n");
-                    //echosb = _RuntimeTracker.Append(echosb);
-
-                    /*if (ShowMetrics)
-                    {
-                        echosb.AppendLine("--- Log ---");
-                        echosb.Append(log);
-                    }*/
-                //}
-                //_RuntimeTracker.AddInstructions();
-            //}
             return handlers;
         }
         void ShutDown()
@@ -461,7 +418,7 @@ namespace IngameScript
 
             if (standby || parkedcompletely)
             {
-                if (/*CanPrint()*/tracker.CanPrint) echosb.AppendLine("\nEverything stopped, performance mode.\n");
+                if (tracker.CanPrint) echosb.AppendLine("\nEverything stopped, performance mode.\n");
                 rotorsstopped = rotorsstopped || vtrotors.All(x => x.TargetVelocityRPM == 0) && vtthrusters.All(x => !x.Enabled && x.ThrustOverridePercentage == 0);
                 if (!rotorsstopped) ShutOffVTS();
                 return true;
@@ -477,12 +434,6 @@ namespace IngameScript
         }
         bool PerformanceHandler()
         {
-            //if ( && /*CanPrint()*/tracker.CanPrint)
-            //{
-                //echosb.AppendLine($"\n\n > Skipping {SkipFrames} Frames");
-                //echosb.AppendLine($" >Skipped: {frame}");
-                //echosb.AppendLine($" >Remaining: {SkipFrames - frame}");
-            //}
             if (!justCompiled && SkipFrames > 0 && SkipFrames > frame)
             {
                 frame++;
@@ -535,27 +486,6 @@ namespace IngameScript
             if (unparkedcompletely) forceunpark = false;
             return parkedcompletely;
         }
-
-        /*string Spinner = "";
-
-        void GenSpinner()
-        {
-            switch (pc / 10 % 4)
-            {
-                case 0:
-                    Spinner = "|";
-                    break;
-                case 1:
-                    Spinner = "\\";
-                    break;
-                case 2:
-                    Spinner = "-";
-                    break;
-                case 3:
-                    Spinner = "/";
-                    break;
-            }
-        }*/
 
         bool AddSurfaceProvider(IMyTerminalBlock block)
         {
@@ -682,19 +612,11 @@ namespace IngameScript
         {
             Vector3D moveVec = Vector3D.Zero;
 
-            //if (controlModule && justCompiled)
-            //{
-                // setup control module
-                //Dictionary<string, object> inputs = new Dictionary<string, object>();
-                
-            //}
-
             if (controlModule)
             {
                 if (justCompiled)
                 try
                 {
-                    /*this.*/
                     CMinputs = Me.GetValue<Dictionary<string, object>>("ControlModule.Inputs");
 
                     Me.SetValue<string>("ControlModule.AddInput", dampenersButton); //Z
@@ -713,43 +635,43 @@ namespace IngameScript
 
                 if (CMinputs != null) { 
                     // non-movement controls
-                    if (!dampenersIsPressed && /*this.*/CMinputs.ContainsKey(dampenersButton))
+                    if (!dampenersIsPressed && CMinputs.ContainsKey(dampenersButton))
                     {//inertia dampener key
                         dampeners = !dampeners;//toggle
                         dampenersIsPressed = true;
                     }
-                    else if (dampenersIsPressed && !/*this.*/CMinputs.ContainsKey(dampenersButton))
+                    else if (dampenersIsPressed && ! CMinputs.ContainsKey(dampenersButton))
                     {
                         dampenersIsPressed = false;
                     }
 
-                    if (!cruiseIsPressed && /*this.*/CMinputs.ContainsKey(cruiseButton))
+                    if (!cruiseIsPressed && CMinputs.ContainsKey(cruiseButton))
                     {//cruise key
                         cruise = !cruise;//toggle
                         cruiseIsPressed = true;
                     }
-                    else if (cruiseIsPressed && !/*this.*/CMinputs.ContainsKey(cruiseButton))
+                    else if (cruiseIsPressed && !CMinputs.ContainsKey(cruiseButton))
                     {
                         cruiseIsPressed = false;
                     }
 
-                    if (!gearIsPressed && /*this.*/CMinputs.ContainsKey(gearButton))
+                    if (!gearIsPressed && CMinputs.ContainsKey(gearButton))
                     {//throttle up
                         if (gear == Accelerations.Count - 1) gear = 0;
                         else gear++;
                         gearIsPressed = true;
                     }
-                    else if (gearIsPressed && !/*this.*/CMinputs.ContainsKey(gearButton))
+                    else if (gearIsPressed && !CMinputs.ContainsKey(gearButton))
                     { //increase target acceleration
                         gearIsPressed = false;
                     }
 
-                    if (!allowparkIsPressed && /*this.*/CMinputs.ContainsKey(allowparkButton))
+                    if (!allowparkIsPressed && CMinputs.ContainsKey(allowparkButton))
                     {//throttle down
                         allowpark = !allowpark;
                         allowparkIsPressed = true;
                     }
-                    else if (allowparkIsPressed && !/*this.*/CMinputs.ContainsKey(allowparkButton))
+                    else if (allowparkIsPressed && !CMinputs.ContainsKey(allowparkButton))
                     { //increase target acceleration
                         allowparkIsPressed = false;
                     }
