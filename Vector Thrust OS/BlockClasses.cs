@@ -57,15 +57,22 @@ namespace IngameScript
                 //set the thrust for each engine
                 foreach (Thruster thruster in activeThrusters)
                 {
+                    if (!p.thrustOn) {
+                        thruster.SetThrust(0);
+                        thruster.TheBlock.Enabled = false;
+                        thruster.IsOffBecauseDampeners = true;
+                        continue;
+                    }
+
                     Vector3D thrust = (thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust);
                     bool noThrust = thrust.LengthSquared() < 0.001f || (p.wgv == 0 && angleCos < 0.85);
                     p.tthrust += noThrust ? 0 : MathHelper.Clamp(thrust.Length(), 0, thruster.TheBlock.MaxEffectiveThrust);
 
-                    if (!p.thrustOn || noThrust)
+                    if (/*!p.thrustOn || */noThrust)
                     {
                         thruster.SetThrust(0);
                         thruster.TheBlock.Enabled = false;
-                        thruster.IsOffBecauseDampeners = !p.thrustOn || noThrust;
+                        thruster.IsOffBecauseDampeners = /*!p.thrustOn || */noThrust;
                     }
                     else
                     {
@@ -132,15 +139,15 @@ namespace IngameScript
                 foreach (Thruster curr in thrusters)
                 {
 
-                    bool shownAndFunctional = curr.TheBlock.IsFunctional;
+                    bool shownAndFunctional = ((p.wgv == 0 || !curr.NeedsGas/* || p.justCompiled*/) && curr.TheBlock.IsFunctional) || (curr.NeedsGas && curr.TheBlock.IsConnected()); //curr.TheBlock.IsFunctional;
                     if (availableThrusters.Contains(curr))
                     {//is available
 
                         bool wasOnAndIsNowOff = curr.IsOn && !curr.TheBlock.Enabled && !curr.IsOffBecauseDampeners;
 
-                        if ((!shownAndFunctional || wasOnAndIsNowOff))
+                        if (!shownAndFunctional || wasOnAndIsNowOff)
                         {
-                            curr.IsOn = false;
+                            if (wasOnAndIsNowOff) curr.IsOn = false;
                             //remove the thruster
                             availableThrusters.Remove(curr);
                             needsUpdate = true;
@@ -150,7 +157,7 @@ namespace IngameScript
                     else
                     {//not available
                         bool wasOffAndIsNowOn = !curr.IsOn && curr.TheBlock.Enabled;
-                        if (shownAndFunctional && wasOffAndIsNowOn)
+                        if (shownAndFunctional && (wasOffAndIsNowOn || (curr.IsOn && !availableThrusters.Contains(curr))))
                         {
                             availableThrusters.Add(curr);
                             needsUpdate = true;
@@ -167,8 +174,7 @@ namespace IngameScript
                 Vector3D engineDirectionNeg = Vector3D.Zero;
                 Vector3I thrustDir = Vector3I.Zero;
                 Base6Directions.Direction rotTopUp = rotor.TheBlock.Top.Orientation.Up;
-
-                bool allthrustersoff = thrusters.All(x => !x.TheBlock.Enabled);
+                //bool allthrustersoff = thrusters.All(x => !x.TheBlock.Enabled);
 
                 // add all the thrusters effective power
                 foreach (Thruster t in availableThrusters)
@@ -236,7 +242,7 @@ namespace IngameScript
                 }
 
                 // use thrustDir to set rotor offset (IF THRUSTERS ARE MANUALLY OFF, WON'T DO ANYTHING)
-                if (!allthrustersoff) rotor.direction = (Vector3D)thrustDir;
+                if (!/*allthrustersoff*/availableThrusters.Empty()) rotor.direction = (Vector3D)thrustDir;
 
                 // put thrusters into the active list
                 Base6Directions.Direction thrDir = Base6Directions.GetDirection(thrustDir);
@@ -273,13 +279,16 @@ namespace IngameScript
             // stays the same when in standby, if not in standby, this gets updated to weather or not the thruster is on
             public bool IsOn;
 
+            public bool NeedsGas;
+
             // this indicate the thruster was turned off from the script, and should be kept in the active list
-            public bool IsOffBecauseDampeners = true;
+            public bool IsOffBecauseDampeners = false;//true;
 
             public Thruster(IMyThrust thruster, Program program) : base(thruster, program)
             {
-                this.IsOn = false;
+                this.IsOn = true;//false;
                 this.TheBlock.Enabled = true;
+                NeedsGas = TheBlock.BlockDefinition.SubtypeId.Contains("Hydrogen");
             }
 
             // sets the thrust in newtons (N)

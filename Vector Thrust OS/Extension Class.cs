@@ -10,9 +10,14 @@ namespace IngameScript
 {
     static class Extensions
     {
-        public static bool IsAlive(this IMyTerminalBlock block)
+        /*public static bool IsAlive(this IMyTerminalBlock block)
         {
             return block.CubeGrid.GetCubeBlock(block.Position)?.FatBlock == block;
+        }*/
+
+        public static bool IsConnected(this IMyThrust thruster) {
+
+            return thruster.IsWorking || (!thruster.IsWorking && (!thruster.Enabled || !thruster.IsFunctional));
         }
 
         public static void GetList<T>(this MyIni config, ref List<T> inp, string section, string key, Func<bool> cond)

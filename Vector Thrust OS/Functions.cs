@@ -83,7 +83,7 @@ namespace IngameScript
                     echosb.AppendLine(rt);
                     screensb.AppendLine(rt);
                 }
-                echosb.AppendLine("VT OS\n22104\n");
+                echosb.AppendLine("VT OS\n221042\n");
 
                 if (greedy) echosb.AppendLine("WARNING, TAGS ARE NOT APPLIED\nAPPLY THEM WITH \"applytags\"\n");
                 echosb.AppendLine($" > Thrusters Total Precision: {totalVTThrprecision.Round(1)}%");
@@ -124,9 +124,9 @@ namespace IngameScript
 
                 //FOR SOME STUPID REASON PARKHANDLER IS SETTING UPDATE10 ALL THE TIME
 
-                bool notrun = argument.Equals("") /*&& !cruise && !dampchanged*/;
-                if (notrun)
-                {
+                //bool notrun = argument.Equals("") /*&& !cruise && !dampchanged*/;
+                //if (notrun)
+                //{
                     //Print($"1 {Runtime.UpdateFrequency}");
                     handlers = PerformanceHandler();
                     //Print($"2 {Runtime.UpdateFrequency}");
@@ -146,8 +146,10 @@ namespace IngameScript
 
                     }
                     //Print($"4 {Runtime.UpdateFrequency}");
-                }
-                else if (tagArg) MainTag(argument);
+                //}
+                /*else */if (tagArg) MainTag(argument);
+
+                //handlers = handlers || !notrun; //new mechanic added
             }
             if (error)
             {
