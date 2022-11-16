@@ -24,6 +24,16 @@ namespace IngameScript
             setTOV = true;
         }
 
+        /*string Separator(string title = "", int len = 58)
+        {
+            int tl = title.Length;
+            len = (len - tl) / 2;
+            string res = new string('-', len);
+            return res + title + res;
+        }*/
+
+        double force = 0;
+
         void ThrustOnHandler()
         {
             force = gravCutoff * myshipmass.PhysicalMass;
@@ -53,7 +63,7 @@ namespace IngameScript
             //TODO MAKE MULTIPLIER BY NUMBER OF THRUSTERS
 
             double gravtdefac = gravLength * defaultAccel;
-            double efectiveaccel = totaleffectivethrust / myshipmass.BaseMass; //1.4675
+            double efectiveaccel = totaleffectivethrust/ myshipmass.BaseMass; //1.4675
             rawgearaccel /= myshipmass.PhysicalMass;
 
             //getting max & gear accel
@@ -68,44 +78,48 @@ namespace IngameScript
             accel_aux = !thrustOn || almostbraked ? (float)rawgearaccel.Round(2) : (float)((shipVelocity - lastvelocity) * updatespersecond).Length();
         }
 
+        //bool CanPrint() => pc % framesperprint == 0 || Runtime.UpdateFrequency != UpdateFrequency.Update1 || justCompiled;
+
         void Printer()
         {
             if (!tracker.CanPrint) return;
-                Echo(echosb.ToString());
-                echosb.Clear();
-                WH.Process();
-                screensb.Clear();
 
-                string cstr = mainController != null ? mainController.TheBlock.CustomName : "DEAD";
+            Echo(echosb.ToString());
+            echosb.Clear();
+            WH.Process();
+            screensb.Clear();
 
-                if (ShowMetrics) {
-                    string rt = $" {tracker.LastRuntime.Round(3)}   {tracker.AverageRuntime.Round(3)}";
-                    echosb.AppendLine(rt);
-                    screensb.AppendLine(rt);
-                }
-                echosb.AppendLine("VT OS\n221042\n");
+            string cstr = mainController != null ? mainController.TheBlock.CustomName : "DEAD";
 
-                if (greedy) echosb.AppendLine("WARNING, TAGS ARE NOT APPLIED\nAPPLY THEM WITH \"applytags\"\n");
-                echosb.AppendLine($" > Thrusters Total Precision: {totalVTThrprecision.Round(1)}%");
-                echosb.AppendLine($" > Main/Ref Controller:\n  {cstr}");
-                echosb.AppendLine($" > Runtime (MS):\n  {Runtime.LastRunTimeMs.Round(3)} / Avg: {tracker.AverageRuntime.Round(3)} / Max: {tracker.MaxRuntime.Round(3)}");
-                if (SkipFrames > 0) echosb.AppendLine($" > Skipping {SkipFrames} Frames");
-                echosb.Append(surfaceProviderErrorStr);
-              
-                if (isstation) echosb.AppendLine("CAN'T FLY A STATION, RUNNING WITH LESS RUNTIME.");
-                
-                if (ShowMetrics)
-                {
-                    StringBuilder metrics = new StringBuilder($"\n > Metrics:\n  Total VectorThrusters: {vectorthrusters.Count}\n");
-                    metrics.AppendLine($"  Main/Ref Cont: {cstr}");
-                    metrics.AppendLine($"  Parked: {parkedcompletely}/{unparkedcompletely}");
-                    metrics.AppendLine($"  ThrustOn: {thrustOn}");
+            if (ShowMetrics)
+            {
+                string rt = $" {tracker.LastRuntime.Round(3)}   {tracker.AverageRuntime.Round(3)}";
+                echosb.AppendLine(rt);
+                screensb.AppendLine(rt);
+            }
+            echosb.AppendLine("VT OS\n221132\n");
 
-                    echosb.Append(metrics);
-                    screensb.Append(metrics);
+            if (greedy) echosb.AppendLine("WARNING, TAGS ARE NOT APPLIED\nAPPLY THEM WITH \"applytags\"\n");
+            echosb.AppendLine($" > Thrusters Total Precision: {totalVTThrprecision.Round(1)}%");
+            echosb.AppendLine($" > Main/Ref Controller:\n  {cstr}");
+            echosb.AppendLine($" > Runtime (MS):\n  {Runtime.LastRunTimeMs.Round(3)} / Avg: {tracker.AverageRuntime.Round(3)} / Max: {tracker.MaxRuntime.Round(3)}");
+            if (SkipFrames > 0) echosb.AppendLine($" > Skipping {SkipFrames} Frames");
+            echosb.Append(surfaceProviderErrorStr);
 
-                    echosb.Append("\n > Log:\n").Append(log);
-                }
+            if (isstation) echosb.AppendLine("CAN'T FLY A STATION, RUNNING WITH LESS RUNTIME.");
+
+            if (ShowMetrics)
+            {
+                StringBuilder metrics = new StringBuilder($"\n > Metrics:\n  Total VectorThrusters: {vectorthrusters.Count}\n");
+                metrics.AppendLine($"  Main/Ref Cont: {cstr}");
+                metrics.AppendLine($"  Parked: {parkedcompletely}/{unparkedcompletely}");
+                metrics.AppendLine($"  ThrustOn: {thrustOn}");
+
+                echosb.Append(metrics);
+                screensb.Append(metrics);
+
+                echosb.Append("\n > Log:\n").Append(log);
+            }
         }
 
         bool SkipFrameHandler(string argument)
@@ -147,9 +161,7 @@ namespace IngameScript
                     }
                     //Print($"4 {Runtime.UpdateFrequency}");
                 //}
-                /*else */if (tagArg) MainTag(argument);
-
-                //handlers = handlers || !notrun; //new mechanic added
+                /*else*/ if (tagArg) MainTag(argument);
             }
             if (error)
             {
@@ -161,6 +173,22 @@ namespace IngameScript
                 ShutOffVTS();
                 return true;
             }
+            /*else if (handlers)
+            {
+                if (CanPrint())
+                {
+                    echosb.AppendLine("Required Force: ---N");
+                    echosb.AppendLine("Total Force: ---N\n");
+                    echosb = _RuntimeTracker.Append(echosb);
+
+                    if (ShowMetrics)
+                    {
+                        echosb.AppendLine("--- Log ---");
+                        echosb.Append(log);
+                    }
+                }
+                _RuntimeTracker.AddInstructions();
+            }*/
             return handlers;
         }
         void ShutDown()
@@ -185,7 +213,7 @@ namespace IngameScript
 
         public void Print(string sp, bool e = true, params object[] args)
         {
-            if (!/*CanPrint()*/tracker.CanPrint) return;
+            if (!tracker.CanPrint) return;
             StringBuilder result = args.Length != 0 ? new StringBuilder().Append(string.Join(sp, args)) : new StringBuilder(sp);
             screensb.Append(result + "\n");
             if (e) echosb.Append(result + "\n");
@@ -270,6 +298,7 @@ namespace IngameScript
             this.greedy = !HasTag(Me);
             oldTag = tag;
         }
+
 
         bool HasTag(IMyTerminalBlock block)
         {
@@ -408,6 +437,10 @@ namespace IngameScript
             return onlyMainCockpit && mainController != null && mainController.TheBlock.IsUnderControl;
         }
 
+        //bool doneunstop = false;
+        double tgotTOV = 0;
+
+
         bool VTThrHandler()
         {
             bool nograv = wgv == 0;
@@ -422,20 +455,29 @@ namespace IngameScript
             {
                 if (tracker.CanPrint) echosb.AppendLine("\nEverything stopped, performance mode.\n");
                 rotorsstopped = rotorsstopped || vtrotors.All(x => x.TargetVelocityRPM == 0) && vtthrusters.All(x => !x.Enabled && x.ThrustOverridePercentage == 0);
+                //doneunstop = true;
+
                 if (!rotorsstopped) ShutOffVTS();
                 return true;
             }
-            else if ((rotorsstopped && setTOV) || unparking) // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
+            else if (((rotorsstopped && setTOV) || unparking/* || dampchanged*/)/* && doneunstop*/) // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
             {
                 setTOV = rotorsstopped = false;
 
                 foreach (VectorThrust n in vectorthrusters)
                     n.ActiveList(Override: true);
+                //doneunstop = !vtthrusters.All(x => x.Enabled);
             }
             return rotorsstopped;
         }
         bool PerformanceHandler()
         {
+            if (SkipFrames > 0 && tracker.CanPrint)
+            {
+                echosb.AppendLine($"--SkipFrame[{ SkipFrames}]--");
+                echosb.AppendLine($" >Skipped: {frame}");
+                echosb.AppendLine($" >Remaining: {SkipFrames - frame}");
+            }
             if (!justCompiled && SkipFrames > 0 && SkipFrames > frame)
             {
                 frame++;
@@ -488,6 +530,27 @@ namespace IngameScript
             if (unparkedcompletely) forceunpark = false;
             return parkedcompletely;
         }
+
+        /*string Spinner = "";
+
+        void GenSpinner()
+        {
+            switch (pc / 10 % 4)
+            {
+                case 0:
+                    Spinner = "|";
+                    break;
+                case 1:
+                    Spinner = "\\";
+                    break;
+                case 2:
+                    Spinner = "-";
+                    break;
+                case 3:
+                    Spinner = "/";
+                    break;
+            }
+        }*/
 
         bool AddSurfaceProvider(IMyTerminalBlock block)
         {
@@ -610,6 +673,7 @@ namespace IngameScript
             }
         }
 
+        bool cruisebyarg = false;
         Vector3D GetMovementInput(string arg, bool perf = false)
         {
             Vector3D moveVec = Vector3D.Zero;
@@ -617,32 +681,33 @@ namespace IngameScript
             if (controlModule)
             {
                 if (justCompiled)
-                try
+                    try
+                    {
+                        CMinputs = Me.GetValue<Dictionary<string, object>>("ControlModule.Inputs");
+
+                        Me.SetValue<string>("ControlModule.AddInput", dampenersButton); //Z
+                        Me.SetValue<string>("ControlModule.AddInput", cruiseButton); //R
+                        Me.SetValue<string>("ControlModule.AddInput", gearButton); //Shift
+                        Me.SetValue<string>("ControlModule.AddInput", allowparkButton); //X
+
+                        Me.SetValue<bool>("ControlModule.RunOnInput", true);
+                        Me.SetValue<int>("ControlModule.InputState", 1);
+                        Me.SetValue<float>("ControlModule.RepeatDelay", 0.016f);
+                    }
+                    catch
+                    {
+                        controlModule = false;
+                    }
+
+                if (CMinputs != null)
                 {
-                    CMinputs = Me.GetValue<Dictionary<string, object>>("ControlModule.Inputs");
-
-                    Me.SetValue<string>("ControlModule.AddInput", dampenersButton); //Z
-                    Me.SetValue<string>("ControlModule.AddInput", cruiseButton); //R
-                    Me.SetValue<string>("ControlModule.AddInput", gearButton); //Shift
-                    Me.SetValue<string>("ControlModule.AddInput", allowparkButton); //X
-
-                    Me.SetValue<bool>("ControlModule.RunOnInput", true);
-                    Me.SetValue<int>("ControlModule.InputState", 1);
-                    Me.SetValue<float>("ControlModule.RepeatDelay", 0.016f);
-                }
-                catch
-                {
-                    controlModule = false;
-                }
-
-                if (CMinputs != null) { 
                     // non-movement controls
                     if (!dampenersIsPressed && CMinputs.ContainsKey(dampenersButton))
                     {//inertia dampener key
                         dampeners = !dampeners;//toggle
                         dampenersIsPressed = true;
                     }
-                    else if (dampenersIsPressed && ! CMinputs.ContainsKey(dampenersButton))
+                    else if (dampenersIsPressed && !CMinputs.ContainsKey(dampenersButton))
                     {
                         dampenersIsPressed = false;
                     }
@@ -773,6 +838,7 @@ namespace IngameScript
         void CheckWeight()
         {
             if (justCompiled) return;
+
             ShipController cont = FindACockpit();
 
             if (cont == null)
@@ -850,6 +916,7 @@ namespace IngameScript
                 case 2: Runtime.UpdateFrequency = UpdateFrequency.Update100; break;
                 case 3: Runtime.UpdateFrequency = UpdateFrequency.Once; break;
                 case 4: Runtime.UpdateFrequency = UpdateFrequency.None; break;
+                //case 5: Runtime.UpdateFrequency = update_frequency;  break;
             };
         }
     }

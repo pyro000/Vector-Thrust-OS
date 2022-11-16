@@ -15,7 +15,8 @@ namespace IngameScript
             return block.CubeGrid.GetCubeBlock(block.Position)?.FatBlock == block;
         }*/
 
-        public static bool IsConnected(this IMyThrust thruster) {
+        public static bool IsConnected(this IMyThrust thruster)
+        {
 
             return thruster.IsWorking || (!thruster.IsWorking && (!thruster.Enabled || !thruster.IsFunctional));
         }
@@ -49,18 +50,20 @@ namespace IngameScript
             return STR.Split(new string[] { STR1, STR2 }, StringSplitOptions.RemoveEmptyEntries).Where(it => STR.Contains(STR1 + it + STR2)).ToList();
         }
 
-        public static Vector3D Project(this Vector3D a, Vector3D b)
+        /*public static Vector3D Project(this Vector3D a, Vector3D b)
         {// projects a onto b
             double aDotB = Vector3D.Dot(a, b);
             double bDotB = Vector3D.Dot(b, b);
             return b * aDotB / bDotB;
-        }
+        }*/
 
-        public static double Clamp(this double val, double min, double max) {
+        public static double Clamp(this double val, double min, double max)
+        {
             return MathHelper.Clamp(val, min, max);
         }
 
-        public static Vector3D NewLength(this Vector3D inp, double val = 1) {
+        public static Vector3D NewLength(this Vector3D inp, double val = 1)
+        {
             return inp.Normalized() * val;
         }
 
@@ -78,10 +81,10 @@ namespace IngameScript
         public static void Brake(this IMyMotorStator rotor) => rotor.TargetVelocityRPM = 0;
         public static void Brake(this IMyThrust thruster) => thruster.ThrustOverridePercentage = 0;
 
-        public static Vector3D Reject(this Vector3D a, Vector3D b)
+        /*public static Vector3D Reject(this Vector3D a, Vector3D b)
         {
             return Vector3D.Reject(a, b);
-        }
+        }*/
 
         public static Vector3D Normalized(this Vector3D vec)
         {
@@ -114,12 +117,13 @@ namespace IngameScript
             return double.IsNaN(inp) ? 1 * Math.Pow(10, -10) : inp;
         }
 
-        public static float Pow(this float p, float n) {
+        public static float Pow(this float p, float n)
+        {
             return (float)Math.Pow(p, n);
         }
 
         public static double Pow(this double p, double n) => Math.Pow(p, n);
-        
+
 
         public static float NNaN(this float inp)
         {
@@ -141,9 +145,14 @@ namespace IngameScript
         public static bool Empty<T>(this T[] array) => array.Length == 0;
 
         public static bool Empty(this string st) => st.Length == 0;
-            
-        
+
+
         public static double Abs(this double d)
+        {
+            return Math.Abs(d);
+        }
+
+        public static float Abs(this float d)
         {
             return Math.Abs(d);
         }

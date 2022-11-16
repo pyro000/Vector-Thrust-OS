@@ -17,6 +17,7 @@ namespace IngameScript
             readonly Program p;
 
             public Color OrientationColor { get; set; } = new Color(150, 150, 150); // Lines in the sides color
+            //Color progradeColor { get; set; } = new Color(150, 150, 0); //reticule old color
             public Color RetrogradeColor { get; set; } = new Color(150, 0, 0);  //Reverse Reticule Color
             public Color SkyColor { get; set; } = new Color(10, 30, 50); // Color of sky over the horizon line
             public Color HorizonLineColor { get; set; } = new Color(0, 0, 0); // Horizon line, defaults to transparent
@@ -99,8 +100,9 @@ namespace IngameScript
             void Calculate()
             {
 
-                if ((p.mvin == 0 && (!p.almostbraked)) || p.mvin != 0)
+                if ((p.mvin == 0 && (!p.almostbraked/* || !Vector3D.IsZero(p.shipVelocity, 1e-2)*/)) || p.mvin != 0)
                 {
+                    //p.Print($"HUH? {p.almostbraked} {!Vector3D.IsZero(p.shipVelocity, 1e-2)}");
                     Vector3D velocityNorm = p.shipVelocity;
                     speed = (float)velocityNorm.Normalize();
                     Vector3D localVelocity = Vector3D.Rotate(velocityNorm, MatrixD.Transpose(p.mainController.TheBlock.WorldMatrix));
@@ -110,6 +112,7 @@ namespace IngameScript
                 }
                 else
                 {
+                    //p.Print("FALSE");
                     speed = 0;
                     flatennedvelocity = Vector2.Zero;
                     movingbackwards = false;
@@ -215,9 +218,7 @@ namespace IngameScript
 
                         position_s = new Vector2(position_s.X + lenghtpb, positionpbar);
 
-                        
-                        string acceltext = p.accel_aux > 0 ? $"{p.accel_aux.Round(2)} m/s²" : "--/--";
-                        TextBox(frame, position_s, acceltext, minScale * progressbarsize, background: TextBoxBackground);
+                        TextBox(frame, position_s, $"{Math.Round(p.accel_aux, 2)} m/s²", minScale * progressbarsize, background: TextBoxBackground);
 
                         position_s = new Vector2(_viewport_s.X + (_viewport_s.Width * 0.5f), positionbar2);
 
@@ -285,7 +286,7 @@ namespace IngameScript
                         }
 
 
-                        if (p.screensb.Length > 0) Write(p.screensb.ToString(), frame, PrinterPos, minScale);
+                        Write(p.screensb.ToString(), frame, PrinterPos, minScale);
 
                         frame.Dispose();
                     }
@@ -867,8 +868,8 @@ namespace IngameScript
 
                 var localUpVector = Vector3D.Rotate(up, MatrixD.Transpose(controller.WorldMatrix));
                 var flattenedUpVector = new Vector3D(localUpVector.X, localUpVector.Y, 0);
-                roll = (float)p.AngleBetween(flattenedUpVector, Vector3D.Up) * Math.Sign(Vector3D.Dot(Vector3D.Right, flattenedUpVector));
-                pitch = (float)p.AngleBetween(forward, controller.WorldMatrix.Forward) * Math.Sign(Vector3D.Dot(up, controller.WorldMatrix.Forward));
+                roll = (float)VectorMath.AngleBetween(flattenedUpVector, Vector3D.Up) * Math.Sign(Vector3D.Dot(Vector3D.Right, flattenedUpVector));
+                pitch = (float)VectorMath.AngleBetween(forward, controller.WorldMatrix.Forward) * Math.Sign(Vector3D.Dot(up, controller.WorldMatrix.Forward));
 
                 rollcos = MyMath.FastCos(roll);
                 rollsin = MyMath.FastSin(roll);
@@ -901,13 +902,13 @@ namespace IngameScript
 
                 Vector3D eastVec = Vector3D.Cross(p.worldGrav, _sunRotationAxis);
                 Vector3D northVec = Vector3D.Cross(eastVec, p.worldGrav);
-                Vector3D heading = p.Rejection(controller.WorldMatrix.Forward, p.worldGrav);
+                Vector3D heading = VectorMath.Rejection(controller.WorldMatrix.Forward, p.worldGrav);
 
-                bearing = MathHelper.ToDegrees(p.AngleBetween(heading, northVec));
+                bearing = MathHelper.ToDegrees(VectorMath.AngleBetween(heading, northVec));
                 if (Vector3D.Dot(controller.WorldMatrix.Forward, eastVec) < 0)
                     bearing = 360 - bearing;
 
-                vertspeed = ScalarProjection(p.shipVelocity, -p.worldGrav);
+                vertspeed = VectorMath.ScalarProjection(p.shipVelocity, -p.worldGrav);
             }
 
             void DrawElevationLadder(MySpriteDrawFrame frame, Vector2 midPoint, Vector2 size, float basePitchProportion, float elevationAngleDeg, float scale, bool drawText)
@@ -1037,7 +1038,7 @@ namespace IngameScript
         {
             public readonly int Capacity;
 
-            public readonly T[] _array = null;
+            readonly T[] _array = null;
             int _setIndex = 0;
             int _getIndex = 0;
 
@@ -1084,32 +1085,5 @@ namespace IngameScript
             }
         }
         #endregion
-
-        public static double ScalarProjection(Vector3D a, Vector3D b)
-        {
-            if (Vector3D.IsZero(a) || Vector3D.IsZero(b))
-                return 0;
-
-            if (Vector3D.IsUnit(ref b))
-                return a.Dot(b);
-
-            return a.Dot(b) / b.Length();
-        }
-
-        public Vector3D Rejection(Vector3D a, Vector3D b) //reject a on b
-        {
-            if (Vector3D.IsZero(a) || Vector3D.IsZero(b))
-                return Vector3D.Zero;
-
-            return a - a.Dot(b) / b.LengthSquared() * b;
-        }
-
-        public double AngleBetween(Vector3D a, Vector3D b) //returns radians
-        {
-            if (Vector3D.IsZero(a) || Vector3D.IsZero(b))
-                return 0;
-            else
-                return Math.Acos(MathHelper.Clamp(a.Dot(b) / Math.Sqrt(a.LengthSquared() * b.LengthSquared()), -1, 1));
-        }
     }
 }

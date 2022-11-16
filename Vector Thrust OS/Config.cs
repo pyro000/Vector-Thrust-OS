@@ -18,7 +18,7 @@ namespace IngameScript
         double lowThrustCutOff = 0.01;
         double lowThrustCutCruiseOn = 1;
         double lowThrustCutCruiseOff = 0.15;
-        
+
         double velprecisionmode = 1;
 
         List<double> Accelerations = new List<double> { 15, 50, 100 };
@@ -46,7 +46,7 @@ namespace IngameScript
         bool stockvalues = true;
         bool onlyMainCockpit = false;
 
-        bool EnDebugAPI = false;
+        //bool EnDebugAPI = false;
 
         // ------- End default configs ---------
 
@@ -107,7 +107,7 @@ namespace IngameScript
         const string DampreticuleSensStr = "Dampeners Arrow Trigger Multiplier"; // How far it needs to be from the center to trigger arrow mode while in dampeners
 
         const string controlModuleStr = "Allow Control Module Mod";
-        const string EnDebugAPIStr = "Enable DebugAPI Mod";
+        //const string EnDebugAPIStr = "Enable DebugAPI Mod";
         // END STRINGS AND VARS
 
 
@@ -206,9 +206,9 @@ namespace IngameScript
                 framesperprint = config.Get(configstr, framesperprintStr).ToInt32(framesperprint);
                 ShowMetrics = config.Get(configstr, ShowMetricsStr).ToBoolean(ShowMetrics);
                 controlModule = config.Get(configstr, controlModuleStr).ToBoolean(controlModule);
-                bool newedapi = config.Get(configstr, EnDebugAPIStr).ToBoolean(EnDebugAPI);
-                if (!newedapi && !newedapi.Equals(EnDebugAPI)) Debug.RemoveDraw();
-                EnDebugAPI = newedapi;
+                //bool newedapi = config.Get(configstr, EnDebugAPIStr).ToBoolean(EnDebugAPI);
+                //if (!newedapi && !newedapi.Equals(EnDebugAPI)) Debug.RemoveDraw();
+                //EnDebugAPI = newedapi;
             }
 
             SetConfig();
@@ -271,7 +271,7 @@ namespace IngameScript
             config.Set(configstr, framesperprintStr, framesperprint);
             config.Set(configstr, ShowMetricsStr, ShowMetrics);
             config.Set(configstr, controlModuleStr, controlModule);
-            config.Set(configstr, EnDebugAPIStr, EnDebugAPI);
+            //config.Set(configstr, EnDebugAPIStr, EnDebugAPI);
         }
 
         string savedconfig = "";
