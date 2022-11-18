@@ -10,11 +10,6 @@ namespace IngameScript
 {
     static class Extensions
     {
-        /*public static bool IsAlive(this IMyTerminalBlock block)
-        {
-            return block.CubeGrid.GetCubeBlock(block.Position)?.FatBlock == block;
-        }*/
-
         public static bool IsConnected(this IMyThrust thruster)
         {
 
@@ -50,13 +45,6 @@ namespace IngameScript
             return STR.Split(new string[] { STR1, STR2 }, StringSplitOptions.RemoveEmptyEntries).Where(it => STR.Contains(STR1 + it + STR2)).ToList();
         }
 
-        /*public static Vector3D Project(this Vector3D a, Vector3D b)
-        {// projects a onto b
-            double aDotB = Vector3D.Dot(a, b);
-            double bDotB = Vector3D.Dot(b, b);
-            return b * aDotB / bDotB;
-        }*/
-
         public static double Clamp(this double val, double min, double max)
         {
             return MathHelper.Clamp(val, min, max);
@@ -80,11 +68,6 @@ namespace IngameScript
         public static bool FilterThis(this IMyTerminalBlock b, IMyTerminalBlock b1) => b.CubeGrid == b1.CubeGrid;
         public static void Brake(this IMyMotorStator rotor) => rotor.TargetVelocityRPM = 0;
         public static void Brake(this IMyThrust thruster) => thruster.ThrustOverridePercentage = 0;
-
-        /*public static Vector3D Reject(this Vector3D a, Vector3D b)
-        {
-            return Vector3D.Reject(a, b);
-        }*/
 
         public static Vector3D Normalized(this Vector3D vec)
         {

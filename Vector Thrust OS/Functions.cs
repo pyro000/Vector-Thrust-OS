@@ -58,35 +58,39 @@ namespace IngameScript
             }
         }
 
+        double displaygearaccel = 0;
+
         void GetAcceleration()
         {
             //TODO MAKE MULTIPLIER BY NUMBER OF THRUSTERS
 
             double gravtdefac = gravLength * defaultAccel;
-            double efectiveaccel = totaleffectivethrust/ myshipmass.BaseMass; //1.4675
-            rawgearaccel /= myshipmass.PhysicalMass;
+            double efectiveaccel = totaleffectivethrust/ myshipmass.BaseMass; //1.4675z
+            //rawgearaccel /= myshipmass.PhysicalMass;
 
             //getting max & gear accel
             gearaccel = efectiveaccel * Accelerations[gear] / 100;
-            rawgearaccel *= Accelerations[gear] / 100;
+            //rawgearaccel *= Accelerations[gear] / 100;
+            displaygearaccel = rawgearaccel * Accelerations[gear] / 100;
             maxaccel = efectiveaccel * Accelerations[Accelerations.Count - 1] / 100;
 
             double gravaccel = accelBase * gravtdefac;
             bool cond = mvin == 0 && !cruise && dampeners && sv > velprecisionmode && gearaccel > gravaccel;
             accel = mvin != 0 || cond ? gearaccel : gravaccel;
 
-            accel_aux = !thrustOn || almostbraked ? (float)rawgearaccel.Round(2) : (float)((shipVelocity - lastvelocity) * updatespersecond).Length();
+            accel_aux = !thrustOn || almostbraked ? (float)/*rawgearaccel*/displaygearaccel.Round(2) : (float)((shipVelocity - lastvelocity) * updatespersecond).Length();
         }
 
         //bool CanPrint() => pc % framesperprint == 0 || Runtime.UpdateFrequency != UpdateFrequency.Update1 || justCompiled;
 
-        void Printer()
+        void Printer(bool force)
         {
-            if (!tracker.CanPrint) return;
+            if (!tracker.CanPrint && !force) return;
 
             Echo(echosb.ToString());
             echosb.Clear();
-            WH.Process();
+
+            WH.Process(force);
             screensb.Clear();
 
             string cstr = mainController != null ? mainController.TheBlock.CustomName : "DEAD";
@@ -97,10 +101,10 @@ namespace IngameScript
                 echosb.AppendLine(rt);
                 screensb.AppendLine(rt);
             }
-            echosb.AppendLine("VT OS\n221132\n");
+            echosb.AppendLine("VT OS\n221133\n");
 
             if (greedy) echosb.AppendLine("WARNING, TAGS ARE NOT APPLIED\nAPPLY THEM WITH \"applytags\"\n");
-            echosb.AppendLine($" > Thrusters Total Precision: {totalVTThrprecision.Round(1)}%");
+            if (tgotTOV <= TOVval) echosb.AppendLine($" > Thrusters Total Precision: {totalVTThrprecision.Round(1)}%");
             echosb.AppendLine($" > Main/Ref Controller:\n  {cstr}");
             echosb.AppendLine($" > Runtime (MS):\n  {Runtime.LastRunTimeMs.Round(3)} / Avg: {tracker.AverageRuntime.Round(3)} / Max: {tracker.MaxRuntime.Round(3)}");
             if (SkipFrames > 0) echosb.AppendLine($" > Skipping {SkipFrames} Frames");
@@ -122,6 +126,7 @@ namespace IngameScript
             }
         }
 
+        bool changedruntime = false;
         bool SkipFrameHandler(string argument)
         {
             bool tagArg =
@@ -134,34 +139,21 @@ namespace IngameScript
             {
 
                 MainChecker.Run();//RUNS VARIOUS PROCESSES SEPARATED BY A TIMER
-                //Print($"A {Runtime.UpdateFrequency}");
 
-                //FOR SOME STUPID REASON PARKHANDLER IS SETTING UPDATE10 ALL THE TIME
+                //FOR SOME STUPID REASON PARKHANDLER IS SETTING UPDATE10 ALL THE TIME (Solved)
+                handlers = PerformanceHandler();
+                handlers = ParkHandler() || handlers;
+                if (!cruise) handlers = VTThrHandler() || handlers;
 
-                //bool notrun = argument.Equals("") /*&& !cruise && !dampchanged*/;
-                //if (notrun)
-                //{
-                    //Print($"1 {Runtime.UpdateFrequency}");
-                    handlers = PerformanceHandler();
-                    //Print($"2 {Runtime.UpdateFrequency}");
-                    handlers = ParkHandler() || handlers;
-                    //Print($"3 {Runtime.UpdateFrequency}");
-                    if (!cruise) handlers = VTThrHandler() || handlers;
-
-                    if (check && parkedcompletely && BlockManager.Doneloop && Runtime.UpdateFrequency != UpdateFrequency.Update1)
-                    {
-                        ChangeRuntime();
-                        //Print($"O {Runtime.UpdateFrequency}");
-                    }
-                    else if (!check && parkedcompletely && BlockManager.Doneloop && Runtime.UpdateFrequency == UpdateFrequency.Update1)
-                    {
-                        ChangeRuntime(PerformanceWhilePark && wgv == 0 ? 2 : 1);
-                        //Print($"E {Runtime.UpdateFrequency}");
-
-                    }
-                    //Print($"4 {Runtime.UpdateFrequency}");
-                //}
-                /*else*/ if (tagArg) MainTag(argument);
+                if (check && !changedruntime && parkedcompletely && BlockManager.Doneloop /*Runtime.UpdateFrequency != UpdateFrequency.Update1*/)
+                {
+                    ChangeRuntime();
+                }
+                else if (changedruntime && !check && parkedcompletely && BlockManager.Doneloop /*Runtime.UpdateFrequency == UpdateFrequency.Update1*/)
+                {
+                    ChangeRuntime(PerformanceWhilePark && wgv == 0 ? 2 : 1);
+                }
+                if (tagArg) MainTag(argument);
             }
             if (error)
             {
@@ -173,22 +165,6 @@ namespace IngameScript
                 ShutOffVTS();
                 return true;
             }
-            /*else if (handlers)
-            {
-                if (CanPrint())
-                {
-                    echosb.AppendLine("Required Force: ---N");
-                    echosb.AppendLine("Total Force: ---N\n");
-                    echosb = _RuntimeTracker.Append(echosb);
-
-                    if (ShowMetrics)
-                    {
-                        echosb.AppendLine("--- Log ---");
-                        echosb.Append(log);
-                    }
-                }
-                _RuntimeTracker.AddInstructions();
-            }*/
             return handlers;
         }
         void ShutDown()
@@ -437,36 +413,32 @@ namespace IngameScript
             return onlyMainCockpit && mainController != null && mainController.TheBlock.IsUnderControl;
         }
 
-        //bool doneunstop = false;
         double tgotTOV = 0;
-
 
         bool VTThrHandler()
         {
             bool nograv = wgv == 0;
             bool unparking = !parked && alreadyparked;
             bool partiallyparked = parked && alreadyparked;
-            bool standby = (nograv || partiallyparked) && tgotTOV > 0.25 && setTOV && !thrustOn && mvin == 0 && !dampchanged;
+            bool standby = (nograv || partiallyparked) && tgotTOV > TOVval && setTOV && !thrustOn && mvin == 0 && !dampchanged;
 
-            if (!thrustOn && totalVTThrprecision.Round(1) == 100 && tgotTOV <= 0.25) tgotTOV += Runtime.TimeSinceLastRun.TotalSeconds;
+            if (!thrustOn && totalVTThrprecision.Round(1) == 100 && tgotTOV <= TOVval) tgotTOV += Runtime.TimeSinceLastRun.TotalSeconds;
             else if (thrustOn) tgotTOV = 0;
 
             if (standby || parkedcompletely)
             {
                 if (tracker.CanPrint) echosb.AppendLine("\nEverything stopped, performance mode.\n");
                 rotorsstopped = rotorsstopped || vtrotors.All(x => x.TargetVelocityRPM == 0) && vtthrusters.All(x => !x.Enabled && x.ThrustOverridePercentage == 0);
-                //doneunstop = true;
 
                 if (!rotorsstopped) ShutOffVTS();
                 return true;
             }
-            else if (((rotorsstopped && setTOV) || unparking/* || dampchanged*/)/* && doneunstop*/) // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
+            else if ((rotorsstopped && setTOV) || unparking) // IT NEEDS TO BE UNPARKING INSTEAD OF TOTALLY UNPARKED
             {
                 setTOV = rotorsstopped = false;
 
                 foreach (VectorThrust n in vectorthrusters)
                     n.ActiveList(Override: true);
-                //doneunstop = !vtthrusters.All(x => x.Enabled);
             }
             return rotorsstopped;
         }
@@ -488,7 +460,7 @@ namespace IngameScript
         }
 
         bool forceunpark = false;
-
+        const double TOVval = 0.25;
 
         bool ParkHandler()
         {
@@ -511,7 +483,7 @@ namespace IngameScript
             if (unparkedcompletely) return false;
 
             bool setvector = parked && alreadyparked && setTOV;
-            bool gotvector = totalVTThrprecision.Round(1) == 100 && tgotTOV > 0.25;
+            bool gotvector = totalVTThrprecision.Round(1) == 100 && tgotTOV > TOVval;
             parkedcompletely = setvector && gotvector;
 
             bool pendingrotation = setvector && !gotvector;
@@ -530,27 +502,6 @@ namespace IngameScript
             if (unparkedcompletely) forceunpark = false;
             return parkedcompletely;
         }
-
-        /*string Spinner = "";
-
-        void GenSpinner()
-        {
-            switch (pc / 10 % 4)
-            {
-                case 0:
-                    Spinner = "|";
-                    break;
-                case 1:
-                    Spinner = "\\";
-                    break;
-                case 2:
-                    Spinner = "-";
-                    break;
-                case 3:
-                    Spinner = "/";
-                    break;
-            }
-        }*/
 
         bool AddSurfaceProvider(IMyTerminalBlock block)
         {
@@ -895,7 +846,7 @@ namespace IngameScript
 
         bool EndBM(bool scanned, bool changedruntime)
         {
-            if (scanned && parked)
+            if (scanned && parked && !BlockManager.Doneloop)
             {
                 BlockManager.Doneloop = true;
                 ChangeRuntime(PerformanceWhilePark && wgv == 0 && !changedruntime ? 2 : 1);
@@ -916,7 +867,6 @@ namespace IngameScript
                 case 2: Runtime.UpdateFrequency = UpdateFrequency.Update100; break;
                 case 3: Runtime.UpdateFrequency = UpdateFrequency.Once; break;
                 case 4: Runtime.UpdateFrequency = UpdateFrequency.None; break;
-                //case 5: Runtime.UpdateFrequency = update_frequency;  break;
             };
         }
     }

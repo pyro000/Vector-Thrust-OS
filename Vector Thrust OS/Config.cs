@@ -11,7 +11,6 @@ namespace IngameScript
         // ------- Default configs --------
 
         string myName = "VT";
-        //double TimeForRefresh = 10;
         List<double> Aggressivity = new List<double> { 0.1, 1, 4 };
         float ErrorMargin = 6f;
         double lowThrustCutOn = 0.5;
@@ -46,8 +45,6 @@ namespace IngameScript
         bool stockvalues = true;
         bool onlyMainCockpit = false;
 
-        //bool EnDebugAPI = false;
-
         // ------- End default configs ---------
 
         // START CONFIG STRINGS AND VARS
@@ -71,7 +68,6 @@ namespace IngameScript
         const string lowThrustCutStr = "Velocity To Turn On/Off VectorThrusters";
         const string lowThrustCutCruiseStr = "Velocity To Turn On/Off VectorThrusters In Cruise";
         const string velprecisionmodestr = "Velocity To Trigger Presision Mode";
-        //const string divisoridstr = "Divisor ID";
 
         const string AccelerationsStr = "Accelerations (Total Thrust %)";
 
@@ -89,7 +85,6 @@ namespace IngameScript
         const string cruisePlaneStr = "Cruise Mode Act Like Plane";
         const string FramesBetweenActionsStr = "Frames Per Operation: Task Splitter";
         const string ShowMetricsStr = "Show Metrics";
-        //const string TimeForRefreshStr = "Time For Each Refresh";
         const string SkipFramesStr = "Skip Frames";
         const string framesperprintStr = "Frames Where The Script Won't Print";
         const string stockvaluesStr = "Set Park Blocks/Normal Thrusters to Default (Recompile)";
@@ -107,7 +102,6 @@ namespace IngameScript
         const string DampreticuleSensStr = "Dampeners Arrow Trigger Multiplier"; // How far it needs to be from the center to trigger arrow mode while in dampeners
 
         const string controlModuleStr = "Allow Control Module Mod";
-        //const string EnDebugAPIStr = "Enable DebugAPI Mod";
         // END STRINGS AND VARS
 
 
@@ -125,7 +119,6 @@ namespace IngameScript
                 if (string.IsNullOrEmpty(myName))
                 {
                     myName = "VT";
-                    //force = true;
                 }
                 textSurfaceKeyword = $"{myName}:";
                 LCDName = $"{myName}LCD";
@@ -145,7 +138,6 @@ namespace IngameScript
                 }
                 else
                 {
-                    //force = true;
                     tagSurround = new string[] { "|", "|" };
                 }
 
@@ -200,15 +192,15 @@ namespace IngameScript
                     FramesBetweenActions = 1;
                 }
                 timepause = FramesBetweenActions * timeperframe;
+
+                framesperprint = config.Get(advancedstr, framesperprintStr).ToInt32(framesperprint);
+
                 SkipFrames = config.Get(advancedstr, SkipFramesStr).ToInt32(SkipFrames);
                 stockvalues = config.Get(advancedstr, stockvaluesStr).ToBoolean(stockvalues);
 
-                framesperprint = config.Get(configstr, framesperprintStr).ToInt32(framesperprint);
+                //framesperprint = config.Get(configstr, framesperprintStr).ToInt32(framesperprint);
                 ShowMetrics = config.Get(configstr, ShowMetricsStr).ToBoolean(ShowMetrics);
                 controlModule = config.Get(configstr, controlModuleStr).ToBoolean(controlModule);
-                //bool newedapi = config.Get(configstr, EnDebugAPIStr).ToBoolean(EnDebugAPI);
-                //if (!newedapi && !newedapi.Equals(EnDebugAPI)) Debug.RemoveDraw();
-                //EnDebugAPI = newedapi;
             }
 
             SetConfig();
@@ -265,13 +257,15 @@ namespace IngameScript
 
             config.Set(advancedstr, cruisePlaneStr, cruisePlane);
             config.Set(advancedstr, FramesBetweenActionsStr, FramesBetweenActions);
+
+            config.Set(advancedstr, framesperprintStr, framesperprint);
+
             config.Set(advancedstr, SkipFramesStr, SkipFrames);
             config.Set(advancedstr, stockvaluesStr, stockvalues);
 
-            config.Set(configstr, framesperprintStr, framesperprint);
+            //config.Set(configstr, framesperprintStr, framesperprint);
             config.Set(configstr, ShowMetricsStr, ShowMetrics);
             config.Set(configstr, controlModuleStr, controlModule);
-            //config.Set(configstr, EnDebugAPIStr, EnDebugAPI);
         }
 
         string savedconfig = "";

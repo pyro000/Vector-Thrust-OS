@@ -41,15 +41,11 @@ namespace IngameScript
             // final calculations and setting physical components
             public void Go()
             {
-                // 0.08 189
                 double angleCos = rotor.Point(requiredVec);
 
                 // the clipping value 'thrustModifier' defines how far the rotor can be away from the desired direction of thrust, and have the power still at max
                 // if 'thrustModifier' is at 1, the thruster will be at full desired power when it is at 90 degrees from the direction of travel
                 // if 'thrustModifier' is at 0, the thruster will only be at full desired power when it is exactly at the direction of travel, (it's never exactly in-line)
-
-                //double abo = MathHelper.Clamp(p.thrustermodifier, 0, 1);
-                //double bel = abo;
 
                 double tmod = MathHelper.Clamp(p.thrustermodifier, 0, 1); //Temporal
 
@@ -61,7 +57,6 @@ namespace IngameScript
                 //set the thrust for each engine
                 foreach (Thruster thruster in activeThrusters)
                 {
-
 
                     Vector3D thrust = (thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust);// + p.residuethrust;
                     bool noThrust = thrust.LengthSquared() < 0.001f || (p.wgv == 0 && angleCos < 0.85);
@@ -131,36 +126,6 @@ namespace IngameScript
                 }
                 return totalEffectiveThrust;
             }
-
-            /*string GetVTThrRole(Program p)
-            {
-                string result = "";
-                List<Base6Directions.Axis> cdirs = p.mainController.Directions;
-                List<Base6Directions.Axis> rdirs = rotor.Directions;
-
-                for (int i = 0; i < cdirs.Count; i++)
-                {
-                    if (cdirs[i] == rdirs[1])
-                    {
-                        switch (i)
-                        {
-                            case 0:
-                                //Echo("front/back mounted, rotor covers cockpit's up/down/left/right");
-                                result = "UDLR";
-                                break;
-                            case 1:
-                                result = "FBLR";
-                                //Echo("top/bottom mounted, rotor covers cockpit's forward/back/left/right");
-                                break;
-                            case 2:
-                                result = "FBUD";
-                                //Echo("side mounted, rotor covers cockpit's forward/back/up/down");
-                                break;
-                        }
-                    }
-                }
-                return result;
-            }*/
 
             //true if all thrusters are good
             public bool ValidateThrusters()

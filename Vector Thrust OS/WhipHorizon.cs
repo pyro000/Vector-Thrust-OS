@@ -82,6 +82,7 @@ namespace IngameScript
             bool CollisionWarning = false;
             bool lastCollisionWarning = false;
             bool showpullup = false;
+            bool printedpark = false;
 
             readonly string[] _axisIcon = new string[3];
             readonly CircularBuffer<double> velbuffer = new CircularBuffer<double>(5);
@@ -91,18 +92,18 @@ namespace IngameScript
                 this.p = p;
             }
 
-            public void Process()
+            public void Process(bool force)
             {
-                Calculate();
-                Draw();
+                Calculate(force);
+                Draw(force);
             }
 
-            void Calculate()
+            void Calculate(bool force)
             {
+                if (printedpark && !force) return;
 
-                if ((p.mvin == 0 && (!p.almostbraked/* || !Vector3D.IsZero(p.shipVelocity, 1e-2)*/)) || p.mvin != 0)
+                if ((p.mvin == 0 && !p.almostbraked) || p.mvin != 0)
                 {
-                    //p.Print($"HUH? {p.almostbraked} {!Vector3D.IsZero(p.shipVelocity, 1e-2)}");
                     Vector3D velocityNorm = p.shipVelocity;
                     speed = (float)velocityNorm.Normalize();
                     Vector3D localVelocity = Vector3D.Rotate(velocityNorm, MatrixD.Transpose(p.mainController.TheBlock.WorldMatrix));
@@ -126,31 +127,36 @@ namespace IngameScript
                 //if (outofscreen) CalculateArrowParameters(reference); moved due to incorrect arrow direction
             }
 
-            void Draw()
+            void Draw(bool force)
             {
                 foreach (IMyTextSurface s in Surfaces)
                 {
+                    bool changedetected = p.SetupDrawSurface(s);
+                    bool cond = p.screensb.Length == 0 && ((p.parkedcompletely && p.BlockManager.Doneloop) || p.isstation || (p.trulyparked && !p.parked) || (p.wgv == 0 && p.tgotTOV > TOVval && !p.parked && !p.trulyparked));
+
+                    if (cond && printedpark && !changedetected && !force) return;
+
+                    printedpark = cond && !force;
+
                     RectangleF _viewport_s = new RectangleF(
                         (s.TextureSize - s.SurfaceSize) / 2f,
                         s.SurfaceSize
                      );
 
+                    Vector2 surfaceSize = s.TextureSize;
+                    Vector2 screenCenter = surfaceSize * 0.5f;
+                    Vector2 avgViewportSize = s.SurfaceSize - 12f;
+                    float minSideLength = Math.Min(avgViewportSize.X, avgViewportSize.Y);
+                    Vector2 squareViewportSize = new Vector2(minSideLength, minSideLength);
+                    Vector2 scaleVec = (surfaceSize + avgViewportSize) * 0.5f / 512f;
+                    float minScale = Math.Min(scaleVec.X, scaleVec.Y);
+
+                    float progressbarsize = 1.45f;
+                    float positionpbar = _viewport_s.Y + _viewport_s.Height - progressbarsize * minScale * 20;
+                    float positionbar2 = positionpbar - progressbarsize * minScale * 25;
+
                     using (var frame = s.DrawFrame())
                     {
-                        p.SetupDrawSurface(s);
-
-                        Vector2 surfaceSize = s.TextureSize;
-                        Vector2 screenCenter = surfaceSize * 0.5f;
-                        Vector2 avgViewportSize = s.SurfaceSize - 12f;
-                        float minSideLength = Math.Min(avgViewportSize.X, avgViewportSize.Y);
-                        Vector2 squareViewportSize = new Vector2(minSideLength, minSideLength);
-                        Vector2 scaleVec = (surfaceSize + avgViewportSize) * 0.5f / 512f;
-                        float minScale = Math.Min(scaleVec.X, scaleVec.Y);
-
-                        float progressbarsize = 1.45f;
-                        float positionpbar = _viewport_s.Y + _viewport_s.Height - progressbarsize * minScale * 20;
-                        float positionbar2 = positionpbar - progressbarsize * minScale * 25;
-
                         if (!p.parked && !p.trulyparked)
                         {
                             float sign = movingbackwards ? -1 : 1;
@@ -269,13 +275,14 @@ namespace IngameScript
                             Loading(frame, LoadingPos, minScale * 2, 1.2f);
                         } //UNPARKING
 
-                        if (((p.parked && p.alreadyparked) || p.trulyparked) && p.setTOV && (p.totalVTThrprecision.Round(1) != 100 || p.tgotTOV <= 0.25))
+                        if (((p.parked && p.alreadyparked) || p.trulyparked) && p.setTOV && (p.totalVTThrprecision.Round(1) != 100 || p.tgotTOV <= TOVval))
                         {
                             if (p.isstation)
                             {
                                 Write("STATION MODE", frame, BTextBox, minScale * 3.5f);
                             }
-                            else { 
+                            else
+                            {
                                 Write("PARKING", frame, LTextPos, minScale * 2);
                                 Loading(frame, LoadingPos, minScale * 2, 0.5f);
                             }
@@ -284,7 +291,6 @@ namespace IngameScript
                         {
                             Write("(NOT) PARKED", frame, BTextBox, minScale * 3f);
                         }
-
 
                         Write(p.screensb.ToString(), frame, PrinterPos, minScale);
 
@@ -660,7 +666,7 @@ namespace IngameScript
                 }); // text2
             }
 
-            void DrawProgressBar(MySpriteDrawFrame frame, Vector2 centerPos, float percentage, float scale = 1f, bool center = true, Color? color = null, Color ? barcolor = null, Color ? background = null)
+            void DrawProgressBar(MySpriteDrawFrame frame, Vector2 centerPos, float percentage, float scale = 1f, bool center = true, Color? color = null, Color? barcolor = null, Color? background = null)
             {
                 Vector2 pos = center ? new Vector2(centerPos.X - (200f * scale / 2.25f), centerPos.Y) : centerPos;
                 TextAlignment ta = center ? TextAlignment.LEFT : TextAlignment.CENTER;
@@ -850,7 +856,7 @@ namespace IngameScript
                     RotationOrScale = loading_rotation2
                 }); // sprite2Copy
 
-                //360º
+                //360
                 speed *= 0.0125f;
 
                 loading_rotation += speed * 3 - MathHelper.TwoPi;
@@ -1016,17 +1022,26 @@ namespace IngameScript
         }
         #endregion
 
-        public void SetupDrawSurface(IMyTextSurface surface, Color? color = null)
+        public bool SetupDrawSurface(IMyTextSurface surface, Color? color = null)
         {
+            bool changedetected = false;
             color = color ?? new Color(0, 0, 0, 255);
-            // Draw background color
-            surface.ScriptBackgroundColor = (Color)color;
 
-            // Set content type
-            surface.ContentType = ContentType.SCRIPT;
+            if (color != surface.ScriptBackgroundColor || surface.ContentType != ContentType.SCRIPT || surface.Script.Length != 0)
+            {
 
-            // Set script to none
-            surface.Script = "";
+                // Draw background color
+                surface.ScriptBackgroundColor = (Color)color;
+
+                // Set content type
+                surface.ContentType = ContentType.SCRIPT;
+
+                // Set script to none
+                surface.Script = "";
+
+                changedetected = true;
+            }
+            return changedetected;
         }
 
         #region Circular Buffer
