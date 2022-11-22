@@ -311,8 +311,13 @@ namespace IngameScript
                 }
 
                 float val = (float)(thrust * TheBlock.MaxThrust / TheBlock.MaxEffectiveThrust);
-                if ((val != 0 &&  (val - prevOv).Abs() < TheBlock.MaxEffectiveThrust * 1 / 100) || (val == 0 && prevOv == 0)) return;
 
+                //p.Print($"{(val.Abs() - prevOv.Abs()).Abs().Truncate(4)} {(val.Abs() - prevOv.Abs()).Abs().Truncate(4)/TheBlock.MaxThrust}");
+
+                if ((val != 0 && (val.Abs() - prevOv.Abs()).Abs().Truncate(4) / TheBlock.MaxThrust < 0.0075) || (val == 0 && prevOv == 0)) {
+                    return; 
+                }
+                //p.echosb.AppendLine("bt");
                 TheBlock.ThrustOverride = prevOv = val;
             }
         }
@@ -378,8 +383,8 @@ namespace IngameScript
                 float result = (float)pid.Control(angle);
 
 
-                ///If it's a hinge, and the RPM is the maximum possible, and the cos of angle is -1 (the most far distance), 
-                ///it'll asume that hinge is stuck in one of the limits
+                //If it's a hinge, and the RPM is the maximum possible, and the cos of angle is -1 (the most far distance), 
+                //it'll asume that hinge is stuck in one of the limits
                 if (IsHinge)
                 {
 
@@ -395,10 +400,13 @@ namespace IngameScript
                         ErrCount = 0;
                     }
                 }
+                //p.Print($"{(result.Abs() - prevTar.Abs()).Abs().Truncate(4)}");
 
-                //p.Print($"{(result - prevTar).Abs().Round(2)}");
-
-                if ((result - prevTar).Abs() < 0.09 || (prevTar == 0 && result == 0)) return angleCos; 
+                if ((result.Abs() - prevTar.Abs()).Abs() < 0.03 || (prevTar == 0 && result == 0)) {
+                    return angleCos;
+                    
+                }
+                //p.echosb.AppendLine("br");
 
                 TheBlock.TargetVelocityRad = prevTar = result;
 

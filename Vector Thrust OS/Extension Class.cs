@@ -16,11 +16,20 @@ namespace IngameScript
             return thruster.IsWorking || (!thruster.IsWorking && (!thruster.Enabled || !thruster.IsFunctional));
         }
 
-        public static void GetList<T>(this MyIni config, ref List<T> inp, string section, string key, Func<bool> cond)
-        {
-            List<T> prev = new List<T>(inp);
-            inp = new List<T>();
+        public static double Truncate(this double n, int d) {
+            double pow = Math.Pow(10, d);
+            return Math.Truncate(n * pow) / pow;
+        }
 
+        public static float Truncate(this float n, int d)
+        {
+            double pow = Math.Pow(10, d);
+            return (float)(Math.Truncate(n * pow) / pow);
+        }
+
+        public static List<T> GetList<T>(this MyIni config, string section, string key)
+        {
+            List<T> result = new List<T>();
             try
             {
                 string temp = config.Get(section, key).ToString();
@@ -28,15 +37,11 @@ namespace IngameScript
 
                 foreach (string t in temp1)
                 {
-                    inp.Add((T)Convert.ChangeType(t, typeof(T)));
+                    result.Add((T)Convert.ChangeType(t, typeof(T)));
                 }
-
-                if (!cond()) inp = prev;
             }
-            catch
-            {
-                inp = prev;
-            }
+            catch {}
+            return result;
         }
 
         public static List<string> Between(this string STR, string STR1, string STR2 = "")

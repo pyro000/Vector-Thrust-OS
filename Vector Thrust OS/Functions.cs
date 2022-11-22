@@ -11,6 +11,10 @@ namespace IngameScript
 {
     partial class Program
     {
+        void LClone<T>(ref List<T> list, List<T> listc) {
+            list = new List<T>(listc);
+        }
+
         void ParkVector(ref Vector3D requiredVec, float shipmass)
         {
             if (thrustOn) return;
@@ -101,7 +105,7 @@ namespace IngameScript
                 echosb.AppendLine(rt);
                 screensb.AppendLine(rt);
             }
-            echosb.AppendLine("VT OS\n221133\n");
+            echosb.AppendLine("VT OS\n22114\n");
 
             if (greedy) echosb.AppendLine("WARNING, TAGS ARE NOT APPLIED\nAPPLY THEM WITH \"applytags\"\n");
             if (tgotTOV <= TOVval) echosb.AppendLine($" > Thrusters Total Precision: {totalVTThrprecision.Round(1)}%");

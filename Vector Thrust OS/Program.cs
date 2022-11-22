@@ -241,6 +241,7 @@ namespace IngameScript
             // END NECESARY INFORMATION
 
             //_RuntimeTracker.RegisterAction("Action");
+            //echosb.AppendLine($"{tracker.CanPrint} {tracker.LastRuntime.Truncate(2)}");
 
             // SKIPFRAME AND PERFORMANCE HANDLER: handler to skip frames, it passes out if the player doesn't parse any command or do something relevant.
             CheckWeight(); //Block Updater must-have

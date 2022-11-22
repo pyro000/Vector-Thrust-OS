@@ -82,7 +82,8 @@ namespace IngameScript
             bool CollisionWarning = false;
             bool lastCollisionWarning = false;
             bool showpullup = false;
-            bool printedpark = false;
+            int printedpark = 0;
+            readonly int maxprpk = 4;
 
             readonly string[] _axisIcon = new string[3];
             readonly CircularBuffer<double> velbuffer = new CircularBuffer<double>(5);
@@ -100,7 +101,7 @@ namespace IngameScript
 
             void Calculate(bool force)
             {
-                if (printedpark && !force) return;
+                if (printedpark > maxprpk && !force) return;
 
                 if ((p.mvin == 0 && !p.almostbraked) || p.mvin != 0)
                 {
@@ -132,11 +133,14 @@ namespace IngameScript
                 foreach (IMyTextSurface s in Surfaces)
                 {
                     bool changedetected = p.SetupDrawSurface(s);
-                    bool cond = p.screensb.Length == 0 && ((p.parkedcompletely && p.BlockManager.Doneloop) || p.isstation || (p.trulyparked && !p.parked) || (p.wgv == 0 && p.tgotTOV > TOVval && !p.parked && !p.trulyparked));
 
-                    if (cond && printedpark && !changedetected && !force) return;
+                    bool cond = p.screensb.Length == 0 && ((p.parkedcompletely && p.BlockManager.Doneloop) || p.isstation || (p.trulyparked && !p.parked && p.tgotTOV > TOVval) || (p.wgv == 0 && p.tgotTOV > TOVval && !p.parked && !p.trulyparked));
+                    bool cond1 = cond && printedpark > maxprpk;
 
-                    printedpark = cond && !force;
+                    if (cond1 && !changedetected && !force) return;
+
+                    if (cond && !force) printedpark++;
+                    else printedpark = 0;
 
                     RectangleF _viewport_s = new RectangleF(
                         (s.TextureSize - s.SurfaceSize) / 2f,
@@ -155,20 +159,22 @@ namespace IngameScript
                     float positionpbar = _viewport_s.Y + _viewport_s.Height - progressbarsize * minScale * 20;
                     float positionbar2 = positionpbar - progressbarsize * minScale * 25;
 
+                    float sign = movingbackwards ? -1 : 1;
+
+                    Vector2 velwh = squareViewportSize * flatennedvelocity * sign * ReticuleSens;
+                    double farfromcenter = velwh.Length();
+                    Vector2 velpos = screenCenter + velwh;
+                    float minscreenCenter = Math.Min(screenCenter.X, screenCenter.Y);
+                    float mindampSens = minSideLength / 2 * DampreticuleSens;
+
+                    outofscreen = farfromcenter > minSideLength / 2 || !p.dampeners && farfromcenter > mindampSens ||
+                                ((velpos - screenCenter).Y > 0 && velpos.Y > positionbar2);
+
                     using (var frame = s.DrawFrame())
                     {
                         if (!p.parked && !p.trulyparked)
                         {
-                            float sign = movingbackwards ? -1 : 1;
-
-                            Vector2 velwh = squareViewportSize * flatennedvelocity * sign * ReticuleSens;
-                            double farfromcenter = velwh.Length();
-                            Vector2 velpos = screenCenter + velwh;
-                            float minscreenCenter = Math.Min(screenCenter.X, screenCenter.Y);
-                            float mindampSens = minSideLength / 2 * DampreticuleSens;
-
-                            outofscreen = farfromcenter > minSideLength / 2 || !p.dampeners && farfromcenter > mindampSens ||
-                                ((velpos - screenCenter).Y > 0 && velpos.Y > positionbar2);
+                            
 
                             if (ingravity) DrawArtificialHorizon(frame, screenCenter, minScale, minSideLength);
                             if (outofscreen)

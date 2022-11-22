@@ -143,22 +143,30 @@ namespace IngameScript
 
                 ManageTag(); // Just after checking
 
-                config.GetList<double>(ref Aggressivity, detectstr, AggressivityStr, () => Aggressivity.Count == 3);
+                var tlist = config.GetList<double>(detectstr, AggressivityStr);
+                if (tlist.Count == 3) LClone<double>(ref Aggressivity, tlist);
 
                 ErrorMargin = config.Get(detectstr, ErrorMarginStr).ToSingle(ErrorMargin);
                 velprecisionmode = config.Get(detectstr, velprecisionmodestr).ToDouble(velprecisionmode);
 
-                List<double> temp1 = new List<double>();
-                config.GetList<double>(ref temp1, detectstr, lowThrustCutStr, () => temp1.Count == 2);
-                lowThrustCutOn = temp1[0];
-                lowThrustCutOff = temp1[1];
+                tlist = new List<double>(config.GetList<double>(detectstr, lowThrustCutStr));
+                if (tlist.Count == 2) 
+                {
+                    lowThrustCutOn = tlist[0];
+                    lowThrustCutOff = tlist[1];
+                }
 
-                temp1 = new List<double>();
-                config.GetList<double>(ref temp1, detectstr, lowThrustCutCruiseStr, () => temp1.Count == 2);
-                lowThrustCutCruiseOn = temp1[0];
-                lowThrustCutCruiseOff = temp1[1];
+                tlist = new List<double>(config.GetList<double>(detectstr, lowThrustCutCruiseStr));
+                if (tlist.Count == 2)
+                {
+                    lowThrustCutCruiseOn = tlist[0];
+                    lowThrustCutCruiseOff = tlist[1];
+                }
 
-                config.GetList<double>(ref Accelerations, accelstr, AccelerationsStr, () => Accelerations.Count > 1 && Accelerations.All(x => x > 0));
+                tlist = new List<double>(config.GetList<double>(accelstr, AccelerationsStr));
+                if (tlist.Count > 1 && tlist.All(x => x > 0)) LClone<double>(ref Accelerations, tlist);
+                if (gear > Accelerations.Count - 1) gear = Accelerations.Count - 1;
+
 
                 TurnOffThrustersOnPark = config.Get(parkstr, TurnOffThrustersOnParkStr).ToBoolean(TurnOffThrustersOnPark);
                 RechargeOnPark = config.Get(parkstr, RechargeOnParkStr).ToBoolean(RechargeOnPark);
@@ -168,7 +176,8 @@ namespace IngameScript
                 forceparkifstatic = config.Get(parkstr, forceparkifstaticStr).ToBoolean(forceparkifstatic);
                 PerformanceWhilePark = config.Get(parkstr, PerformanceWhileParkStr).ToBoolean(PerformanceWhilePark);
 
-                config.GetList<double>(ref thrdirmultiplier, parkstr, thrdirmultiplierStr, () => thrdirmultiplier.Count == 3);
+                tlist = new List<double>(config.GetList<double>(parkstr, thrdirmultiplierStr));
+                if (tlist.Count == 3) LClone<double>(ref thrdirmultiplier, tlist);
 
                 thrdiroverride = config.Get(parkstr, thrdiroverrideStr).ToBoolean(thrdiroverride);
 
