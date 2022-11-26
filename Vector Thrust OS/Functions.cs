@@ -86,6 +86,7 @@ namespace IngameScript
         }
 
         //bool CanPrint() => pc % framesperprint == 0 || Runtime.UpdateFrequency != UpdateFrequency.Update1 || justCompiled;
+        //int scount = 0;
 
         void Printer(bool force)
         {
@@ -95,7 +96,10 @@ namespace IngameScript
             echosb.Clear();
 
             WH.Process(force);
+            //scount = surfaces.Count;
+
             screensb.Clear();
+
 
             string cstr = mainController != null ? mainController.TheBlock.CustomName : "DEAD";
 
@@ -105,7 +109,7 @@ namespace IngameScript
                 echosb.AppendLine(rt);
                 screensb.AppendLine(rt);
             }
-            echosb.AppendLine("VT OS\n22114\n");
+            echosb.AppendLine("VT OS\n22115\n");
 
             if (greedy) echosb.AppendLine("WARNING, TAGS ARE NOT APPLIED\nAPPLY THEM WITH \"applytags\"\n");
             if (tgotTOV <= TOVval) echosb.AppendLine($" > Thrusters Total Precision: {totalVTThrprecision.Round(1)}%");
@@ -149,14 +153,7 @@ namespace IngameScript
                 handlers = ParkHandler() || handlers;
                 if (!cruise) handlers = VTThrHandler() || handlers;
 
-                if (check && !changedruntime && parkedcompletely && BlockManager.Doneloop /*Runtime.UpdateFrequency != UpdateFrequency.Update1*/)
-                {
-                    ChangeRuntime();
-                }
-                else if (changedruntime && !check && parkedcompletely && BlockManager.Doneloop /*Runtime.UpdateFrequency == UpdateFrequency.Update1*/)
-                {
-                    ChangeRuntime(PerformanceWhilePark && wgv == 0 ? 2 : 1);
-                }
+                
                 if (tagArg) MainTag(argument);
             }
             if (error)
@@ -590,13 +587,17 @@ namespace IngameScript
 
             for (int i = 0; i < to_add.Length; i++)
             {
-                if (to_add[i] && !this.surfaces.Contains(provider.GetSurface(i)))
+                if (to_add[i] && !this.surfaces./*Contains*/Any(x => x.surface.Equals(provider.GetSurface(i))))
                 {
-                    this.surfaces.Add(provider.GetSurface(i));
+                    this.surfaces.Add(new Surface(provider.GetSurface(i), this));
                 }
                 else if (!to_add[i])
                 {
-                    RemoveSurface(provider.GetSurface(i));
+                    
+                    List<Surface> tempsurf = surfaces.FindAll(x => x.surface.Equals(provider.GetSurface(i)));
+                    foreach (Surface s in tempsurf) {
+                        RemoveSurface(s);
+                    }
                 }
             }
             return retval;
@@ -608,21 +609,46 @@ namespace IngameScript
 
             for (int i = 0; i < provider.SurfaceCount; i++)
             {
-                if (surfaces.Contains(provider.GetSurface(i)))
+                if (surfaces./*Contains*/Any(x => x.surface.Equals(provider.GetSurface(i))))
                 {
-                    RemoveSurface(provider.GetSurface(i));
+                    List<Surface> tempsurf = surfaces.FindAll(x => x.surface.Equals(provider.GetSurface(i)));
+                    foreach (Surface s in tempsurf)
+                    {
+                        RemoveSurface(s);
+                    }
                 }
             }
             return true;
         }
 
-        void RemoveSurface(IMyTextSurface surface)
+        void RemoveSurface(/*IMyTextSurface*/Surface surface)
         {
-            if (this.surfaces.Contains(surface))
+            if (this.surfaces./*Contains*/Any(x => x.surface.Equals(surface)))
             {
                 //need to check this, because otherwise it will reset panels
                 //we aren't controlling
                 this.surfaces.Remove(surface);
+                surface.surface.ContentType = ContentType.NONE;
+                surface.surface.WriteText("", false);
+            }
+        }
+
+        void RemoveSurface(/*IMyTextSurface*/IMyTextPanel surface)
+        {
+            //TODO : OPTIMIZE THIS
+
+            if (this.surfaces./*Contains*/Any(x => x.surface.Equals(surface)))
+            {
+                //need to check this, because otherwise it will reset panels
+                //we aren't controlling
+
+                List<Surface> tempsurf = surfaces.FindAll(x => x.surface.Equals(surface));
+                foreach (Surface s in tempsurf)
+                {
+                    RemoveSurface(s);
+                }
+
+                //this.surfaces.Remove(surface);
                 surface.ContentType = ContentType.NONE;
                 surface.WriteText("", false);
             }
@@ -859,6 +885,18 @@ namespace IngameScript
             {
                 parkedwithcn = alreadyparked = false;
             }
+
+            if (check && !this.changedruntime && parkedcompletely /*&& BlockManager.Doneloop /*Runtime.UpdateFrequency != UpdateFrequency.Update1*/)
+            {
+                ChangeRuntime();
+                this.changedruntime = true;
+            }
+            else if (this.changedruntime && !check && parkedcompletely /*&& BlockManager.Doneloop /*Runtime.UpdateFrequency == UpdateFrequency.Update1*/)
+            {
+                ChangeRuntime(PerformanceWhilePark && wgv == 0 ? 2 : 1);
+                this.changedruntime = false;
+            }
+
             return true;
         }
 

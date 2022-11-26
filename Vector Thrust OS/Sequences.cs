@@ -52,13 +52,21 @@ namespace IngameScript
 
                 foreach (IMyTextPanel screen in this.screens)
                 {
-                    bool cond1 = surfaces.Contains(screen);
+                    bool cond1 = surfaces./*Contains*/Any(x => x.surface.Equals(screen));
                     bool cond2 = screen.IsWorking;
                     bool cond3 = screen.CustomName.ToLower().Contains(LCDName.ToLower());
                     bool cond4 = screen.Closed;
 
-                    if (!cond1 && cond2 && cond3) surfaces.Add(screen);
-                    else if (cond1 && (!cond2 || !cond3 || cond4)) surfaces.Remove(screen);
+                    if (!cond1 && cond2 && cond3) surfaces.Add(new Surface(screen, this));
+                    else if (cond1 && (!cond2 || !cond3 || cond4)) { 
+                        //surfaces.Remove(screen);
+
+                        List<Surface> tempsurf = surfaces.FindAll(x => x.surface.Equals(screen));
+                        foreach (Surface s in tempsurf)
+                        {
+                            surfaces.Remove(s);
+                        }
+                    }
 
                     if (pauseseq) yield return timepause;
                 }

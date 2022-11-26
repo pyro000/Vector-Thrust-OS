@@ -8,6 +8,99 @@ namespace IngameScript
 {
     partial class Program
     {
+
+        
+        class Surface
+        {
+            public IMyTextSurface surface;
+
+            public RectangleF viewport_s { get; }
+            public Vector2 surfaceSize { get; }
+            public Vector2 screenCenter { get; }
+            public Vector2 avgViewportSize { get; }
+            public float minSideLength { get; }
+            public Vector2 squareViewportSize { get; }
+            public Vector2 scaleVec { get; }
+            public float minScale { get; }
+            public float progressbarsize { get; }
+            public float positionpbar { get; }
+            public float positionbar2 { get; }
+            public float minscreenCenter { get; }
+
+            public float lenghtpb { get; }
+            public float lengthtb { get; }
+
+            public float minScale35 { get; }
+            public float minScale2 { get; }
+            public float minScale3 { get; }
+
+
+            public List<Vector2> position_s { get; }
+            public Vector2 LoadingPos { get; }
+            public Vector2 LTextPos { get; }
+            public Vector2 PrinterPos { get; }
+            public Vector2 BTextBox { get; }
+
+
+            public Surface(IMyTextSurface surface, Program program)
+            {
+                this.surface = surface;
+
+                viewport_s = new RectangleF(
+                        (surface.TextureSize - surface.SurfaceSize) / 2f,
+                        surface.SurfaceSize
+                     );
+
+                surfaceSize = surface.TextureSize;
+                screenCenter = surfaceSize * 0.5f;
+
+                avgViewportSize = surface.SurfaceSize - 12f;
+                minSideLength = Math.Min(avgViewportSize.X, avgViewportSize.Y);
+                squareViewportSize = new Vector2(minSideLength, minSideLength);
+                scaleVec = (surfaceSize + avgViewportSize) * 0.5f / 512f;
+                minScale = Math.Min(scaleVec.X, scaleVec.Y);
+
+                progressbarsize = 1.45f;
+                positionpbar = viewport_s.Y + viewport_s.Height - progressbarsize * minScale * 20;
+                positionbar2 = positionpbar - progressbarsize * minScale * 25;
+
+                minscreenCenter = Math.Min(screenCenter.X, screenCenter.Y);
+
+                lenghtpb = 200 / 2 * minScale * progressbarsize + 140 / 2 * minScale * 1.5f; //used to calculate lenght of the progressbar
+
+                lengthtb = 74 * minScale * progressbarsize; //used to calculate lenght of the 1st square accels
+
+                position_s = new List<Vector2> { new Vector2(viewport_s.X + (viewport_s.Width * 0.5f) - lengthtb, positionpbar) };
+                position_s.Add(new Vector2(position_s[0].X + lenghtpb, positionpbar));
+                position_s.Add(new Vector2(viewport_s.X + (viewport_s.Width * 0.5f), positionbar2));
+
+                float[] wh1 = new float[] { viewport_s.Width * 0.15f, viewport_s.Height * 0.25f };
+                float[] wh2 = new float[] { viewport_s.Width * 0.85f, viewport_s.Height * 0.25f };
+                float[] wh3 = new float[] { viewport_s.Width * 0.15f, viewport_s.Height * 0.4f };
+
+                float[] wh4 = new float[] { viewport_s.Width * 0.225f, viewport_s.Height * 0.4f };
+                float[] wh5 = new float[] { viewport_s.Width * 0.75f, viewport_s.Height * 0.4f };
+                float[] wh6 = new float[] { viewport_s.Width * 0.225f, viewport_s.Height * 0.60f };
+
+                position_s.Add(new Vector2(viewport_s.X + wh1[0], viewport_s.Y + wh1[1]));
+                position_s.Add(new Vector2(viewport_s.X + wh2[0], viewport_s.Y + wh2[1]));
+                position_s.Add(new Vector2(viewport_s.X + wh3[0], viewport_s.Y + wh3[1]));
+
+                position_s.Add(new Vector2(viewport_s.X + wh4[0], viewport_s.Y + wh4[1]));
+                position_s.Add(new Vector2(viewport_s.X + wh5[0], viewport_s.Y + wh5[1]));
+                position_s.Add(new Vector2(viewport_s.X + wh6[0], viewport_s.Y + wh6[1]));
+
+                LoadingPos = new Vector2(screenCenter.X, screenCenter.Y - minScale * 50);
+                LTextPos = new Vector2(screenCenter.X, screenCenter.Y + 25f * minScale + 3f);
+                PrinterPos = new Vector2(screenCenter.X, viewport_s.Y + 12f * minScale);
+                BTextBox = new Vector2(viewport_s.X + (viewport_s.Width * 0.5f), viewport_s.Y + (viewport_s.Height * 0.5f) - minScale * 50);
+
+                minScale35 = minScale * 3.5f;
+                minScale2 = minScale * 2f;
+                minScale3 = minScale * 3;
+            }
+        }
+
         #region WhipsHorizon
         /// <summary>
         /// Artificial Horizon, Extracted the original code from Whiplash's Artificial Horizon Redux
@@ -30,7 +123,7 @@ namespace IngameScript
             public Color GearBackground { get; set; } = Color.Black; // Background of textbox of damp, cruise, etc 
             public float ReticuleSens { get; set; } = 1; // Reticule sensitivity, the more the value, the more sens will have the velocity reticule
             public float DampreticuleSens { get; set; } = 0.5f; // How far it needs to be from the center to trigger arrow mode while in dampeners
-            public List<IMyTextSurface> Surfaces { get; set; } // Surfaces, gets updated every time
+            public List</*IMyTextSurface*/Surface> Surfaces { get; set; } // Surfaces, gets updated every time
 
             readonly Color AxisArrowBackColor = new Color(10, 10, 10);
 
@@ -87,15 +180,21 @@ namespace IngameScript
 
             readonly string[] _axisIcon = new string[3];
             readonly CircularBuffer<double> velbuffer = new CircularBuffer<double>(5);
-            public WhipsHorizon(List<IMyTextSurface> sfs, Program p)
+
+            //SimpleTimerSM DrawT;
+
+            public WhipsHorizon(List</*IMyTextSurface*/Surface> sfs, Program p)
             {
                 Surfaces = sfs;
                 this.p = p;
+                //DrawT = new SimpleTimerSM(p, Draw(), true);
             }
 
             public void Process(bool force)
             {
+                //p.scount--;
                 Calculate(force);
+                //DrawT.Run();
                 Draw(force);
             }
 
@@ -120,7 +219,7 @@ namespace IngameScript
                     movingbackwards = false;
                 }
 
-                ingravity = !Vector3D.IsZero(p.worldGrav);
+                ingravity = p.wgv != 0;//!Vector3D.IsZero(p.worldGrav);
                 if (ingravity)
                 {
                     CalculateArtificialHorizonParameters(p.mainController.TheBlock, updatespersecond);
@@ -130,201 +229,208 @@ namespace IngameScript
 
             void Draw(bool force)
             {
-                foreach (IMyTextSurface s in Surfaces)
-                {
-                    bool changedetected = p.SetupDrawSurface(s);
+                //bool force = false;
 
-                    bool cond = p.screensb.Length == 0 && ((p.parkedcompletely && p.BlockManager.Doneloop) || p.isstation || (p.trulyparked && !p.parked && p.tgotTOV > TOVval) || (p.wgv == 0 && p.tgotTOV > TOVval && !p.parked && !p.trulyparked));
-                    bool cond1 = cond && printedpark > maxprpk;
-
-                    if (cond1 && !changedetected && !force) return;
-
-                    if (cond && !force) printedpark++;
-                    else printedpark = 0;
-
-                    RectangleF _viewport_s = new RectangleF(
-                        (s.TextureSize - s.SurfaceSize) / 2f,
-                        s.SurfaceSize
-                     );
-
-                    Vector2 surfaceSize = s.TextureSize;
-                    Vector2 screenCenter = surfaceSize * 0.5f;
-                    Vector2 avgViewportSize = s.SurfaceSize - 12f;
-                    float minSideLength = Math.Min(avgViewportSize.X, avgViewportSize.Y);
-                    Vector2 squareViewportSize = new Vector2(minSideLength, minSideLength);
-                    Vector2 scaleVec = (surfaceSize + avgViewportSize) * 0.5f / 512f;
-                    float minScale = Math.Min(scaleVec.X, scaleVec.Y);
-
-                    float progressbarsize = 1.45f;
-                    float positionpbar = _viewport_s.Y + _viewport_s.Height - progressbarsize * minScale * 20;
-                    float positionbar2 = positionpbar - progressbarsize * minScale * 25;
-
-                    float sign = movingbackwards ? -1 : 1;
-
-                    Vector2 velwh = squareViewportSize * flatennedvelocity * sign * ReticuleSens;
-                    double farfromcenter = velwh.Length();
-                    Vector2 velpos = screenCenter + velwh;
-                    float minscreenCenter = Math.Min(screenCenter.X, screenCenter.Y);
-                    float mindampSens = minSideLength / 2 * DampreticuleSens;
-
-                    outofscreen = farfromcenter > minSideLength / 2 || !p.dampeners && farfromcenter > mindampSens ||
-                                ((velpos - screenCenter).Y > 0 && velpos.Y > positionbar2);
-
-                    using (var frame = s.DrawFrame())
+                //while (true) {
+                    foreach (/*IMyTextSurface*/Surface su in Surfaces)
                     {
-                        if (!p.parked && !p.trulyparked)
+                        IMyTextSurface s = su.surface;
+                        bool changedetected = p.SetupDrawSurface(s);
+
+                        bool cond = p.screensb.Length == 0 && ((p.parkedcompletely && p.BlockManager.Doneloop) || p.isstation || (p.trulyparked && !p.parked && p.tgotTOV > TOVval) || (p.wgv == 0 && p.tgotTOV > TOVval && !p.parked && !p.trulyparked));
+                        bool cond1 = cond && printedpark > maxprpk;
+
+                        if (cond1 && !changedetected && !force) {
+
+                            //yield return 0.016;
+                            //continue;
+                            return;
+                        }
+
+                        if (cond && !force) printedpark++;
+                        else printedpark = 0;
+
+                        RectangleF _viewport_s = su.viewport_s;
+                        float minScale = su.minScale;
+
+                        float sign = movingbackwards ? -1 : 1;
+
+                        Vector2 velwh = su.squareViewportSize * flatennedvelocity * sign * ReticuleSens;
+                        double farfromcenter = velwh.Length();
+                        Vector2 velpos = su.screenCenter + velwh;
+                        //float minscreenCenter = Math.Min(screenCenter.X, screenCenter.Y);
+                        float mindampSens = su.minSideLength / 2 * DampreticuleSens;
+
+                        outofscreen = farfromcenter > su.minSideLength / 2 || !p.dampeners && farfromcenter > mindampSens ||
+                                    ((velpos - su.screenCenter).Y > 0 && velpos.Y > su.positionbar2);
+
+                        using (var frame = s.DrawFrame())
                         {
-                            
-
-                            if (ingravity) DrawArtificialHorizon(frame, screenCenter, minScale, minSideLength);
-                            if (outofscreen)
+                            if (!p.parked && !p.trulyparked)
                             {
-                                CalculateArrowParameters(p.mainController.TheBlock);
-                                DrawArrow(frame, screenCenter, minSideLength * 0.5f, minScale);
-                            }
-
-                            DrawLine(frame, new Vector2(0, screenCenter.Y), new Vector2(screenCenter.X - 64 * minScale, screenCenter.Y), HORIZON_THICKNESS * minScale, OrientationColor);
-                            DrawLine(frame, new Vector2(screenCenter.X + 64 * minScale, screenCenter.Y), new Vector2(screenCenter.X * 2f, screenCenter.Y), HORIZON_THICKNESS * minScale, OrientationColor);
-
-                            Vector2 scaledIconSize = VELOCITY_INDICATOR_SIZE * minScale;
-                            MySprite centerSprite = new MySprite(SpriteType.TEXTURE, "AH_BoreSight", size: scaledIconSize * 1.2f, position: screenCenter + Vector2.UnitY * scaledIconSize * 0.5f, color: OrientationColor)
-                            {
-                                RotationOrScale = -MathHelper.PiOver2
-                            };
-                            frame.Add(centerSprite);
-
-                            if (!outofscreen)
-                            {
-                                // Draw velocity indicator
-                                MySprite velocitySprite = new MySprite(SpriteType.TEXTURE, "AH_VelocityVector", size: scaledIconSize, color: !movingbackwards ? ForwardArrowColor/*progradeColor*/ : RetrogradeColor)
+                                if (ingravity) DrawArtificialHorizon(frame, su.screenCenter, minScale, su.minSideLength);
+                                if (outofscreen)
                                 {
-                                    Position = velpos
+                                    CalculateArrowParameters(p.mainController.TheBlock);
+                                    DrawArrow(frame, su.screenCenter, su.minSideLength * 0.5f, minScale);
+                                }
+
+                                DrawLine(frame, new Vector2(0, su.screenCenter.Y), new Vector2(su.screenCenter.X - 64 * minScale, su.screenCenter.Y), HORIZON_THICKNESS * minScale, OrientationColor);
+                                DrawLine(frame, new Vector2(su.screenCenter.X + 64 * minScale, su.screenCenter.Y), new Vector2(su.screenCenter.X * 2f, su.screenCenter.Y), HORIZON_THICKNESS * minScale, OrientationColor);
+
+                                Vector2 scaledIconSize = VELOCITY_INDICATOR_SIZE * minScale;
+                                MySprite centerSprite = new MySprite(SpriteType.TEXTURE, "AH_BoreSight", size: scaledIconSize * 1.2f, position: su.screenCenter + Vector2.UnitY * scaledIconSize * 0.5f, color: OrientationColor)
+                                {
+                                    RotationOrScale = -MathHelper.PiOver2
                                 };
-                                frame.Add(velocitySprite);
+                                frame.Add(centerSprite);
 
-                                if (movingbackwards)
+                                if (!outofscreen)
                                 {
-                                    Vector2 retrogradeCrossSize = RETROGRADE_CROSS_SIZE * minScale;
-                                    MySprite retrograteSprite = new MySprite(SpriteType.TEXTURE, "SquareSimple", size: retrogradeCrossSize, color: RetrogradeColor)
+                                    // Draw velocity indicator
+                                    MySprite velocitySprite = new MySprite(SpriteType.TEXTURE, "AH_VelocityVector", size: scaledIconSize, color: !movingbackwards ? ForwardArrowColor/*progradeColor*/ : RetrogradeColor)
                                     {
-                                        Position = velocitySprite.Position,
-                                        RotationOrScale = MathHelper.PiOver4
+                                        Position = velpos
                                     };
-                                    frame.Add(retrograteSprite);
-                                    retrograteSprite.RotationOrScale += MathHelper.PiOver2;
-                                    frame.Add(retrograteSprite);
+                                    frame.Add(velocitySprite);
+
+                                    if (movingbackwards)
+                                    {
+                                        Vector2 retrogradeCrossSize = RETROGRADE_CROSS_SIZE * minScale;
+                                        MySprite retrograteSprite = new MySprite(SpriteType.TEXTURE, "SquareSimple", size: retrogradeCrossSize, color: RetrogradeColor)
+                                        {
+                                            Position = velocitySprite.Position,
+                                            RotationOrScale = MathHelper.PiOver4
+                                        };
+                                        frame.Add(retrograteSprite);
+                                        retrograteSprite.RotationOrScale += MathHelper.PiOver2;
+                                        frame.Add(retrograteSprite);
+                                    }
                                 }
                             }
-                        }
 
-                        Vector2 position_s;
+                            //Vector2 position_s;
 
-                        float lenghtpb = 200 / 2 * minScale * progressbarsize + 140 / 2 * minScale * 1.5f; //used to calculate lenght of the progressbar
-                        float lengthtb = 74 * minScale * progressbarsize; //used to calculate lenght of the 1st square accels
+                            //position_s = new Vector2(_viewport_s.X + (_viewport_s.Width * 0.5f) - su.lengthtb, su.positionpbar);
 
-                        position_s = new Vector2(_viewport_s.X + (_viewport_s.Width * 0.5f) - lengthtb, positionpbar);
+                            float percent = (float)(p.gearaccel / p.maxaccel * 100);
 
-                        float percent = (float)(p.gearaccel / p.maxaccel * 100);
+                            float scalepb = minScale * su.progressbarsize;
 
-                        DrawProgressBar(frame, position_s, percent, minScale * progressbarsize, center: true, background: ProgressBarBackground);
+                            DrawProgressBar(frame, su.position_s[0], percent, scalepb, center: true, background: ProgressBarBackground);
 
-                        position_s = new Vector2(position_s.X + lenghtpb, positionpbar);
+                            //position_s = new Vector2(position_s.X + su.lenghtpb, su.positionpbar);
 
-                        TextBox(frame, position_s, $"{Math.Round(p.accel_aux, 2)} m/s²", minScale * progressbarsize, background: TextBoxBackground);
+                            TextBox(frame, su.position_s[1], $"{Math.Round(p.accel_aux, 2)} m/s²", scalepb, background: TextBoxBackground);
 
-                        position_s = new Vector2(_viewport_s.X + (_viewport_s.Width * 0.5f), positionbar2);
+                            //position_s = new Vector2(_viewport_s.X + (_viewport_s.Width * 0.5f), su.positionbar2);
 
-                        DrawGear(frame, position_s, minScale * progressbarsize, background: GearBackground);
+                            DrawGear(frame, su.position_s[2], scalepb, background: GearBackground);
 
-                        float[] wh1 = new float[] { _viewport_s.Width * 0.15f, _viewport_s.Height * 0.25f };
-                        float[] wh2 = new float[] { _viewport_s.Width * 0.85f, _viewport_s.Height * 0.25f };
-                        float[] wh3 = new float[] { _viewport_s.Width * 0.15f, _viewport_s.Height * 0.4f };
-                        float divisor = 1;
+                            int[] whg;
+                            float divisor;
 
-                        if (p.mainController.TheBlock.BlockDefinition.ToString().Contains("FighterCockpit") &&
-                            (p.mainController.TheBlock as IMyTextSurfaceProvider).GetSurface(0).Equals(s))
-                        {
-                            wh1 = new float[] { _viewport_s.Width * 0.225f, _viewport_s.Height * 0.4f };
-                            wh2 = new float[] { _viewport_s.Width * 0.75f, _viewport_s.Height * 0.4f };
-                            wh3 = new float[] { _viewport_s.Width * 0.225f, _viewport_s.Height * 0.60f };
-                            divisor = 1.1f;
-                        }
-                        position_s = new Vector2(_viewport_s.X + wh1[0], _viewport_s.Y + wh1[1]);
+                            /*float[] wh = new float[] { _viewport_s.Width * 0.15f, _viewport_s.Height * 0.25f };
+                            float[] wh = new float[] { _viewport_s.Width * 0.85f, _viewport_s.Height * 0.25f };
+                            float[] wh = new float[] { _viewport_s.Width * 0.15f, _viewport_s.Height * 0.4f };
+                            float divisor = 1;*/
 
-                        TextBox(frame, position_s, $"CRUISE", minScale * progressbarsize / divisor, 80, p.cruise ? Onlinecolor : Offlinecolor, TextBoxBackground);
-
-                        position_s = new Vector2(_viewport_s.X + wh2[0], _viewport_s.Y + wh2[1]);
-
-                        TextBox(frame, position_s, $"PARK", minScale * progressbarsize / divisor, 80, p.allowpark ? Onlinecolor : Offlinecolor, TextBoxBackground);
-
-                        position_s = new Vector2(_viewport_s.X + wh3[0], _viewport_s.Y + wh3[1]);
-
-                        TextBox(frame, position_s, $"DAMP", minScale * progressbarsize / divisor, 80, p.dampeners ? Onlinecolor : Offlinecolor, TextBoxBackground);
-
-                        Vector2 LoadingPos = new Vector2(screenCenter.X, screenCenter.Y - minScale * 50);
-                        Vector2 LTextPos = new Vector2(screenCenter.X, screenCenter.Y + 25f * minScale + 3f);
-                        Vector2 PrinterPos = new Vector2(screenCenter.X, _viewport_s.Y + 12f * minScale);
-                        Vector2 BTextBox = new Vector2(_viewport_s.X + (_viewport_s.Width * 0.5f), _viewport_s.Y + (_viewport_s.Height * 0.5f) - minScale * 50);
-
-                        if (p.parkedcompletely && p.BlockManager.Doneloop)
-                        {
-                            Write("PARKED", frame, BTextBox, minScale * 3.5f);
-                        } //PARKED
-                        else if (p.parkedcompletely && !p.BlockManager.Doneloop)
-                        {
-                            Write("ASSIGNING", frame, LTextPos, minScale * 2);
-                            Loading(frame, LoadingPos, minScale * 2, -0.5f);
-                        } //ASSIGNING
-                        else if (!p.parked && p.alreadyparked && !p.BlockManager.Doneloop)
-                        {
-                            Write("UNPARKING", frame, LTextPos, minScale * 2);
-                            Loading(frame, LoadingPos, minScale * 2, 1.2f);
-                        } //UNPARKING
-
-                        if (((p.parked && p.alreadyparked) || p.trulyparked) && p.setTOV && (p.totalVTThrprecision.Round(1) != 100 || p.tgotTOV <= TOVval))
-                        {
-                            if (p.isstation)
+                            if (p.mainController.TheBlock.BlockDefinition.ToString().Contains("FighterCockpit") &&
+                                (p.mainController.TheBlock as IMyTextSurfaceProvider).GetSurface(0).Equals(s))
                             {
-                                Write("STATION MODE", frame, BTextBox, minScale * 3.5f);
+                                /*wh1 = new float[] { _viewport_s.Width * 0.225f, _viewport_s.Height * 0.4f };
+                                wh2 = new float[] { _viewport_s.Width * 0.75f, _viewport_s.Height * 0.4f };
+                                wh3 = new float[] { _viewport_s.Width * 0.225f, _viewport_s.Height * 0.60f };
+                                divisor = 1.1f;*/
+
+                                whg = new int[] { 6, 7, 8 };
+                                divisor = 1.1f;
                             }
-                            else
-                            {
-                                Write("PARKING", frame, LTextPos, minScale * 2);
-                                Loading(frame, LoadingPos, minScale * 2, 0.5f);
+                            else {
+                                whg = new int[] { 3, 4, 5 };
+                                divisor = 1;
                             }
-                        } //PARKING
-                        else if (p.trulyparked && !p.parked)
-                        {
-                            Write("(NOT) PARKED", frame, BTextBox, minScale * 3f);
+                            //position_s = new Vector2(_viewport_s.X + wh1[0], _viewport_s.Y + wh1[1]);
+
+                            TextBox(frame, su.position_s[whg[0]], $"CRUISE", minScale * su.progressbarsize / divisor, 80, p.cruise ? Onlinecolor : Offlinecolor, TextBoxBackground);
+
+                            //position_s = new Vector2(_viewport_s.X + wh2[0], _viewport_s.Y + wh2[1]);
+
+                            TextBox(frame, su.position_s[whg[1]], $"PARK", minScale * su.progressbarsize / divisor, 80, p.allowpark ? Onlinecolor : Offlinecolor, TextBoxBackground);
+
+                            //position_s = new Vector2(_viewport_s.X + wh3[0], _viewport_s.Y + wh3[1]);
+
+                            TextBox(frame, su.position_s[whg[2]], $"DAMP", minScale * su.progressbarsize / divisor, 80, p.dampeners ? Onlinecolor : Offlinecolor, TextBoxBackground);
+
+                            /*Vector2 LoadingPos = new Vector2(su.screenCenter.X, su.screenCenter.Y - minScale * 50);
+                            Vector2 LTextPos = new Vector2(su.screenCenter.X, su.screenCenter.Y + 25f * minScale + 3f);
+                            Vector2 PrinterPos = new Vector2(su.screenCenter.X, _viewport_s.Y + 12f * minScale);
+                            Vector2 BTextBox = new Vector2(_viewport_s.X + (_viewport_s.Width * 0.5f), _viewport_s.Y + (_viewport_s.Height * 0.5f) - minScale * 50);*/
+
+                            if (p.parked || p.alreadyparked || p.trulyparked || p.isstation) {
+                                if (p.parkedcompletely && p.BlockManager.Doneloop)
+                                {
+                                    Write("PARKED", frame, su.BTextBox, su.minScale35);
+                                } //PARKED
+                                else if (p.parkedcompletely && !p.BlockManager.Doneloop)
+                                {
+                                    Write("ASSIGNING", frame, su.LTextPos, su.minScale2);
+                                    Loading(frame, su.LoadingPos, su.minScale2, -0.5f);
+                                } //ASSIGNING
+                                else if (!p.parked && p.alreadyparked && !p.BlockManager.Doneloop)
+                                {
+                                    Write("UNPARKING", frame, su.LTextPos, su.minScale2);
+                                    Loading(frame, su.LoadingPos, su.minScale2, 1.2f);
+                                } //UNPARKING
+
+                                if (((p.parked && p.alreadyparked) || p.trulyparked) && p.setTOV && (p.totalVTThrprecision.Round(1) != 100 || p.tgotTOV <= TOVval))
+                                {
+                                    if (p.isstation)
+                                    {
+                                        Write("STATION MODE", frame, su.BTextBox, su.minScale35);
+                                    }
+                                    else
+                                    {
+                                        Write("PARKING", frame, su.LTextPos, su.minScale2);
+                                        Loading(frame, su.LoadingPos, su.minScale2, 0.5f);
+                                    }
+                                } //PARKING
+                                else if (p.trulyparked && !p.parked)
+                                {
+                                    Write("(NOT) PARKED", frame, su.BTextBox, su.minScale3);
+                                }
+                            }
+
+                            if (p.screensb.Length > 0) Write(p.screensb.ToString(), frame, su.PrinterPos, minScale);
+
+                            frame.Dispose();
                         }
-
-                        Write(p.screensb.ToString(), frame, PrinterPos, minScale);
-
-                        frame.Dispose();
+                        //yield return 0.016;
                     }
-                }
-
-
+                    //yield return 0.016;
+                //}
             }
 
             public void BSOD()
             {
 
-                foreach (IMyTextSurface s in Surfaces)
+                foreach (/*IMyTextSurface*/Surface su in Surfaces)
                 {
+                    IMyTextSurface s = su.surface;
+
                     p.SetupDrawSurface(s, new Color(0, 0, 65, 255));
                     //-----
-                    Vector2 surfaceSize = s.TextureSize;
+                    /*Vector2 surfaceSize = s.TextureSize;
                     Vector2 screenCenter = surfaceSize * 0.5f;
                     Vector2 avgViewportSize = s.SurfaceSize - 12f;
                     float minSideLength = Math.Min(avgViewportSize.X, avgViewportSize.Y);
                     Vector2 squareViewportSize = new Vector2(minSideLength, minSideLength);
                     Vector2 scaleVec = (surfaceSize + avgViewportSize) * 0.5f / 512f;
-                    float minScale = Math.Min(scaleVec.X, scaleVec.Y);
+                    float minScale = Math.Min(scaleVec.X, scaleVec.Y);*/
 
                     using (var frame = s.DrawFrame())
                     {
-                        DrawBSOD(frame, screenCenter, avgViewportSize, minScale);
+                        DrawBSOD(frame, su.screenCenter, su.avgViewportSize, su.minScale);
                     }
                     //------
                 }
@@ -1033,7 +1139,7 @@ namespace IngameScript
             bool changedetected = false;
             color = color ?? new Color(0, 0, 0, 255);
 
-            if (color != surface.ScriptBackgroundColor || surface.ContentType != ContentType.SCRIPT || surface.Script.Length != 0)
+            if (true || color != surface.ScriptBackgroundColor || surface.ContentType != ContentType.SCRIPT || surface.Script.Length != 0)
             {
 
                 // Draw background color
@@ -1045,7 +1151,7 @@ namespace IngameScript
                 // Set script to none
                 surface.Script = "";
 
-                changedetected = true;
+                //changedetected = true;
             }
             return changedetected;
         }

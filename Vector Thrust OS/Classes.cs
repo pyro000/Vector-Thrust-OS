@@ -152,6 +152,7 @@ namespace IngameScript
             public double AverageRuntime { get; private set; }
             public double LastRuntime { get; private set; }
             public bool CanPrint { get; private set; }
+            public bool JustPrinted { get; private set; }
 
             public EMA ema;
 
@@ -205,8 +206,12 @@ namespace IngameScript
                     FramePrintCount += 100;
                 }
 
+                if (CanPrint) JustPrinted = true;
+                else if (JustPrinted) JustPrinted = false;
+
                 CanPrint = FramePrintCount >= p.framesperprint;
                 if (CanPrint) FramePrintCount = 0;
+                
             }
         }
 

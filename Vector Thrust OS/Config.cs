@@ -102,6 +102,7 @@ namespace IngameScript
         const string DampreticuleSensStr = "Dampeners Arrow Trigger Multiplier"; // How far it needs to be from the center to trigger arrow mode while in dampeners
 
         const string controlModuleStr = "Allow Control Module Mod";
+        const string tdividersStr = "Split Vector Thrusters / Individual Thrusters Tasks Frames";
         // END STRINGS AND VARS
 
 
@@ -203,6 +204,8 @@ namespace IngameScript
                 timepause = FramesBetweenActions * timeperframe;
 
                 framesperprint = config.Get(advancedstr, framesperprintStr).ToInt32(framesperprint);
+                var tlist1 = new List<int>(config.GetList<int>(advancedstr, tdividersStr));
+                if (tlist1.Count == 2 && tlist1.All(x => x > 0)) LClone<int>(ref tdividers, tlist1);
 
                 SkipFrames = config.Get(advancedstr, SkipFramesStr).ToInt32(SkipFrames);
                 stockvalues = config.Get(advancedstr, stockvaluesStr).ToBoolean(stockvalues);
@@ -268,6 +271,8 @@ namespace IngameScript
             config.Set(advancedstr, FramesBetweenActionsStr, FramesBetweenActions);
 
             config.Set(advancedstr, framesperprintStr, framesperprint);
+            string tdivstr = String.Join(" ; ", tdividers);
+            config.Set(advancedstr, tdividersStr, tdivstr);
 
             config.Set(advancedstr, SkipFramesStr, SkipFrames);
             config.Set(advancedstr, stockvaluesStr, stockvalues);

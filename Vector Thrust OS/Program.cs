@@ -49,6 +49,7 @@ namespace IngameScript
         readonly SimpleTimerSM GetControllers;
         readonly SimpleTimerSM GetVectorThrusters;
         readonly SimpleTimerSM CheckParkBlocks;
+        readonly SimpleTimerSM Assign;
 
         bool cruise = false;
         bool dampeners = true;
@@ -99,7 +100,7 @@ namespace IngameScript
         readonly List<IMyGasTank> tankblocks = new List<IMyGasTank>();
         readonly List<IMyTerminalBlock> cruiseThr = new List<IMyTerminalBlock>();
         readonly List<List<VectorThrust>> VTThrGroups = new List<List<VectorThrust>>();
-        public List<IMyTextSurface> surfaces = new List<IMyTextSurface>();
+        List<Surface> surfaces = new List<Surface>();
 
         List<IMyThrust> vtthrusters = new List<IMyThrust>();
         List<IMyMotorStator> vtrotors = new List<IMyMotorStator>();
@@ -158,6 +159,9 @@ namespace IngameScript
             GetControllers = new SimpleTimerSM(this, GetControllersSeq(), true);
             GetVectorThrusters = new SimpleTimerSM(this, GetVectorThrustersSeq(), true);
             CheckParkBlocks = new SimpleTimerSM(this, CheckParkBlocksSeq(), true);
+
+            Assign = new SimpleTimerSM(this, AssignSeq(), true);
+
             WH = new WhipsHorizon(surfaces, this);
             Init();
             
@@ -236,13 +240,18 @@ namespace IngameScript
                 }
             }
 
+            //Print($"{Runtime.UpdateFrequency}");
+
             Printer(argument.Length > 0); //PRINTER MUST BE HERE BECUASE OF GetMovIn
 
             // END NECESARY INFORMATION
+            //if (scount > 0) WH.Process(argument.Length > 0);
 
             //_RuntimeTracker.RegisterAction("Action");
-            //echosb.AppendLine($"{tracker.CanPrint} {tracker.LastRuntime.Truncate(2)}");
+            //echosb.AppendLine($"{tracker.JustPrinted} {tracker.LastRuntime.Truncate(2)}");
 
+            /*justCompiled = false;
+            return;*/
             // SKIPFRAME AND PERFORMANCE HANDLER: handler to skip frames, it passes out if the player doesn't parse any command or do something relevant.
             CheckWeight(); //Block Updater must-have
             if (SkipFrameHandler(argument)) return;
@@ -310,7 +319,6 @@ namespace IngameScript
                 {
                     cruisedNT = false;
                     cruiseThr.ForEach(b => (b as IMyFunctionalBlock).Enabled = true);
-                    
                 }
 
                 cruise = justCompiled || (wgv != 0 && sv == 0) || trulyparked || cruiseThr.Empty() || cruisebyarg || parked || alreadyparked || BlockManager.Doneloop ? cruise : cruiseThr.All(x => !(x as IMyFunctionalBlock).Enabled); //New cruise toggle mode
@@ -335,7 +343,7 @@ namespace IngameScript
                 nthrthrust += t.WorldMatrix.Backward * t.CurrentThrust;
             }
             double thrustbynthr = nthrthrust.Length();
-            rawgearaccel += thrustbynthr;
+            //rawgearaccel += thrustbynthr;
 
             requiredVec += nthrthrust;
 
@@ -347,7 +355,14 @@ namespace IngameScript
             
 
             ParkVector(ref requiredVec, shipMass);
-            totalVTThrprecision = 0;
+
+            global_requiredVec = requiredVec;
+            global_gravChanged = gravChanged;
+            global_thrustbynthr = thrustbynthr;
+
+            Assign.Run();
+            
+            /*totalVTThrprecision = 0;
             totaleffectivethrust = 0;
             tthrust = 0;
 
@@ -435,7 +450,7 @@ namespace IngameScript
 
             tthrust += thrustbynthr;
             tthrust /= myshipmass.TotalMass;
-            totaleffectivethrust += thrustbynthr; //DON'T DELETE THIS, THIS SOLVES THE THRUST POINTING TO THE OPPOSITE
+            totaleffectivethrust += thrustbynthr; //DON'T DELETE THIS, THIS SOLVES THE THRUST POINTING TO THE OPPOSITE*/
 
             justCompiled = false;
             // ========== END OF MAIN ==========
@@ -444,7 +459,137 @@ namespace IngameScript
 
         List<double> tets = new List<double>();
         double rawgearaccel = 0;
-        double tthrust = 0;
+        //double tthrust = 0;
         double len = 0;
+
+        Vector3D global_requiredVec = Vector3D.Zero;
+        double global_thrustbynthr = 0;
+        bool global_gravChanged = false;
+        List<int> tdividers = new List<int> { 1, 1 };
+
+        IEnumerable<double> AssignSeq()
+        {
+
+            while (true)
+            {
+
+                Vector3D requiredVec = global_requiredVec;
+
+                double totalVTThrprecision_aux = 0;
+                double totaleffectivethrust_aux = 0;
+                //double tthrust_aux = 0;
+                double rawgearaccel_aux = 0;
+
+                // NEW THRUSTER ALIGNMENT AND VECTOR ASSIGNMENT SYSTEM
+                int gc = VTThrGroups.Count;
+
+                List<List<VectorThrust>> VTGroups = new List<List<VectorThrust>>(VTThrGroups);
+
+                for (int i = 0; i < gc; i++)
+                {
+                    List<VectorThrust> g = /*VTThrGroups*/VTGroups[i];
+
+                    int tc = g.Count;
+                    if (tc <= 0) continue;
+
+                    int ni = i + 1;
+
+                    //Print($"Group {ni}/{gc}");
+
+                    int c = g.Count(x => x.totalEffectiveThrust > 0).Clamp(1, tc);
+                    // This for some reason fixes a crash on station grids on compile, also from parking
+
+                    Vector3D vectemp = VectorMath.Rejection(requiredVec, g[0].rotor.TheBlock.WorldMatrix.Up);
+
+                    if (g[0].rotor.IsHinge && Vector3D.Dot(vectemp, g[0].rotor.TheBlock.WorldMatrix.Left) <= 0)
+                    { //is pointed left
+                        vectemp = VectorMath.Rejection(vectemp, g[0].rotor.TheBlock.WorldMatrix.Right);
+                    }
+
+                    if (ni < gc && tets[ni] > 0 && tets[i] >= vectemp.Length())
+                    {
+                        VectorThrust nextvt = VTThrGroups[ni][0];
+                        Vector3D nextvectemp = VectorMath.Rejection(vectemp, nextvt.rotor.TheBlock.WorldMatrix.Up);
+
+                        if (nextvt.rotor.IsHinge)
+                        {
+                            bool nisPointedLeft = Vector3D.Dot(nextvectemp, nextvt.rotor.TheBlock.WorldMatrix.Left) > 0;
+                            if (!nisPointedLeft) nextvectemp = VectorMath.Rejection(nextvectemp, nextvt.rotor.TheBlock.WorldMatrix.Right);
+                        }
+
+                        nextvectemp *= 0.15; //Gifting 15% of the vector to the next group
+                        nextvectemp = nextvectemp.Clamp(0.01, tets[ni]); //limiting the vector's with the previous totaleffectivethrust
+
+                        vectemp -= nextvectemp;
+                    }
+
+                    tets[i] = 0;
+                    vectemp /= c;
+
+                    int div = (g.Count / tdividers[0]).Clamp(1, g.Count);
+
+                    List<VectorThrust> Vts = new List<VectorThrust>(g);
+
+                    for (int j = 0; j < tc; j++)
+                    {
+                        VectorThrust vt = /*g*/Vts[j];
+
+                        bool enabledop = div != tc;
+
+                        if (!CheckRotor(vt.rotor.TheBlock)) continue;
+
+                        if (!vt.thrusters.Empty() && (global_gravChanged || !vt.ValidateThrusters()))
+                        {
+                            vt.DetectThrustDirection();
+                        }
+
+                        double tet = vt.CalcTotalEffectiveThrust();
+
+                        tets[i] += tet;
+
+                        if (tet <= 0) tet = 0.01;
+                        else rawgearaccel_aux += tet;
+
+                        vt.requiredVec = vectemp.Clamp(0.01, tet);
+
+                        vt.Go();
+
+                        requiredVec -= vt.requiredVec;
+
+                        totaleffectivethrust_aux += tet * 1.595;
+                        //rawgearaccel += tet;
+                        totalVTThrprecision_aux += vt.rotor.LastAngleCos;
+
+                        if (enabledop) {
+                            //Print("Enabled VT");
+                            if ( j + 1 % div == 0)
+                            {
+                                //echosb.AppendLine($"Dividing 1 {j}/{div}");
+                                yield return 0.016;
+                            }
+                        }
+                    }
+                }
+
+                if (rawgearaccel_aux != 0)
+                {
+                    rawgearaccel = rawgearaccel_aux;
+                    rawgearaccel += global_thrustbynthr;
+                    rawgearaccel /= myshipmass.PhysicalMass;
+                }
+
+                totalVTThrprecision_aux /= vectorthrusters.Count;
+
+                //tthrust_aux += global_thrustbynthr;
+                //tthrust_aux /= myshipmass.TotalMass;
+                totaleffectivethrust_aux += global_thrustbynthr; //DON'T DELETE THIS, THIS SOLVES THE THRUST POINTING TO THE OPPOSITE
+
+                totalVTThrprecision = totalVTThrprecision_aux;
+                //tthrust = tthrust_aux;
+                totaleffectivethrust = totaleffectivethrust_aux;
+
+                yield return 0.016;
+            }
+        }
     }
 }

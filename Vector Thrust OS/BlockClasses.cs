@@ -27,6 +27,9 @@ namespace IngameScript
 
             public int detectThrustCounter = 0;
             public Vector3D currDir = Vector3D.Zero;
+            
+            readonly SimpleTimerSM ThrusterS;
+            double angleCos = 0;
 
             public VectorThrust(Rotor rotor, Program program)
             {
@@ -36,12 +39,14 @@ namespace IngameScript
                 this.availableThrusters = new List<Thruster>();
                 this.activeThrusters = new List<Thruster>();
                 //Role = GetVTThrRole(program);
+
+                ThrusterS = new SimpleTimerSM(program, ThrusterSeq(), true);
             }
 
             // final calculations and setting physical components
             public void Go()
             {
-                double angleCos = rotor.Point(requiredVec);
+                /*double*/ angleCos = rotor.Point(requiredVec);
 
                 // the clipping value 'thrustModifier' defines how far the rotor can be away from the desired direction of thrust, and have the power still at max
                 // if 'thrustModifier' is at 1, the thruster will be at full desired power when it is at 90 degrees from the direction of travel
@@ -50,7 +55,7 @@ namespace IngameScript
                 double tmod = MathHelper.Clamp(p.thrustermodifier, 0, 1); //Temporal
 
                 // put it in some graphing calculator software where 'angleCos' is cos(x) and adjust the thrustModifier values between 0 and 1, then you can visualise it
-                double thrustOffset = ((((angleCos + 1) * (1 + tmod)) / 2) - tmod) * (((angleCos + 1) * (1 + tmod)) / 2);// the other one is simpler, but this one performs better
+                /*double thrustOffset = ((((angleCos + 1) * (1 + tmod)) / 2) - tmod) * (((angleCos + 1) * (1 + tmod)) / 2);// the other one is simpler, but this one performs better
 
                 thrustOffset = MathHelper.Clamp(thrustOffset, 0, 1);
 
@@ -58,9 +63,10 @@ namespace IngameScript
                 foreach (Thruster thruster in activeThrusters)
                 {
 
+
                     Vector3D thrust = (thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust);// + p.residuethrust;
                     bool noThrust = thrust.LengthSquared() < 0.001f || (p.wgv == 0 && angleCos < 0.85);
-                    p.tthrust += noThrust ? 0 : MathHelper.Clamp(thrust.Length(), 0, thruster.TheBlock.MaxEffectiveThrust);
+                    //p.tthrust += noThrust ? 0 : MathHelper.Clamp(thrust.Length(), 0, thruster.TheBlock.MaxEffectiveThrust);
 
                     if (!p.thrustOn || noThrust)
                     {
@@ -74,6 +80,61 @@ namespace IngameScript
                         if (!thruster.prevOnOff) thruster.TheBlock.Enabled = thruster.prevOnOff = true;
                         thruster.IsOffBecauseDampeners = false;
                     }
+                }*/
+
+                ThrusterS.Run();
+            }
+
+            IEnumerable<double> ThrusterSeq()
+            {
+                while (true)
+                {
+                    //double angleCos = this.angleCos;
+
+                    double tmod = MathHelper.Clamp(p.thrustermodifier, 0, 1);
+                    double thrustOffset = ((((angleCos + 1) * (1 + tmod) / 2) - tmod) * (((angleCos + 1) * (1 + tmod)) / 2)).Clamp(0, 1);
+
+                    List<Thruster> acthr = new List<Thruster>(activeThrusters);
+
+                    int div = (acthr.Count / p.tdividers[1]).Clamp(1, acthr.Count);
+                    //int i = 1;
+
+                    //p.Echo($"div2 {acthr.Count} {div}");
+                    for (int i = 0; i < acthr.Count; i++)
+                    //foreach (Thruster thruster in acthr)
+                    {
+                        Thruster thruster = acthr[i];
+                        bool enabledop = div != acthr.Count;
+                        //double angleCos = this.angleCos;
+                        if (enabledop) {
+                            //p.Print("Enabled Thruster");
+                            thrustOffset = ((((angleCos + 1) * (1 + tmod) / 2) - tmod) * (((angleCos + 1) * (1 + tmod)) / 2)).Clamp(0, 1); 
+                        }
+
+                        Vector3D thrust = (thrustOffset * requiredVec * thruster.TheBlock.MaxEffectiveThrust / totalEffectiveThrust);// + p.residuethrust;
+                        bool noThrust = thrust.LengthSquared() < 0.001f || (p.wgv == 0 && angleCos < 0.85);//|| (p.wgv != 0 && angleCos < 0);
+                        //p.tthrust += noThrust ? 0 : MathHelper.Clamp(thrust.Length(), 0, thruster.TheBlock.MaxEffectiveThrust);
+
+                        if (!p.thrustOn || noThrust)
+                        {
+                            thruster.SetThrust(0);
+                            if (thruster.prevOnOff) thruster.TheBlock.Enabled = thruster.prevOnOff = false;
+                            thruster.IsOffBecauseDampeners = !p.thrustOn || noThrust;
+                        }
+                        else
+                        {
+                            thruster.SetThrust(thrust);
+                            if (!thruster.prevOnOff) thruster.TheBlock.Enabled = thruster.prevOnOff = true;
+                            thruster.IsOffBecauseDampeners = false;
+                        }
+
+                        if (enabledop && i+1 % div == 0)
+                        {
+                            //p.echosb.AppendLine($"Dividing 2 {i+1}/{div}");
+                            yield return 0.016;
+                        }
+                    }
+                    yield return 0.016;
                 }
             }
 
@@ -449,7 +510,7 @@ namespace IngameScript
         interface IBlockWrapper
         {
             IMyTerminalBlock TheBlock { get; set; }
-            List<Base6Directions.Axis> Directions { get; }
+            //List<Base6Directions.Axis> Directions { get; }
 
             string CName { get; }
         }
@@ -458,7 +519,7 @@ namespace IngameScript
         {
             public T TheBlock { get; set; }
 
-            public List<Base6Directions.Axis> Directions { get; }
+            //public List<Base6Directions.Axis> Directions { get; }
 
             public Program p;
 
@@ -466,7 +527,7 @@ namespace IngameScript
             {
                 this.p = p;
                 TheBlock = block;
-                Directions = GetDirections(block);
+                //Directions = GetDirections(block);
             }
 
             // not allowed for some reason
@@ -476,11 +537,11 @@ namespace IngameScript
                 set { TheBlock = (T)value; }
             }
 
-            public List<Base6Directions.Axis> GetDirections(IMyTerminalBlock block)
+            /*public List<Base6Directions.Axis> GetDirections(IMyTerminalBlock block)
             {
                 MyBlockOrientation o = block.Orientation;
                 return new List<Base6Directions.Axis> { Base6Directions.GetAxis(o.Forward), Base6Directions.GetAxis(o.Up), Base6Directions.GetAxis(o.Left) };
-            }
+            }*/
             public string CName => TheBlock.CustomName;
         }
     }
