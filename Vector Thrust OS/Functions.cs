@@ -69,12 +69,10 @@ namespace IngameScript
             //TODO MAKE MULTIPLIER BY NUMBER OF THRUSTERS
 
             double gravtdefac = gravLength * defaultAccel;
-            double efectiveaccel = totaleffectivethrust/ myshipmass.BaseMass; //1.4675z
-            //rawgearaccel /= myshipmass.PhysicalMass;
+            double efectiveaccel = totaleffectivethrust/ myshipmass.BaseMass; //1.4675
 
             //getting max & gear accel
             gearaccel = efectiveaccel * Accelerations[gear] / 100;
-            //rawgearaccel *= Accelerations[gear] / 100;
             displaygearaccel = rawgearaccel * Accelerations[gear] / 100;
             maxaccel = efectiveaccel * Accelerations[Accelerations.Count - 1] / 100;
 
@@ -82,11 +80,8 @@ namespace IngameScript
             bool cond = mvin == 0 && !cruise && dampeners && sv > velprecisionmode && gearaccel > gravaccel;
             accel = mvin != 0 || cond ? gearaccel : gravaccel;
 
-            accel_aux = !thrustOn || almostbraked ? (float)/*rawgearaccel*/displaygearaccel.Round(2) : (float)((shipVelocity - lastvelocity) * updatespersecond).Length();
+            accel_aux = !thrustOn || almostbraked ? (float)displaygearaccel.Round(2) : (float)((shipVelocity - lastvelocity) * updatespersecond).Length();
         }
-
-        //bool CanPrint() => pc % framesperprint == 0 || Runtime.UpdateFrequency != UpdateFrequency.Update1 || justCompiled;
-        //int scount = 0;
 
         void Printer(bool force)
         {
@@ -96,8 +91,6 @@ namespace IngameScript
             echosb.Clear();
 
             WH.Process(force);
-            //scount = surfaces.Count;
-
             screensb.Clear();
 
 
@@ -109,7 +102,7 @@ namespace IngameScript
                 echosb.AppendLine(rt);
                 screensb.AppendLine(rt);
             }
-            echosb.AppendLine("VT OS\n22115\n");
+            echosb.AppendLine("VT OS\n22116\n");
 
             if (greedy) echosb.AppendLine("WARNING, TAGS ARE NOT APPLIED\nAPPLY THEM WITH \"applytags\"\n");
             if (tgotTOV <= TOVval) echosb.AppendLine($" > Thrusters Total Precision: {totalVTThrprecision.Round(1)}%");
@@ -130,7 +123,7 @@ namespace IngameScript
                 echosb.Append(metrics);
                 screensb.Append(metrics);
 
-                echosb.Append("\n > Log:\n").Append(log);
+                echosb.Append($"\n > Log [{tracker.FrameCount}/{tracker.MaxCapacity}]:\n").Append(log);
             }
         }
 
@@ -285,12 +278,17 @@ namespace IngameScript
         void AddTag(IMyTerminalBlock block)
         {
             string name = block.CustomName;
-            if (!name.Contains(tag)) block.CustomName = tag + " " + name;
+            if (!name.Contains(tag)) {
+                log.AppendNR("Adding tag:" + block.CustomName + "\n");
+                block.CustomName = tag + " " + name;
+            }
         }
 
         void RemoveTag(IMyTerminalBlock block)
         {
+            string ocn = block.CustomName;
             block.CustomName = tag == oldTag ? block.CustomName.Replace(tag, "").Trim() : block.CustomName.Replace(oldTag, "").Trim();
+            if (!ocn.Equals(block.CustomName) && !error) log.AppendNR($" > Removing Tag: {block.CustomName} \n");
         }
 
         void Init()
@@ -621,9 +619,9 @@ namespace IngameScript
             return true;
         }
 
-        void RemoveSurface(/*IMyTextSurface*/Surface surface)
+        void RemoveSurface(Surface surface)
         {
-            if (this.surfaces./*Contains*/Any(x => x.surface.Equals(surface)))
+            if (this.surfaces.Any(x => x.surface.Equals(surface)))
             {
                 //need to check this, because otherwise it will reset panels
                 //we aren't controlling
@@ -633,22 +631,19 @@ namespace IngameScript
             }
         }
 
-        void RemoveSurface(/*IMyTextSurface*/IMyTextPanel surface)
+        void RemoveSurface(IMyTextPanel surface)
         {
             //TODO : OPTIMIZE THIS
 
-            if (this.surfaces./*Contains*/Any(x => x.surface.Equals(surface)))
+            if (this.surfaces.Any(x => x.surface.Equals(surface)))
             {
                 //need to check this, because otherwise it will reset panels
                 //we aren't controlling
-
                 List<Surface> tempsurf = surfaces.FindAll(x => x.surface.Equals(surface));
                 foreach (Surface s in tempsurf)
                 {
                     RemoveSurface(s);
                 }
-
-                //this.surfaces.Remove(surface);
                 surface.ContentType = ContentType.NONE;
                 surface.WriteText("", false);
             }
@@ -886,12 +881,12 @@ namespace IngameScript
                 parkedwithcn = alreadyparked = false;
             }
 
-            if (check && !this.changedruntime && parkedcompletely /*&& BlockManager.Doneloop /*Runtime.UpdateFrequency != UpdateFrequency.Update1*/)
+            if (check && !this.changedruntime && parkedcompletely)
             {
                 ChangeRuntime();
                 this.changedruntime = true;
             }
-            else if (this.changedruntime && !check && parkedcompletely /*&& BlockManager.Doneloop /*Runtime.UpdateFrequency == UpdateFrequency.Update1*/)
+            else if (this.changedruntime && !check && parkedcompletely)
             {
                 ChangeRuntime(PerformanceWhilePark && wgv == 0 ? 2 : 1);
                 this.changedruntime = false;

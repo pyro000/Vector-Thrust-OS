@@ -90,14 +90,14 @@ namespace IngameScript
         ShipController mainController = null;
         List<ShipController> controllers = new List<ShipController>();
         List<IMyShipController> controllerblocks = new List<IMyShipController>();
-        readonly List<IMyShipController> ccontrollerblocks = new List<IMyShipController>();
-        readonly List<ShipController> controlledControllers = new List<ShipController>();
+        /*readonly*/ List<IMyShipController> ccontrollerblocks = new List<IMyShipController>();
+        /*readonly*/ List<ShipController> controlledControllers = new List<ShipController>();
         List<VectorThrust> vectorthrusters = new List<VectorThrust>();
         List<IMyThrust> normalThrusters = new List<IMyThrust>();
         List<IMyTextPanel> screens = new List<IMyTextPanel>();
         readonly List<IMyShipConnector> connectors = new List<IMyShipConnector>();
         readonly List<IMyLandingGear> landinggears = new List<IMyLandingGear>();
-        readonly List<IMyGasTank> tankblocks = new List<IMyGasTank>();
+        /*readonly*/ List<IMyGasTank> tankblocks = new List<IMyGasTank>();
         readonly List<IMyTerminalBlock> cruiseThr = new List<IMyTerminalBlock>();
         readonly List<List<VectorThrust>> VTThrGroups = new List<List<VectorThrust>>();
         List<Surface> surfaces = new List<Surface>();
@@ -105,13 +105,13 @@ namespace IngameScript
         List<IMyThrust> vtthrusters = new List<IMyThrust>();
         List<IMyMotorStator> vtrotors = new List<IMyMotorStator>();
 
-        readonly List<IMyBatteryBlock> taggedbats = new List<IMyBatteryBlock>();
-        readonly List<IMyBatteryBlock> normalbats = new List<IMyBatteryBlock>();
+        /*readonly */List<IMyBatteryBlock> taggedbats = new List<IMyBatteryBlock>();
+        /*readonly */List<IMyBatteryBlock> normalbats = new List<IMyBatteryBlock>();
 
         List<IMyThrust> thrusters_input = new List<IMyThrust>();
         List<IMyMotorStator> rotors_input = new List<IMyMotorStator>();
         readonly List<ShipController> controllers_input = new List<ShipController>();
-        readonly List<IMyTextPanel> input_screens = new List<IMyTextPanel>();
+        /*readonly */List<IMyTextPanel> input_screens = new List<IMyTextPanel>();
         readonly List<IMyMotorStator> abandonedrotors = new List<IMyMotorStator>();
         readonly List<IMyThrust> abandonedthrusters = new List<IMyThrust>();
 
@@ -239,19 +239,25 @@ namespace IngameScript
                     ThrustOnHandler();
                 }
             }
-
             //Print($"{Runtime.UpdateFrequency}");
 
             Printer(argument.Length > 0); //PRINTER MUST BE HERE BECUASE OF GetMovIn
 
             // END NECESARY INFORMATION
             //if (scount > 0) WH.Process(argument.Length > 0);
-
+            //Print($"{mainController.CName}");
             //_RuntimeTracker.RegisterAction("Action");
             //echosb.AppendLine($"{tracker.JustPrinted} {tracker.LastRuntime.Truncate(2)}");
 
+            /*Print($"all:{AllBlocks.Count} / cb:{controllerblocks.Count} / trb:{vtthrusters.Count} / rtb:{vtrotors.Count}.{abandonedrotors.Count}");
+            Print($"c:{controllers.Count} / vt:{vectorthrusters.Count} / vtg:{VTThrGroups.Count}");
+            Print($"ba:{batteriesblocks.Count}.{taggedbats.Count}.{normalbats.Count} / tkb:{tankblocks.Count} / cn:{connectorblocks.Count} / lg:{landinggearblocks.Count}");
+            foreach (List<VectorThrust> gr in VTThrGroups) Print($"{gr.Count}");*/
+            //taggedbats.ForEach(x => Print($"{x.BlockDefinition.SubtypeId}"));           
+
             /*justCompiled = false;
             return;*/
+
             // SKIPFRAME AND PERFORMANCE HANDLER: handler to skip frames, it passes out if the player doesn't parse any command or do something relevant.
             CheckWeight(); //Block Updater must-have
             if (SkipFrameHandler(argument)) return;
@@ -326,8 +332,6 @@ namespace IngameScript
                 desiredVec -= dampVec * dampenersModifier;
             }
             // f=ma
-
-            //GetAcceleration();
             lastvelocity = shipVelocity;
             desiredVec *= shipMass * (float)accel;
 
@@ -352,8 +356,6 @@ namespace IngameScript
 
 
             // ========== DISTRIBUTE THE FORCE EVENLY BETWEEN NACELLES ==========
-            
-
             ParkVector(ref requiredVec, shipMass);
 
             global_requiredVec = requiredVec;
@@ -361,97 +363,6 @@ namespace IngameScript
             global_thrustbynthr = thrustbynthr;
 
             Assign.Run();
-            
-            /*totalVTThrprecision = 0;
-            totaleffectivethrust = 0;
-            tthrust = 0;
-
-            double rawgearaccel_aux = 0;
-            //rawgearaccel = 0;
-
-            // NEW THRUSTER ALIGNMENT AND VECTOR ASSIGNMENTº SYSTEM
-            int gc = VTThrGroups.Count;
-            for (int i = 0; i < gc; i++)
-            {
-                List<VectorThrust> g = VTThrGroups[i];
-                int tc = g.Count;
-                if (tc <= 0) continue;
-                int ni = i + 1;
-
-                //Print($"Group {ni}/{gc}");
-
-                int c = g.Count(x => x.totalEffectiveThrust > 0).Clamp(1, tc);
-                // This for some reason fixes a crash on station grids on compile, also from parking
-
-                Vector3D vectemp = VectorMath.Rejection(requiredVec, g[0].rotor.TheBlock.WorldMatrix.Up);
-
-                if (g[0].rotor.IsHinge && Vector3D.Dot(vectemp, g[0].rotor.TheBlock.WorldMatrix.Left) <= 0)
-                { //is pointed left
-                    vectemp = VectorMath.Rejection(vectemp, g[0].rotor.TheBlock.WorldMatrix.Right);
-                }
-
-                if (ni < gc && tets[ni] > 0 && tets[i] >= vectemp.Length())
-                {
-                    VectorThrust nextvt = VTThrGroups[ni][0];
-                    Vector3D nextvectemp = VectorMath.Rejection(vectemp, nextvt.rotor.TheBlock.WorldMatrix.Up);
-
-                    if (nextvt.rotor.IsHinge)
-                    {
-                        bool nisPointedLeft = Vector3D.Dot(nextvectemp, nextvt.rotor.TheBlock.WorldMatrix.Left) > 0;
-                        if (!nisPointedLeft) nextvectemp = VectorMath.Rejection(nextvectemp, nextvt.rotor.TheBlock.WorldMatrix.Right);
-                    }
-
-                    nextvectemp *= 0.15; //Gifting 15% of the vector to the next group
-                    nextvectemp = nextvectemp.Clamp(0.01, tets[ni]); //limiting the vector's with the previous totaleffectivethrust
-
-                    vectemp -= nextvectemp;
-                }
-                
-                tets[i] = 0;
-                vectemp /= c;
-
-                for (int j = 0; j < tc; j++)
-                {
-                    VectorThrust vt = g[j];
-
-                    if (!CheckRotor(vt.rotor.TheBlock)) continue;
-
-                    if (!vt.thrusters.Empty() && (gravChanged || !vt.ValidateThrusters()))
-                    {
-                        vt.DetectThrustDirection();
-                    }
-
-                    double tet = vt.CalcTotalEffectiveThrust();
-
-                    tets[i] += tet;
-
-                    if (tet <= 0) tet = 0.01;
-                    else rawgearaccel_aux += tet;
-
-                    vt.requiredVec = vectemp.Clamp(0.01, tet);
-                    
-                    vt.Go();
-
-                    requiredVec -= vt.requiredVec;
-
-                    totaleffectivethrust += tet * 1.595;
-                    //rawgearaccel += tet;
-                    totalVTThrprecision += vt.rotor.LastAngleCos;
-                }
-            }
-
-            if (rawgearaccel_aux != 0) { 
-                rawgearaccel = rawgearaccel_aux;
-                rawgearaccel /= myshipmass.PhysicalMass;
-            }
-
-
-            totalVTThrprecision /= vectorthrusters.Count;
-
-            tthrust += thrustbynthr;
-            tthrust /= myshipmass.TotalMass;
-            totaleffectivethrust += thrustbynthr; //DON'T DELETE THIS, THIS SOLVES THE THRUST POINTING TO THE OPPOSITE*/
-
             justCompiled = false;
             // ========== END OF MAIN ==========
         }

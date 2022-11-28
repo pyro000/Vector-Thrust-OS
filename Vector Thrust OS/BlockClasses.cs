@@ -149,6 +149,7 @@ namespace IngameScript
 
                 foreach (List<VectorThrust> g in p.VTThrGroups)
                 {
+                    if (g.Empty()) continue; // THis solves a really rare bug
                     IMyMotorStator nrt = g[0].rotor.TheBlock;
                     MatrixD wm2 = nrt.WorldMatrix;
                     Vector3D wmu2 = wm2.Up;
@@ -161,7 +162,6 @@ namespace IngameScript
 
                             if ((rotor.IsHinge && Vector3D.Dot(wm1.Left, wm2.Left) > 0.9) || !rotor.IsHinge)
                             {
-
                                 if (!g.Contains(this)) g.Add(this);
                                 foundGroup = true;
                                 //p.Echo($"Found Group");

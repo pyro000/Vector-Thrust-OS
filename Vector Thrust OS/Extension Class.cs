@@ -12,7 +12,6 @@ namespace IngameScript
     {
         public static bool IsConnected(this IMyThrust thruster)
         {
-
             return thruster.IsWorking || (!thruster.IsWorking && (!thruster.Enabled || !thruster.IsFunctional));
         }
 
@@ -62,7 +61,7 @@ namespace IngameScript
 
         public static StringBuilder AppendNR(this StringBuilder str, string value)
         {
-            if (str.Length > 0 && value != null && value.Length > 0)
+            if (str/*.Length > 0*/.Empty() && value != null && value/*.Length > 0*/.Empty())
             {
                 str.Replace(value, "");
             }
@@ -85,7 +84,6 @@ namespace IngameScript
             return Vector3D.Normalize(vec);
         }
 
-
         public static Vector3D Clamp(this Vector3D v, double min, double max) => v.Normalized() * v.Length().Clamp(min, max);
 
         public static int Clamp(this int v, int min, int max) => MathHelper.Clamp(v, min, max);
@@ -100,11 +98,6 @@ namespace IngameScript
             return Vector3D.TransformNormal(cont.MoveIndicator, cont.WorldMatrix);
         }
 
-        public static double NNaN(this double inp)
-        {
-            return double.IsNaN(inp) ? 1 * Math.Pow(10, -10) : inp;
-        }
-
         public static float Pow(this float p, float n)
         {
             return (float)Math.Pow(p, n);
@@ -112,28 +105,12 @@ namespace IngameScript
 
         public static double Pow(this double p, double n) => Math.Pow(p, n);
 
-
-        public static float NNaN(this float inp)
-        {
-            return float.IsNaN(inp) ? (float)(1 * Math.Pow(10, -10)) : (float)inp;
-        }
-
-        public static double R3(this double desired, double ifval, double isval)
-        {
-            return (desired * isval) / ifval;
-        }
-
-        public static int Count<T>(this List<T> el, List<T>[] args)
-        {
-            return el.Count + args.Sum(x => x.Count);
-        }
-
         public static bool Empty<T>(this List<T> list) => list.Count == 0;
 
-        public static bool Empty<T>(this T[] array) => array.Length == 0;
+        //public static bool Empty<T>(this T[] array) => array.Length == 0;
 
         public static bool Empty(this string st) => st.Length == 0;
-
+        public static bool Empty(this StringBuilder st) => st.Length == 0;
 
         public static double Abs(this double d)
         {
@@ -143,19 +120,6 @@ namespace IngameScript
         public static float Abs(this float d)
         {
             return Math.Abs(d);
-        }
-
-        public static string Sep<T>(this T i, string sep = "/")
-        {
-            return i + sep;
-        }
-
-        public static StringBuilder ProgressBar(this StringBuilder sb, double percent, int amount)
-        {
-            int a = (int)(percent * amount);
-            int rz = amount - a;
-            sb.Append("--=[").Append('|', a).Append('\'', rz).Append("]=--");
-            return sb;
         }
 
         public static Vector3D Round(this Vector3D vec, int num = 0)
@@ -171,28 +135,6 @@ namespace IngameScript
         public static float Round(this float val, int num = 0)
         {
             return (float)Math.Round(val, num);
-        }
-
-        public static String ToString(this Vector3D val)
-        {
-            return $"X:{val.X} Y:{val.Y} Z:{val.Z}";
-        }
-
-        public static String ToString(this Vector3D val, bool pretty)
-        {
-            if (!pretty)
-                return ToString(val);
-            else
-                return $"X:{val.X}\nY:{val.Y}\nZ:{val.Z}\n";
-        }
-
-        public static String ToString(this bool val)
-        {
-            if (val)
-            {
-                return "true";
-            }
-            return "false";
         }
     }
 }

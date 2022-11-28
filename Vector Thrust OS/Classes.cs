@@ -156,9 +156,9 @@ namespace IngameScript
 
             public EMA ema;
 
-            int FrameCount = 0;
+            public int FrameCount = 0;
             int FramePrintCount = 0;
-            readonly int MaxCapacity;
+            public readonly int MaxCapacity;
 
             readonly Program p;
 
@@ -285,6 +285,16 @@ namespace IngameScript
                     Running = true;
                     sequenceSM = seq.GetEnumerator();
                 }
+            }
+
+            public bool Loop(bool cond) {
+                while (!Doneloop)
+                {
+                    Run();
+                    if (cond) return cond;
+                }
+                Doneloop = false;
+                return Doneloop;
             }
         }
 

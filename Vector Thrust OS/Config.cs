@@ -27,6 +27,7 @@ namespace IngameScript
         bool TurnOffThrustersOnPark = true;
         bool RechargeOnPark = true;
         string BackupSubstring = "Backup";
+        bool RenameBackupSubstring = true;
         bool PerformanceWhilePark = false;
         bool AutoAddGridConnectors = false;
         bool AutoAddGridLandingGears = false;
@@ -74,6 +75,7 @@ namespace IngameScript
         const string TurnOffThrustersOnParkStr = "Turn Off Thrusters On Park";
         const string RechargeOnParkStr = "Set Batteries/Tanks to Recharge/Stockpile On Park";
         const string BackupSubstringStr = "Assign Backup Batteries With Surname";
+        const string RenameBackupSubstringStr = "Automatically Adds Small Batteries As Backup";
         const string PerformanceWhileParkStr = "Run Script Each 100 Frames When Parked";
         const string AutoAddGridConnectorsStr = "Add Automatically Same Grid Connectors";
         const string AutoAddGridLandingGearsStr = "Add Automatically Same Grid Landing Gears";
@@ -172,6 +174,7 @@ namespace IngameScript
                 TurnOffThrustersOnPark = config.Get(parkstr, TurnOffThrustersOnParkStr).ToBoolean(TurnOffThrustersOnPark);
                 RechargeOnPark = config.Get(parkstr, RechargeOnParkStr).ToBoolean(RechargeOnPark);
                 BackupSubstring = config.Get(parkstr, BackupSubstringStr).ToString(BackupSubstring);
+                RenameBackupSubstring = config.Get(parkstr, RenameBackupSubstringStr).ToBoolean(RenameBackupSubstring);
                 AutoAddGridConnectors = config.Get(parkstr, AutoAddGridConnectorsStr).ToBoolean(AutoAddGridConnectors);
                 AutoAddGridLandingGears = config.Get(parkstr, AutoAddGridLandingGearsStr).ToBoolean(AutoAddGridLandingGears);
                 forceparkifstatic = config.Get(parkstr, forceparkifstaticStr).ToBoolean(forceparkifstatic);
@@ -242,6 +245,7 @@ namespace IngameScript
             config.Set(parkstr, TurnOffThrustersOnParkStr, TurnOffThrustersOnPark);
             config.Set(parkstr, RechargeOnParkStr, RechargeOnPark);
             config.Set(parkstr, BackupSubstringStr, BackupSubstring);
+            config.Set(parkstr, RenameBackupSubstringStr, RenameBackupSubstring);
 
             config.Set(parkstr, AutoAddGridConnectorsStr, AutoAddGridConnectors);
             config.SetComment(parkstr, AutoAddGridConnectorsStr, "\n");
