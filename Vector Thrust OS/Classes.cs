@@ -9,7 +9,6 @@ namespace IngameScript
 {
     partial class Program
     {
-
         public static class VectorMath // By Whiplash
         {
             /// <summary>
@@ -215,19 +214,18 @@ namespace IngameScript
             }
         }
 
-        // Thanks to Digi for creating this example class
-        class SimpleTimerSM
+        class SequenceAssigner //Modified SimpleTimerSM by Digi
         {
             public readonly Program Program;
             public bool AutoStart { get; set; }
             public bool Running { get; private set; }
-            public IEnumerable<double> Sequence;
-            public double SequenceTimer { get; private set; }
+            public IEnumerable<int> Sequence;
+            private IEnumerator<int> sequenceSM;
 
-            private IEnumerator<double> sequenceSM;
+            public int SequenceCount { get; private set; }
             public bool Doneloop { get; set; }
 
-            public SimpleTimerSM(Program program, IEnumerable<double> sequence = null, bool autoStart = false)
+            public SequenceAssigner(Program program, IEnumerable<int> sequence = null, bool autoStart = false)
             {
                 Program = program;
                 Sequence = sequence;
@@ -248,18 +246,18 @@ namespace IngameScript
                 if (sequenceSM == null)
                     return;
 
-                SequenceTimer -= Program.Runtime.TimeSinceLastRun.TotalSeconds;
-
-                if (SequenceTimer > 0)
+                if (SequenceCount > 0) {
+                    SequenceCount--;
                     return;
+                }
 
                 bool hasValue = sequenceSM.MoveNext();
 
                 if (hasValue)
                 {
-                    SequenceTimer = sequenceSM.Current;
+                    SequenceCount = sequenceSM.Current;
 
-                    if (SequenceTimer <= -0.5)
+                    if (SequenceCount <= -1)
                         hasValue = false;
                 }
 
@@ -272,10 +270,10 @@ namespace IngameScript
                 }
             }
 
-            private void SetSequenceSM(IEnumerable<double> seq)
+            private void SetSequenceSM(IEnumerable<int> seq)
             {
                 Running = false;
-                SequenceTimer = 0;
+                SequenceCount = 0;
 
                 sequenceSM?.Dispose();
                 sequenceSM = null;
@@ -287,7 +285,8 @@ namespace IngameScript
                 }
             }
 
-            public bool Loop(bool cond) {
+            public bool Loop(bool cond)
+            {
                 while (!Doneloop)
                 {
                     Run();

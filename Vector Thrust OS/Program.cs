@@ -16,14 +16,38 @@ namespace IngameScript
         const string applyTagsArg = "applytags";
         const string applyTagsAllArg = "applytagsall";
         const string removeTagsArg = "removetags";
+        string oldTag = "";
+        string tag = "|VT|";
+        string textSurfaceKeyword = "VT:";
+        string LCDName = "VTLCD";
 
-        readonly SimpleTimerSM BlockManager;
-        readonly SimpleTimerSM BatteryStats;
+        readonly SequenceAssigner BlockManager;
+        readonly SequenceAssigner BatteryStats;
 
-        readonly double timeperframe = 1.0 / 60.0;
-        Vector3D desiredVec = new Vector3D();
+        //readonly double timeperframe = 1.0 / 60.0;
+        const double TOVval = 0.25;
+        double sv = 0;
+        double wgv = 0;
+        double mvin = 0;
+        double accel = 0;
+        double maxaccel = 0;
+        double totaleffectivethrust = 0;
+        double totalVTThrprecision = 0;
+        double force = 0;
+        double displaygearaccel = 0;
+        double tgotTOV = 0;
+        double rawgearaccel = 0;
+        //double tthrust = 0;
+        double len = 0;
+        double global_thrustbynthr = 0;
+
+        Vector3D desiredVec = Vector3D.Zero; //new Vector3D();
+        Vector3D worldGrav = Vector3D.Zero;
+        Vector3D shipVelocity = Vector3D.Zero;
+        Vector3D lastvelocity = Vector3D.Zero;
+        Vector3D global_requiredVec = Vector3D.Zero;
+
         bool dampchanged = false;
-
         bool parked = false;
         bool alreadyparked = false;
         bool cruisedNT = false;
@@ -32,29 +56,51 @@ namespace IngameScript
         bool error = false;
         bool oldDampeners = false;
         bool isstation = false;
-        double wgv = 0;
-        double mvin = 0;
-        double accel = 0;
-        double maxaccel = 0;
-        float gravLength = 0;
-        string oldTag = "";
+        bool trulyparked = false;
+        bool parkavailable = false;
+        bool almostbraked = false;
+        bool cruise = false;
+        bool dampeners = true;
+        bool dampenersIsPressed = false;
+        bool cruiseIsPressed = false;
+        bool gearIsPressed = false;
+        bool allowparkIsPressed = false;
+        bool rotorsstopped = false;
+        bool justCompiled = true;
+        bool pauseseq = false;
+        bool check = true;
+        bool applyTags = false;
+        bool greedy = true;
+        bool thrustOn = true;
+        bool rechargecancelled = false;
+        bool parkedwithcn = false;
+        bool unparkedcompletely = true;
+        bool parkedcompletely = false;
+        bool changedruntime = false;
+        bool forceunpark = false;
+        bool cruisebyarg = false;
+        bool changeDampeners = false;
+        bool global_gravChanged = false;
+
         readonly StringBuilder echosb = new StringBuilder();
         readonly StringBuilder screensb = new StringBuilder();
         readonly StringBuilder log = new StringBuilder();
-        //long pc = 0;
-        MyShipMass myshipmass;
+        readonly StringBuilder surfaceProviderErrorStr = new StringBuilder();
 
-        readonly SimpleTimerSM MainChecker;
-        readonly SimpleTimerSM GetScreen;
-        readonly SimpleTimerSM GetControllers;
-        readonly SimpleTimerSM GetVectorThrusters;
-        readonly SimpleTimerSM CheckParkBlocks;
-        readonly SimpleTimerSM Assign;
+        int SkipFrame = 0;
+        readonly int updatespersecond = 60;
+        int blockcount = 0;
 
-        bool cruise = false;
-        bool dampeners = true;
-        string textSurfaceKeyword = "VT:";
-        string LCDName = "VTLCD";
+        readonly SequenceAssigner MainChecker;
+        readonly SequenceAssigner GetScreen;
+        readonly SequenceAssigner GetControllers;
+        readonly SequenceAssigner GetVectorThrusters;
+        readonly SequenceAssigner CheckParkBlocks;
+        readonly SequenceAssigner Assign;
+
+        readonly WhipsHorizon WH;
+        readonly Tracker tracker;
+
         const float defaultAccel = 1f;
         const float accelBase = 1.5f;//accel = defaultAccel * g * base^exponent
                                      // your +, - and 0 keys increment, decrement and reset the exponent respectively
@@ -62,10 +108,10 @@ namespace IngameScript
         const float dampenersModifier = 0.1f; // multiplier for dampeners, higher is stronger dampeners		 
         const float zeroGAcceleration = 9.81f; // default acceleration in situations with 0 (or low) gravity				 
         const float gravCutoff = 0.1f * zeroGAcceleration;  // if gravity becomes less than this, zeroGAcceleration will kick in (I think it's deprecated)
-        
-        //readonly UpdateFrequency update_frequency = UpdateFrequency.Update1;
-        // choose wether you want the script to											 
-        // update once every frame, once every 10 frames, or once every 100 frames (Recommended not modifying it)
+        float gravLength = 0;
+        float lastGrav = 0;
+        float oldMass = 0;
+        float accel_aux = 0;
 
         // Control Module params... this can always be true, but it's deprecated
         bool controlModule = true;
@@ -74,74 +120,45 @@ namespace IngameScript
         const string gearButton = "c.sprint"; //Shift
         const string allowparkButton = "c.thrusts";//X 
         //"c.stationrotation"; //B
-        bool dampenersIsPressed = false;
-        bool cruiseIsPressed = false;
-        bool gearIsPressed = false;
-        bool allowparkIsPressed = false;
-
-
-        double totaleffectivethrust = 0;
         //double totalaccel = 0;
-        readonly StringBuilder surfaceProviderErrorStr = new StringBuilder();
-
-        double totalVTThrprecision = 0;
-        bool rotorsstopped = false;
 
         ShipController mainController = null;
+        MyShipMass myshipmass;
+
         List<ShipController> controllers = new List<ShipController>();
         List<IMyShipController> controllerblocks = new List<IMyShipController>();
-        /*readonly*/ List<IMyShipController> ccontrollerblocks = new List<IMyShipController>();
-        /*readonly*/ List<ShipController> controlledControllers = new List<ShipController>();
+        List<IMyShipController> ccontrollerblocks = new List<IMyShipController>();
+        List<ShipController> controlledControllers = new List<ShipController>();
         List<VectorThrust> vectorthrusters = new List<VectorThrust>();
         List<IMyThrust> normalThrusters = new List<IMyThrust>();
         List<IMyTextPanel> screens = new List<IMyTextPanel>();
         readonly List<IMyShipConnector> connectors = new List<IMyShipConnector>();
         readonly List<IMyLandingGear> landinggears = new List<IMyLandingGear>();
-        /*readonly*/ List<IMyGasTank> tankblocks = new List<IMyGasTank>();
+        List<IMyGasTank> tankblocks = new List<IMyGasTank>();
         readonly List<IMyTerminalBlock> cruiseThr = new List<IMyTerminalBlock>();
         readonly List<List<VectorThrust>> VTThrGroups = new List<List<VectorThrust>>();
         List<Surface> surfaces = new List<Surface>();
-
         List<IMyThrust> vtthrusters = new List<IMyThrust>();
         List<IMyMotorStator> vtrotors = new List<IMyMotorStator>();
-
-        /*readonly */List<IMyBatteryBlock> taggedbats = new List<IMyBatteryBlock>();
-        /*readonly */List<IMyBatteryBlock> normalbats = new List<IMyBatteryBlock>();
-
+        List<IMyBatteryBlock> taggedbats = new List<IMyBatteryBlock>();
+        List<IMyBatteryBlock> normalbats = new List<IMyBatteryBlock>();
         List<IMyThrust> thrusters_input = new List<IMyThrust>();
         List<IMyMotorStator> rotors_input = new List<IMyMotorStator>();
         readonly List<ShipController> controllers_input = new List<ShipController>();
-        /*readonly */List<IMyTextPanel> input_screens = new List<IMyTextPanel>();
+        List<IMyTextPanel> input_screens = new List<IMyTextPanel>();
         readonly List<IMyMotorStator> abandonedrotors = new List<IMyMotorStator>();
         readonly List<IMyThrust> abandonedthrusters = new List<IMyThrust>();
-
+        List<IMySoundBlock> soundblocks = new List<IMySoundBlock>();
+        List<IMyShipConnector> connectorblocks = new List<IMyShipConnector>();
+        List<IMyLandingGear> landinggearblocks = new List<IMyLandingGear>();
+        List<IMyBatteryBlock> batteriesblocks = new List<IMyBatteryBlock>();
         List<IMyTerminalBlock> batsseq = new List<IMyTerminalBlock>();
+        readonly List<IMyTerminalBlock> AllBlocks = new List<IMyTerminalBlock>();
         List<double> outputbatsseq = new List<double>();
+        List<double> tets = new List<double>();
+        List<int> tdividers = new List<int> { 1, 1 };
 
-        bool pauseseq = false;
-        bool check = true;
-
-        Vector3D shipVelocity = Vector3D.Zero;
-        double sv = 0;
-        bool justCompiled = true;
-        string tag = "|VT|";
-
-        bool applyTags = false;
-        bool greedy = true;
-        float lastGrav = 0;
-        bool thrustOn = true;
         Dictionary<string, object> CMinputs = null;
-        bool rechargecancelled = false;
-        bool parkedwithcn = false;
-
-        float oldMass = 0;
-        int frame = 0;
-
-        bool unparkedcompletely = true;
-        bool parkedcompletely = false;
-
-        readonly WhipsHorizon WH;
-        Vector3D worldGrav = Vector3D.Zero;
 
         public Program()
         {
@@ -152,15 +169,15 @@ namespace IngameScript
 
             tracker = new Tracker(this, 100, 500);
 
-            BlockManager = new SimpleTimerSM(this, BlockManagerSeq(), true);
-            BatteryStats = new SimpleTimerSM(this, GetBatStatsSeq(), true);
-            MainChecker = new SimpleTimerSM(this, CheckVectorThrustersSeq(), true);
-            GetScreen = new SimpleTimerSM(this, GetScreensSeq(), true);
-            GetControllers = new SimpleTimerSM(this, GetControllersSeq(), true);
-            GetVectorThrusters = new SimpleTimerSM(this, GetVectorThrustersSeq(), true);
-            CheckParkBlocks = new SimpleTimerSM(this, CheckParkBlocksSeq(), true);
+            BlockManager = new SequenceAssigner(this, BlockManagerSeq(), true);
+            BatteryStats = new SequenceAssigner(this, GetBatStatsSeq(), true);
+            MainChecker = new SequenceAssigner(this, CheckVectorThrustersSeq(), true);
+            GetScreen = new SequenceAssigner(this, GetScreensSeq(), true);
+            GetControllers = new SequenceAssigner(this, GetControllersSeq(), true);
+            GetVectorThrusters = new SequenceAssigner(this, GetVectorThrustersSeq(), true);
+            CheckParkBlocks = new SequenceAssigner(this, CheckParkBlocksSeq(), true);
 
-            Assign = new SimpleTimerSM(this, AssignSeq(), true);
+            Assign = new SequenceAssigner(this, AssignSeq(), true);
 
             WH = new WhipsHorizon(surfaces, this);
             Init();
@@ -202,15 +219,6 @@ namespace IngameScript
             }
         }
 
-        bool trulyparked = false;
-        bool parkavailable = false;
-        Vector3D lastvelocity = Vector3D.Zero;
-        readonly int updatespersecond = 60;
-        float accel_aux = 0;
-        bool almostbraked = false;
-
-        readonly Tracker tracker;
-
         public void Main(string argument)
         {
             // ========== STARTUP ==========
@@ -239,24 +247,12 @@ namespace IngameScript
                     ThrustOnHandler();
                 }
             }
-            //Print($"{Runtime.UpdateFrequency}");
 
             Printer(argument.Length > 0); //PRINTER MUST BE HERE BECUASE OF GetMovIn
 
             // END NECESARY INFORMATION
-            //if (scount > 0) WH.Process(argument.Length > 0);
-            //Print($"{mainController.CName}");
             //_RuntimeTracker.RegisterAction("Action");
-            //echosb.AppendLine($"{tracker.JustPrinted} {tracker.LastRuntime.Truncate(2)}");
-
-            /*Print($"all:{AllBlocks.Count} / cb:{controllerblocks.Count} / trb:{vtthrusters.Count} / rtb:{vtrotors.Count}.{abandonedrotors.Count}");
-            Print($"c:{controllers.Count} / vt:{vectorthrusters.Count} / vtg:{VTThrGroups.Count}");
-            Print($"ba:{batteriesblocks.Count}.{taggedbats.Count}.{normalbats.Count} / tkb:{tankblocks.Count} / cn:{connectorblocks.Count} / lg:{landinggearblocks.Count}");
-            foreach (List<VectorThrust> gr in VTThrGroups) Print($"{gr.Count}");*/
-            //taggedbats.ForEach(x => Print($"{x.BlockDefinition.SubtypeId}"));           
-
-            /*justCompiled = false;
-            return;*/
+            //echosb.AppendLine($"{tracker.JustPrinted} {tracker.LastRuntime.Truncate(2)}");   
 
             // SKIPFRAME AND PERFORMANCE HANDLER: handler to skip frames, it passes out if the player doesn't parse any command or do something relevant.
             CheckWeight(); //Block Updater must-have
@@ -337,7 +333,6 @@ namespace IngameScript
 
             // point thrust in opposite direction, add weight. this is force, not acceleration
             Vector3D requiredVec = -desiredVec + shipWeight;
-            
 
             // remove thrust done by normal thrusters
             Vector3D nthrthrust = Vector3D.Zero;
@@ -347,8 +342,6 @@ namespace IngameScript
                 nthrthrust += t.WorldMatrix.Backward * t.CurrentThrust;
             }
             double thrustbynthr = nthrthrust.Length();
-            //rawgearaccel += thrustbynthr;
-
             requiredVec += nthrthrust;
 
             len = requiredVec.Length();
@@ -367,20 +360,8 @@ namespace IngameScript
             // ========== END OF MAIN ==========
         }
 
-
-        List<double> tets = new List<double>();
-        double rawgearaccel = 0;
-        //double tthrust = 0;
-        double len = 0;
-
-        Vector3D global_requiredVec = Vector3D.Zero;
-        double global_thrustbynthr = 0;
-        bool global_gravChanged = false;
-        List<int> tdividers = new List<int> { 1, 1 };
-
-        IEnumerable<double> AssignSeq()
+        IEnumerable<int> AssignSeq()
         {
-
             while (true)
             {
 
@@ -398,7 +379,7 @@ namespace IngameScript
 
                 for (int i = 0; i < gc; i++)
                 {
-                    List<VectorThrust> g = /*VTThrGroups*/VTGroups[i];
+                    List<VectorThrust> g = VTGroups[i];
 
                     int tc = g.Count;
                     if (tc <= 0) continue;
@@ -443,7 +424,7 @@ namespace IngameScript
 
                     for (int j = 0; j < tc; j++)
                     {
-                        VectorThrust vt = /*g*/Vts[j];
+                        VectorThrust vt = Vts[j];
 
                         bool enabledop = div != tc;
 
@@ -468,7 +449,6 @@ namespace IngameScript
                         requiredVec -= vt.requiredVec;
 
                         totaleffectivethrust_aux += tet * 1.595;
-                        //rawgearaccel += tet;
                         totalVTThrprecision_aux += vt.rotor.LastAngleCos;
 
                         if (enabledop) {
@@ -476,7 +456,7 @@ namespace IngameScript
                             if ( j + 1 % div == 0)
                             {
                                 //echosb.AppendLine($"Dividing 1 {j}/{div}");
-                                yield return 0.016;
+                                yield return 1;
                             }
                         }
                     }
@@ -499,7 +479,7 @@ namespace IngameScript
                 //tthrust = tthrust_aux;
                 totaleffectivethrust = totaleffectivethrust_aux;
 
-                yield return 0.016;
+                yield return 1;
             }
         }
     }

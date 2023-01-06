@@ -10,8 +10,7 @@ namespace IngameScript
     {
         class Surface
         {
-            Program p;
-
+            readonly Program p;
             public IMyTextSurface surface { get;  }
             public RectangleF viewport_s { get; }
             public Vector2 surfaceSize { get; }

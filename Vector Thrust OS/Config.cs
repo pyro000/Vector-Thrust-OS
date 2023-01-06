@@ -45,6 +45,7 @@ namespace IngameScript
         int framesperprint = 10;
         bool stockvalues = true;
         bool onlyMainCockpit = false;
+        //double timepause = 0;
 
         // ------- End default configs ---------
 
@@ -106,7 +107,6 @@ namespace IngameScript
         const string controlModuleStr = "Allow Control Module Mod";
         const string tdividersStr = "Split Vector Thrusters / Individual Thrusters Tasks Frames";
         // END STRINGS AND VARS
-
 
         void Config()
         {
@@ -200,11 +200,11 @@ namespace IngameScript
                 onlyMainCockpit = config.Get(advancedstr, onlyMainCockpitStr).ToBoolean(onlyMainCockpit);
                 cruisePlane = config.Get(advancedstr, cruisePlaneStr).ToBoolean(cruisePlane);
                 FramesBetweenActions = config.Get(advancedstr, FramesBetweenActionsStr).ToInt32(FramesBetweenActions);
-                if (FramesBetweenActions <= 0)
+                /*if (FramesBetweenActions <= 0)
                 {
                     FramesBetweenActions = 1;
                 }
-                timepause = FramesBetweenActions * timeperframe;
+                timepause = FramesBetweenActions * timeperframe;*/
 
                 framesperprint = config.Get(advancedstr, framesperprintStr).ToInt32(framesperprint);
                 var tlist1 = new List<int>(config.GetList<int>(advancedstr, tdividersStr));
@@ -222,7 +222,7 @@ namespace IngameScript
             RConfig(config.ToString());
         }
 
-        double timepause = 0;
+        
         void SetConfig()
         {
             config.Set(inistr, myNameStr, myName);

@@ -28,16 +28,6 @@ namespace IngameScript
             setTOV = true;
         }
 
-        /*string Separator(string title = "", int len = 58)
-        {
-            int tl = title.Length;
-            len = (len - tl) / 2;
-            string res = new string('-', len);
-            return res + title + res;
-        }*/
-
-        double force = 0;
-
         void ThrustOnHandler()
         {
             force = gravCutoff * myshipmass.PhysicalMass;
@@ -61,8 +51,6 @@ namespace IngameScript
                 }
             }
         }
-
-        double displaygearaccel = 0;
 
         void GetAcceleration()
         {
@@ -93,7 +81,6 @@ namespace IngameScript
             WH.Process(force);
             screensb.Clear();
 
-
             string cstr = mainController != null ? mainController.TheBlock.CustomName : "DEAD";
 
             if (ShowMetrics)
@@ -102,7 +89,7 @@ namespace IngameScript
                 echosb.AppendLine(rt);
                 screensb.AppendLine(rt);
             }
-            echosb.AppendLine("VT OS\n22116\n");
+            echosb.AppendLine("VT OS\n22117\n");
 
             if (greedy) echosb.AppendLine("WARNING, TAGS ARE NOT APPLIED\nAPPLY THEM WITH \"applytags\"\n");
             if (tgotTOV <= TOVval) echosb.AppendLine($" > Thrusters Total Precision: {totalVTThrprecision.Round(1)}%");
@@ -127,7 +114,7 @@ namespace IngameScript
             }
         }
 
-        bool changedruntime = false;
+        
         bool SkipFrameHandler(string argument)
         {
             bool tagArg =
@@ -140,12 +127,9 @@ namespace IngameScript
             {
 
                 MainChecker.Run();//RUNS VARIOUS PROCESSES SEPARATED BY A TIMER
-
-                //FOR SOME STUPID REASON PARKHANDLER IS SETTING UPDATE10 ALL THE TIME (Solved)
                 handlers = PerformanceHandler();
                 handlers = ParkHandler() || handlers;
                 if (!cruise) handlers = VTThrHandler() || handlers;
-
                 
                 if (tagArg) MainTag(argument);
             }
@@ -412,8 +396,6 @@ namespace IngameScript
             return onlyMainCockpit && mainController != null && mainController.TheBlock.IsUnderControl;
         }
 
-        double tgotTOV = 0;
-
         bool VTThrHandler()
         {
             bool nograv = wgv == 0;
@@ -446,20 +428,18 @@ namespace IngameScript
             if (SkipFrames > 0 && tracker.CanPrint)
             {
                 echosb.AppendLine($"--SkipFrame[{ SkipFrames}]--");
-                echosb.AppendLine($" >Skipped: {frame}");
-                echosb.AppendLine($" >Remaining: {SkipFrames - frame}");
+                echosb.AppendLine($" >Skipped: {SkipFrame}");
+                echosb.AppendLine($" >Remaining: {SkipFrames - SkipFrame}");
             }
-            if (!justCompiled && SkipFrames > 0 && SkipFrames > frame)
+            if (!justCompiled && SkipFrames > 0 && SkipFrames > SkipFrame)
             {
-                frame++;
+                SkipFrame++;
                 return true;
             }
-            else if (SkipFrames > 0 && frame >= SkipFrames) frame = 0;
+            else if (SkipFrames > 0 && SkipFrame >= SkipFrames) SkipFrame = 0;
             return false;
         }
 
-        bool forceunpark = false;
-        const double TOVval = 0.25;
 
         bool ParkHandler()
         {
@@ -649,7 +629,7 @@ namespace IngameScript
             }
         }
 
-        bool cruisebyarg = false;
+        
         Vector3D GetMovementInput(string arg, bool perf = false)
         {
             Vector3D moveVec = Vector3D.Zero;
@@ -721,7 +701,7 @@ namespace IngameScript
                 }
             }
 
-            bool changeDampeners = false;
+            
 
             if (arg.Length > 0)
             {
